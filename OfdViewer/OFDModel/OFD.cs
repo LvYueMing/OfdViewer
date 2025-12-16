@@ -25,7 +25,7 @@ namespace OfdViewer.OFDModel
         };
         #endregion
 
-        #region 必选属性（带校验）
+        #region 必选属性
         /// <summary>
         /// 文件格式的版本号
         /// <para>必选，取值固定为 "1.0"（符合 GB/T 33190-2016）</para>
@@ -84,11 +84,6 @@ namespace OfdViewer.OFDModel
         [XmlNamespaceDeclarations]
         public XmlSerializerNamespaces XmlNamespaces { get; }
 
-        /// <summary>
-        /// 版本信息（预留，暂未使用）
-        /// </summary>
-        [XmlIgnore] // 不序列化到 XML，仅作为内存对象使用
-        public Version VersionInfo => new Version(Version);
         #endregion
 
 

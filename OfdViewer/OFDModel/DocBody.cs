@@ -21,8 +21,9 @@ namespace OfdViewer.OFDModel
         [XmlElement("DocRoot")]
         public ST_Loc DocRoot { get; set; }
 
-        [XmlElement("Versions")]
-        public Versions Versions { get; set; }
+        [XmlArray("Versions")]
+        [XmlArrayItem("Version")]
+        public List<Version> Versions { get; set; }
 
         [XmlElement("Signatures")]
         public ST_Loc Signatures { get; set; }
