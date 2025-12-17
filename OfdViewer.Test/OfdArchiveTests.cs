@@ -3,7 +3,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Text;
 using System.Xml;
-using OfdViewer.OfdReader;
+using OFDViewer.OFDReader;
 using Xunit;
 
 namespace OfdViewer.Tests
@@ -32,7 +32,7 @@ namespace OfdViewer.Tests
                 }
             }
             _zipStream.Position = 0;
-            _archive = OfdArchive.Open(_zipStream, ZipArchiveMode.Read, leaveOpen: true);
+            _archive = OfdArchive.OpenFromStream(_zipStream, ZipArchiveMode.Read, leaveOpen: true);
         }
 
         [Fact]
@@ -45,7 +45,7 @@ namespace OfdViewer.Tests
             try
             {
                 // Act
-                using var archive = OfdArchive.Open(tempFile);
+                using var archive = OfdArchive.OpenFromFile(tempFile);
 
                 // Assert
                 Assert.NotNull(archive);
@@ -61,7 +61,7 @@ namespace OfdViewer.Tests
         [Fact]
         public void Open_Stream_ShouldOpenArchive()
         {
-            using var archive = OfdArchive.Open(new MemoryStream(_zipStream.ToArray()));
+            using var archive = OfdArchive.OpenFromStream(new MemoryStream(_zipStream.ToArray()));
             Assert.NotNull(archive);
         }
 
@@ -146,7 +146,7 @@ namespace OfdViewer.Tests
         public void ExtractAndReadOFD_LocalFile()
         {
             string ofdPath = @"C:\Users\Administrator\Desktop\test.ofd"; // 替换为你的 OFD 文件路径
-            using var archive = OfdArchive.Open(ofdPath);
+            using var archive = OfdArchive.OpenFromFile(ofdPath);
 
             // 解压
             var tempDir = archive.ExtractToTempDirectory();

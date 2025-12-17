@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Xml.Serialization;
 
-namespace OfdViewer.OFDModel
+namespace OFDViewer.OFDModel
 {
     /// <summary>
     /// OFD 根节点模型（符合 GB/T 33190-2016 规范）

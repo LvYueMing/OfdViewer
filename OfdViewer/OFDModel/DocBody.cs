@@ -1,4 +1,4 @@
-﻿using OfdViewer.BaseType.DocumentStructure;
+﻿using OFDViewer.BaseType.DocumentStructure;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 
-namespace OfdViewer.OFDModel
+namespace OFDViewer.OFDModel
 {
     /// <summary>
     /// 文件对象入口模型

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OfdViewer.BaseType
+namespace OFDViewer.BaseType
 {
     using System;
     using System.Collections;

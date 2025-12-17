@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OfdViewer.BaseType
+namespace OFDViewer.BaseType
 {
     /// <summary>
     /// ST_RefID 标识引用，此标识应为文档内已定义的标识

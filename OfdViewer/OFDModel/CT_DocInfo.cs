@@ -1,4 +1,4 @@
-﻿using OfdViewer.BaseType.DocumentStructure;
+﻿using OFDViewer.BaseType.DocumentStructure;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 
-namespace OfdViewer.OFDModel
+namespace OFDViewer.OFDModel
 {
     [XmlRoot("CT_DocInfo")]
     public class CT_DocInfo

@@ -1,4 +1,4 @@
-﻿using OfdViewer.BaseType.DocumentStructure;
+﻿using OFDViewer.BaseType.DocumentStructure;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OfdViewer.BaseType
+namespace OFDViewer.BaseType
 {
     /// <summary>
     /// ST_Array 数组，以空格来分割元素。

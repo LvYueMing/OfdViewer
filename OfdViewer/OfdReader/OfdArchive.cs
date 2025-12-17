@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
 
-namespace OfdViewer.OfdReader
+namespace OFDViewer.OFDReader
 {
     public class OfdArchive : IDisposable
     {
@@ -21,16 +21,39 @@ namespace OfdViewer.OfdReader
         /// </summary>
         /// <param name="filePath">OFD 文件路径</param>
         /// <param name="mode">打开模式</param>
-        public static OfdArchive Open(string filePath, ZipArchiveMode mode = ZipArchiveMode.Read)
+        public static OfdArchive OpenFromFile(string filePath)
         {
             var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            return new OfdArchive(stream, mode, leaveOpen: false);
+            return new OfdArchive(stream, ZipArchiveMode.Read, leaveOpen: false);
+        }
+
+        /// <summary>
+        /// 打开 OFD 文件
+        /// </summary>
+        /// <param name="filePath">OFD 文件路径</param>
+        /// <param name="mode">打开模式</param>
+        /// <param name="leaveOpen">是否保持流打开状态</param>
+        public static OfdArchive OpenFromFile(string filePath, ZipArchiveMode mode = ZipArchiveMode.Read, bool leaveOpen = false)
+        {
+            var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            return new OfdArchive(stream, mode, leaveOpen);
+        }
+
+
+        /// <summary>
+        /// 从流打开 OFD 文件
+        /// </summary>
+        public static OfdArchive OpenFromStream(Stream stream)
+        {
+            return new OfdArchive(stream, ZipArchiveMode.Read, leaveOpen: false);
         }
 
         /// <summary>
         /// 从流打开 OFD 文件
         /// </summary>
-        public static OfdArchive Open(Stream stream, ZipArchiveMode mode = ZipArchiveMode.Read, bool leaveOpen = false)
+        /// <param name="mode">打开模式</param>
+        /// <param name="leaveOpen">是否保持流打开状态</param>
+        public static OfdArchive OpenFromStream(Stream stream, ZipArchiveMode mode = ZipArchiveMode.Read, bool leaveOpen = false)
         {
             return new OfdArchive(stream, mode, leaveOpen);
         }

@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OfdViewer.BaseType
+namespace OFDViewer.BaseType
 {
     /// <summary>
     /// ST_Pos 点坐标，以空格分割，前者为x值，后者为y值

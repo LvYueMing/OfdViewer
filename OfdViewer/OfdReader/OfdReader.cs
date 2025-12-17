@@ -1,167 +1,106 @@
-﻿using OfdViewer.OFDModel;
+﻿using OFDViewer.OFDModel;
+using OFDViewer.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Metadata;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
+using System.Xml.Serialization;
 
-namespace OfdViewer.OfdReader
+namespace OFDViewer.OFDReader
 {
-    public class OfdReader
+    public class OfdReader : IDisposable
     {
         private readonly OfdArchive _archive;
+        private bool _disposed = false;
 
+        /// <summary>
+        /// OFD 文档信息
+        /// </summary>
+        public OFD OfdDocument { get; private set; }
+
+        /// <summary>
+        /// 初始化 OFD 读取器
+        /// </summary>
+        /// <param name="filePath">OFD 文件路径</param>
+        /// <exception cref="FileNotFoundException">文件不存在时抛出</exception>
+        /// <exception cref="ArgumentNullException">文件路径为空时抛出</exception>
         public OfdReader(string filePath)
         {
-            _archive = OfdArchive.Open(filePath);
+            if (string.IsNullOrWhiteSpace(filePath))
+                throw new ArgumentNullException(nameof(filePath), "文件路径不能为空");
+
+            if (!File.Exists(filePath))
+                throw new FileNotFoundException("OFD 文件不存在", filePath);
+
+            _archive = OfdArchive.OpenFromFile(filePath);
+        }
+
+        /// <summary>
+        /// 初始化 OFD 读取器
+        /// </summary>
+        /// <param name="stream">OFD 文件流</param>
+        /// <param name="leaveOpen">是否保持流打开状态</param>
+        public OfdReader(Stream stream, bool leaveOpen)
+        {
+            if (stream == null)
+                throw new ArgumentNullException(nameof(stream), "输入流不能为空");
+
+            _archive = OfdArchive.OpenFromStream(stream, leaveOpen: leaveOpen);
         }
 
         /// <summary>
         /// 解析 OFD 主入口文件
         /// </summary>
-        public OFD ParseOFD()
+        public OFD ParseOfdDocument()
         {
-            // 1. 读取 OFD.xml 入口文件
-            var ofdXml = _archive.ReadXmlFile("OFD.xml");
+            if (OfdDocument != null)
+                return OfdDocument;
 
-            // 2. 解析文档根目录
-            var docNode = ofdXml.SelectSingleNode("/OFD/Document");
-            if (docNode == null)
-                throw new InvalidOfdFormatException("无效的 OFD 文件格式");
-
-            var docPath = docNode.Attributes?["BaseLoc"]?.Value ?? "Doc_0";
-            if (!docPath.EndsWith("/"))
-                docPath += "/";
-
-            // 3. 读取文档结构文件
-            var docXml = _archive.ReadXmlFile($"{docPath}Document.xml");
-
-            // 4. 解析公共资源
-            var publicResPath = $"{docPath}PublicRes.xml";
-            var publicRes = _archive.FileExists(publicResPath)
-                ? _archive.ReadXmlFile(publicResPath)
-                : null;
-
-            // 5. 构建文档信息
-            return new OfdDocumentInfo
+            try
             {
-                RootPath = docPath,
-                DocumentXml = docXml,
-                PublicResXml = publicRes,
-                OfdVersion = ofdXml.DocumentElement?.GetAttribute("Version") ?? "1.0",
-                DocType = ofdXml.DocumentElement?.GetAttribute("DocType") ?? "Document"
-            };
+                // 读取 OFD.xml 入口文件
+                using var ofdStream = _archive.GetFileStream("OFD.xml");
+
+                // 验证文件签名（可选）
+                //ValidateOFDSignature(ofdStream);
+
+                // 解析主文档
+                OfdDocument = XmlHelper.DeserializeFromStream<OFD>(ofdStream);
+
+                // 加载相关资源
+                //LoadRelatedResources();
+
+                return OfdDocument;
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("解析 OFD 文档失败", ex);
+            }
         }
 
-        /// <summary>
-        /// 解析页面列表
-        /// </summary>
-        public List<PageInfo> ParsePages(OfdDocumentInfo docInfo)
+
+
+        #region IDisposable 实现
+        protected virtual void Dispose(bool disposing)
         {
-            var pages = new List<PageInfo>();
-            var pageNodes = docInfo.DocumentXml.SelectNodes("/Document/Pages/Page");
-
-            if (pageNodes == null || pageNodes.Count == 0)
-                return pages;
-
-            for (int i = 0; i < pageNodes.Count; i++)
+            if (!_disposed)
             {
-                var pageNode = pageNodes[i];
-                var pageId = pageNode.Attributes?["ID"]?.Value;
-                var baseLoc = pageNode.Attributes?["BaseLoc"]?.Value ?? $"Pages/Page_{i}.xml";
-
-                // 构建完整路径
-                var fullPath = Path.Combine(docInfo.RootPath, baseLoc)
-                    .Replace('\\', '/');
-
-                pages.Add(new PageInfo
+                if (disposing)
                 {
-                    Id = pageId ?? $"Page_{i}",
-                    Index = i,
-                    FilePath = fullPath,
-                    Size = ParsePageSize(fullPath)
-                });
+                    _archive?.Dispose();
+                }
+                _disposed = true;
             }
-
-            return pages;
         }
 
-        /// <summary>
-        /// 解析单页内容
-        /// </summary>
-        public PageContent ParsePage(string pageFilePath)
+        public void Dispose()
         {
-            if (!_archive.FileExists(pageFilePath))
-                throw new FileNotFoundException($"页面文件不存在: {pageFilePath}");
-
-            var pageXml = _archive.ReadXmlFile(pageFilePath);
-            var content = new PageContent
-            {
-                FilePath = pageFilePath,
-                Layers = ParseLayers(pageXml),
-                Resources = ParsePageResources(pageXml, pageFilePath)
-            };
-
-            return content;
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
-
-        /// <summary>
-        /// 解析页面图层
-        /// </summary>
-        private List<PageLayer> ParseLayers(XmlDocument pageXml)
-        {
-            var layers = new List<PageLayer>();
-            var layerNodes = pageXml.SelectNodes("/Page/Content/Layer");
-
-            if (layerNodes == null)
-                return layers;
-
-            for (int i = 0; i < layerNodes.Count; i++)
-            {
-                var layerNode = layerNodes[i];
-                var layer = new PageLayer
-                {
-                    Id = layerNode.Attributes?["ID"]?.Value ?? $"Layer_{i}",
-                    Type = layerNode.Attributes?["Type"]?.Value ?? "Body",
-                    Objects = ParseLayerObjects(layerNode)
-                };
-
-                layers.Add(layer);
-            }
-
-            return layers;
-        }
-
-        /// <summary>
-        /// 解析图层中的图元对象
-        /// </summary>
-        private List<PageObject> ParseLayerObjects(XmlNode layerNode)
-        {
-            var objects = new List<PageObject>();
-
-            // 解析路径对象
-            var pathNodes = layerNode.SelectNodes("Path");
-            foreach (XmlNode pathNode in pathNodes)
-            {
-                objects.Add(ParsePathObject(pathNode));
-            }
-
-            // 解析文本对象
-            var textNodes = layerNode.SelectNodes("Text");
-            foreach (XmlNode textNode in textNodes)
-            {
-                objects.Add(ParseTextObject(textNode));
-            }
-
-            // 解析图像对象
-            var imageNodes = layerNode.SelectNodes("Image");
-            foreach (XmlNode imageNode in imageNodes)
-            {
-                objects.Add(ParseImageObject(imageNode));
-            }
-
-            return objects;
-        }
+        #endregion
     }
 }

@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OfdViewer.BaseType
+namespace OFDViewer.BaseType
 {
     /// <summary>
     /// ST_Box 矩形区域，前两个值代表左上角坐标，后两个值依次表示宽和高

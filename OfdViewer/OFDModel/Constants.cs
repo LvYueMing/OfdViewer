@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OfdViewer.OFDModel
+namespace OFDViewer.OFDModel
 {
     /// <summary>
     /// OFD 常量类（复用之前定义）

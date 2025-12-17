@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.13.35931.197
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OfdViewer", "OfdViewer\OfdViewer.csproj", "{C236215D-4399-4230-853A-CA36880CCE12}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OFDViewer", "OfdViewer\OFDViewer.csproj", "{C236215D-4399-4230-853A-CA36880CCE12}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OfdViewer.Tests", "OfdViewer.Test\OfdViewer.Tests.csproj", "{916C1AB9-26AE-4EFA-A834-B17B85B12D85}"
 EndProject
