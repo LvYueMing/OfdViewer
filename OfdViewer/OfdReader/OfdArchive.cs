@@ -126,7 +126,11 @@ namespace OfdViewer.OfdReader
             return tempPath;
         }
 
-
+        /// <summary>
+        /// 规范化路径，统一使用正斜杠
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
         private string NormalizePath(string path)
         {
             return path.Replace('\\', '/').TrimStart('/');

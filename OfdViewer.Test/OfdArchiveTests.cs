@@ -134,10 +134,42 @@ namespace OfdViewer.Tests
             _archive.Dispose();
         }
 
+
+
         public void Dispose()
         {
             _archive.Dispose();
             _zipStream.Dispose();
+        }
+
+        [Fact]
+        public void ExtractAndReadOFD_LocalFile()
+        {
+            string ofdPath = @"C:\Users\Administrator\Desktop\test.ofd"; // 替换为你的 OFD 文件路径
+            using var archive = OfdArchive.Open(ofdPath);
+
+            // 解压
+            var tempDir = archive.ExtractToTempDirectory();
+            Assert.True(Directory.Exists(tempDir));
+            Console.OutputEncoding = Encoding.UTF8;
+            Console.WriteLine($"已解压到：{tempDir}");
+
+            // 输出所有文件名
+            var entryCache = archive.GetType()
+                .GetField("_entryCache", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                .GetValue(archive) as System.Collections.IDictionary;
+            foreach (var entry in entryCache)
+            {
+                Console.WriteLine(((System.Collections.DictionaryEntry)entry).Key);
+            }
+
+            // 读取并输出某个 XML 文件内容
+            string xmlFile = "Doc_0/Document.xml"; // 替换为实际 OFD 包内的 XML 路径
+            var xml = archive.ReadXmlFile(xmlFile);
+            Console.WriteLine(xml.OuterXml);
+
+            // 清理
+            Directory.Delete(tempDir, true);
         }
     }
 }
