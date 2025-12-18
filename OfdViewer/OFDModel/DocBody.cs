@@ -22,7 +22,7 @@ namespace OFDViewer.OFDModel
         public ST_Loc DocRoot { get; set; }
 
         [XmlElement("DocRoot")]
-        public string DocRootString
+        public string DocRootPath
         {
             get => DocRoot.ToString();
             set => DocRoot = value;
@@ -32,7 +32,14 @@ namespace OFDViewer.OFDModel
         [XmlArrayItem("Version")]
         public List<Version> Versions { get; set; }
 
-        [XmlElement("Signatures")]
+        [XmlIgnore]
         public ST_Loc Signatures { get; set; }
+
+        [XmlElement("Signatures")]
+        public string SignaturesPath
+        {
+            get => Signatures.ToString();
+            set => Signatures = value;
+        }
     }
 }

@@ -28,10 +28,10 @@ namespace OFDViewer.OFDModel
 
         // 对应BaseLoc属性（type="ST_Loc"、use="required" → 必填）
         [XmlAttribute("BaseLoc")]
-        public string BaseLocString
+        public string BaseLocPath
         {
             get => BaseLoc.ToString();
-            set => BaseLoc = new ST_Loc(value);
+            set => BaseLoc = value;
         }
     }
 }

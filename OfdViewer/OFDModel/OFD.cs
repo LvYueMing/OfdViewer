@@ -101,7 +101,6 @@ namespace OFDViewer.OFDModel
         #endregion
 
 
-
         #region 构造函数（保证默认值符合标准）
         /// <summary>
         /// 无参构造函数（XmlSerializer 必需）

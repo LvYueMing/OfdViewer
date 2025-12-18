@@ -1,4 +1,6 @@
 ﻿using OFDViewer.BaseType;
+using OFDViewer.OFDEnum;
+using OFDViewer.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,7 +10,6 @@ using System.Xml.Serialization;
 
 namespace OFDViewer.OFDModel
 {
-    [XmlRoot("CT_DocInfo")]
     public class CT_DocInfo
     {
         // 采用 UUID 算法生成的由32 个字符组成的文件标识。 每个 DocID在文档创建或生成的时候进行分配  可选
@@ -49,11 +50,28 @@ namespace OFDViewer.OFDModel
         /// 可选
         /// </summary>        
         [XmlElement("DocUsage")]
-        public string DocUsage { get; set; }
+        public string DocUsageString
+        {
+            get => EnumHelper.GetEnumName<DocumentUsage>(DocUsage);
+            set
+            {
+                EnumHelper.TryParseEnum<DocumentUsage>(value, out DocumentUsage result);
+                DocUsage = result;
+            }
+        }
+
+        public DocumentUsage DocUsage { get; set; }
+
+        [XmlIgnore]
+        public ST_Loc Cover { get; set; }
 
         // 文档封面, 此路径指向一个图片文件 可选
         [XmlElement("Cover")]
-        public ST_Loc Cover { get; set; }
+        public string CoverPath 
+        { 
+            get => Cover.ToString();
+            set => Cover = value;
+        }
 
         // 关键词集合, 每一个关键词用一个“Keyword”子节点来表达 可选
         [XmlArray("Keywords")]

@@ -1,0 +1,52 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using OFDViewer.BaseType;
+using System.Xml.Serialization;
+
+namespace OFDViewer.OFDModel
+{
+    /// <summary>
+    /// 模板页结构
+    /// </summary>
+    public class CT_TemplatePage
+    {
+        /// <summary>
+        /// 模板页的标识,不能与已有标识重复 
+        /// 必选
+        /// </summary>
+        [XmlElement("ID", IsNullable = false)] 
+        public ST_ID ID { get; set; } = new ST_ID();
+
+        /// <summary>
+        /// 模板页名称 
+        /// 可选
+        /// </summary>
+        [XmlElement("Name")]
+        public string Name { get; set; }
+
+        /// <summary>
+        /// 模板页的默认图层类型,其类型描述和呈现顺序与 Layer中 Type的描述和处理一致,见表15
+        /// 如果页面引用的多个模板的此属性相同, 则应根据引用的顺序来显示,先引用者先绘制默认值为 Background
+        /// 可选
+        /// </summary>
+        [XmlElement("ZOrder")]
+        public string ZOrder { get; set; } = "Background"; // 默认值体现default约束
+
+        /// <summary>
+        /// 指向模板页内容描述文件 
+        /// 必选 IsNullable=false 体现required约束
+        /// </summary>
+        [XmlElement("BaseLoc", IsNullable = false)]
+        public string BaseLocPath
+        {
+            get => BaseLoc.ToString();
+            set => BaseLoc = value;
+        }
+
+        [XmlIgnore]
+        public ST_Loc BaseLoc { get; set; }
+    }
+}
