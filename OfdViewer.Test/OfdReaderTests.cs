@@ -6,8 +6,9 @@ using System.Xml.Serialization;
 using OFDViewer.OFDReader;
 using OFDViewer.OFDModel;
 using Xunit;
+using OFDViewer.Utils;
 
-namespace OfdViewer.Tests
+namespace OFDViewer.Tests
 {
     public class OfdReaderTests : IDisposable
     {
@@ -54,7 +55,7 @@ namespace OfdViewer.Tests
             Assert.Throws<FileNotFoundException>(() => new OfdReader(notExistPath));
         }
 
-        [Fact(DisplayName ="")]
+        [Fact]
         public void Ctor_FilePath_ShouldSucceed_WhenFileExists()
         {
             CreateOfdArchiveWithOfdXml();
@@ -93,7 +94,7 @@ namespace OfdViewer.Tests
             var ofd = reader.ParseOfdDocument();
             Assert.NotNull(ofd);
             Assert.Equal("1.0", ofd.Version);
-            Assert.Equal("OFD", ofd.DocType);
+            Assert.Equal("OFD", ofd.DocTypeString);
             Assert.NotNull(ofd.DocBodies);
             Assert.Single(ofd.DocBodies);
         }
@@ -134,6 +135,32 @@ namespace OfdViewer.Tests
             reader.Dispose();
             reader.Dispose();
         }
+
+
+
+        [Fact(DisplayName ="解析本地ofd文件")]
+        public void ParseOfdDocument_ShouldParse()
+        {
+            var path = @"C:\Users\Administrator\Desktop\test.ofd";
+            using var reader = new OfdReader(path);
+            var ofd = reader.ParseOfdDocument();
+            Assert.NotNull(ofd);
+            Assert.Equal("1.1", ofd.Version);
+            Assert.Equal("OFD", ofd.DocTypeString);
+            Assert.NotNull(ofd.DocBodies);
+            Assert.Single(ofd.DocBodies);
+        }
+
+        [Fact(DisplayName = "解析本地ofd文件,并序列化")]
+        public void ParseOfdDocument_ParseAndSerializeToFile()
+        {
+            var path = @"C:\Users\Administrator\Desktop\";
+            using var reader = new OfdReader(path + "test.ofd");
+            var ofd = reader.ParseOfdDocument();
+            Assert.NotNull(ofd);
+            XmlHelper.SerializeToFile(ofd, path+ "test.xml");
+        }
+
 
         public void Dispose()
         {

@@ -1,4 +1,4 @@
-﻿using OFDViewer.BaseType.DocumentStructure;
+﻿using OFDViewer.BaseType;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -18,8 +18,15 @@ namespace OFDViewer.OFDModel
         [XmlElement("DocInfo")]
         public CT_DocInfo DocInfo { get; set; }
 
-        [XmlElement("DocRoot")]
+        [XmlIgnore]
         public ST_Loc DocRoot { get; set; }
+
+        [XmlElement("DocRoot")]
+        public string DocRootString
+        {
+            get => DocRoot.ToString();
+            set => DocRoot = (ST_Loc)value;
+        }
 
         [XmlArray("Versions")]
         [XmlArrayItem("Version")]

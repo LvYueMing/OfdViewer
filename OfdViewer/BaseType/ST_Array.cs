@@ -1,4 +1,4 @@
-﻿using OFDViewer.BaseType.DocumentStructure;
+﻿using OFDViewer.BaseType;
 using System;
 using System.Collections;
 using System.Collections.Generic;

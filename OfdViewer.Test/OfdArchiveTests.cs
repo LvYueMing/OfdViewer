@@ -6,7 +6,7 @@ using System.Xml;
 using OFDViewer.OFDReader;
 using Xunit;
 
-namespace OfdViewer.Tests
+namespace OFDViewer.Tests
 {
     public class OfdArchiveTests : IDisposable
     {

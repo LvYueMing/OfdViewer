@@ -1,4 +1,4 @@
-﻿using OFDViewer.BaseType.DocumentStructure;
+﻿using OFDViewer.BaseType;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,9 +22,16 @@ namespace OFDViewer.OFDModel
         // 对应Current属性（type="xs:boolean"、default="false" → 可选，默认false）
         [XmlAttribute("Current")]
         public bool Current { get; set; } = false; // 初始化默认值匹配XSD
+        
+        [XmlIgnore]
+        public ST_Loc BaseLoc { get; set; }
 
         // 对应BaseLoc属性（type="ST_Loc"、use="required" → 必填）
         [XmlAttribute("BaseLoc")]
-        public ST_Loc BaseLoc { get; set; }
+        public string BaseLocString
+        {
+            get => BaseLoc.ToString();
+            set => BaseLoc = new ST_Loc(value);
+        }
     }
 }

@@ -1,4 +1,6 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using OFDViewer.OFDEnum;
+using OFDViewer.Utils;
+using System.ComponentModel.DataAnnotations;
 using System.Xml.Serialization;
 
 namespace OFDViewer.OFDModel
@@ -11,18 +13,36 @@ namespace OFDViewer.OFDModel
     {
         #region 常量定义（限定合法值，符合 OFD 标准）
         /// <summary>
-        /// 合法的 OFD 版本号（仅支持 1.0，符合标准）
+        /// 合法的 OFD 版本号集合
         /// </summary>
-        public const string ValidVersion = "1.0";
-
-        /// <summary>
-        /// 合法的文档类型集合
-        /// </summary>
-        private static readonly HashSet<string> ValidDocTypes = new HashSet<string>
+        private static readonly HashSet<string> ValidVersions = new HashSet<string>
         {
-            "OFD",   // 符合本标准
-            "OFD-A"  // 符合 OFD 存档规范
+            "1.0",  // 基础版本
+            "1.1"   // 扩展版本（后续可继续添加）
         };
+        /// <summary>
+        /// 默认 OFD 版本号
+        /// </summary>
+        public const string DefaultVersion = "1.0";
+        #endregion
+
+
+        #region 命名空间声明（简化写法，避免硬编码）
+        /// <summary>
+        /// XML 命名空间声明（确保序列化时使用 ofd 前缀）
+        /// </summary>
+        //[XmlNamespaceDeclarations]
+        //public XmlSerializerNamespaces XmlNamespaces
+        //{
+        //    get
+        //    {
+        //        var ns = new XmlSerializerNamespaces();
+        //        ns.Add("ofd", Constants.OFD_NAMESPACE_URI);
+        //        return ns;
+        //    }
+        //    set { /* 反序列化时不需要设置 */ }
+        //}
+
         #endregion
 
         #region 必选属性
@@ -37,34 +57,39 @@ namespace OFDViewer.OFDModel
             set
             {
                 // 校验版本号合法性
-                if (!string.Equals(value, ValidVersion, StringComparison.Ordinal))
+                if (string.IsNullOrWhiteSpace(value) || !ValidVersions.Contains(value))
                 {
-                    throw new ArgumentException($"Version 必须为 \"{ValidVersion}\"，当前值：{value}", nameof(value));
+                    throw new ArgumentException($"Version 必须为有效的版本号 ({string.Join(", ", ValidVersions)})，当前值：{value ?? "null"}", nameof(value));
                 }
                 _version = value;
             }
         }
-        private string _version = ValidVersion; // 默认值，符合标准
+        private string _version = DefaultVersion; // 默认值，符合标准
+
+        /// <summary>
+        /// 文件格式子集类型
+        /// <para>必选，取值范围：OFD（标准）、OFDA（存档规范）、OFDH（红头文件）</para>
+        /// </summary>
+        [XmlIgnore]
+        public DocumentType DocType { get; set; }
 
         /// <summary>
         /// 文件格式子集类型
         /// <para>必选，取值范围："OFD"（标准）、"OFD-A"（存档规范）</para>
         /// </summary>
         [XmlAttribute("DocType")]
-        public string DocType
+        public string DocTypeString
         {
-            get => _docType;
+            get => EnumHelper.GetEnumDesc<DocumentType>(DocType);
             set
             {
-                // 校验文档类型合法性
-                if (string.IsNullOrWhiteSpace(value) || !ValidDocTypes.Contains(value))
+                if (!EnumHelper.TryParseByDesc<DocumentType>(value, out var docType))
                 {
                     throw new ArgumentException($"DocType 必须为 \"OFD\" 或 \"OFD-A\"，当前值：{value}", nameof(value));
                 }
-                _docType = value;
+                DocType = docType;
             }
         }
-        private string _docType = "OFD"; // 默认值，符合标准
 
         /// <summary>
         /// 文件对象入口（必选，支持多个版式文档）
@@ -77,29 +102,15 @@ namespace OFDViewer.OFDModel
 
 
 
-        #region 命名空间声明（简化写法，避免硬编码）
-        /// <summary>
-        /// XML 命名空间声明（自动绑定 ofd 前缀）
-        /// </summary>
-        [XmlNamespaceDeclarations]
-        public XmlSerializerNamespaces XmlNamespaces { get; }
-
-        #endregion
-
-
         #region 构造函数（保证默认值符合标准）
         /// <summary>
         /// 无参构造函数（XmlSerializer 必需）
         /// </summary>
         public OFD()
         {
-            // 初始化命名空间，符合 OFD 标准命名空间声明
-            XmlNamespaces = new XmlSerializerNamespaces();
-            XmlNamespaces.Add(Constants.OFD_VALUE, Constants.OFD_NAMESPACE_URI);
-
             // 默认值符合标准，避免反序列化后空值
-            Version = ValidVersion;
-            DocType = "OFD";
+            Version = DefaultVersion;
+            DocTypeString = "OFD";
             DocBodies = new List<DocBody>();
         }
 
@@ -111,7 +122,7 @@ namespace OFDViewer.OFDModel
         /// <exception cref="ArgumentNullException">文档入口列表为空时抛出</exception>
         public OFD(string docType, List<DocBody> docBodies) : this()
         {
-            DocType = docType ?? throw new ArgumentNullException(nameof(docType), "DocType 不能为空");
+            DocTypeString = docType ?? throw new ArgumentNullException(nameof(docType), "DocType 不能为空");
             DocBodies = docBodies ?? throw new ArgumentNullException(nameof(docBodies), "DocBody 列表不能为空");
 
             // 校验 DocBody 列表非空
@@ -138,11 +149,6 @@ namespace OFDViewer.OFDModel
             DocBodies.Add(docBody);
         }
 
-        /// <summary>
-        /// 检查是否为存档类型 OFD（OFD-A）
-        /// </summary>
-        /// <returns>true=存档类型，false=标准类型</returns>
-        public bool IsArchiveType() => string.Equals(DocType, "OFD-A", StringComparison.Ordinal);
         #endregion
     }
 
