@@ -25,7 +25,7 @@ namespace OFDViewer.OFDModel
         public string DocRootString
         {
             get => DocRoot.ToString();
-            set => DocRoot = (ST_Loc)value;
+            set => DocRoot = value;
         }
 
         [XmlArray("Versions")]
