@@ -1,7 +1,8 @@
-< ? xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.0" encoding="UTF-8"?>
 <xs:schema xmlns="http://www.ofdspec.org/2016" xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="http://www.ofdspec.org/2016" elementFormDefault="qualified" attributeFormDefault="unqualified">
-	<xs:include schemaLocation="Definitions.xsd"/>
-	< ! --主入口定义。 -->
+	<!--引入基础类型定义-->
+	<xs:include schemaLocation="D:\MySoft\GitHub\OfdViewer\Doc\Definition.xsd"/>
+	<!--主入口定义。 -->
 	<xs:element name="OFD">
 		<xs:complexType>
 			<xs:sequence>
@@ -24,7 +25,7 @@
 									</xs:sequence>
 								</xs:complexType>
 							</xs:element>
-							<xs:element name="Signatures" type="ST_Loc" 91 GB T 33190—2016minOccurs="0"/>
+							<xs:element name="Signatures" type="ST_Loc" minOccurs="0"/>
 						</xs:sequence>
 					</xs:complexType>
 				</xs:element>
@@ -39,7 +40,7 @@
 			</xs:attribute>
 		</xs:complexType>
 	</xs:element>
-	< ! --文档元数据定义-->
+	<!--文档元数据定义-->
 	<xs:complexType name="CT_DocInfo">
 		<xs:sequence>
 			<xs:element name="DocID" type="xs:string"/>

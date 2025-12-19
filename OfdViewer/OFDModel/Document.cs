@@ -28,7 +28,7 @@ namespace OFDViewer.OFDModel
         /// </summary>
         [XmlArray("Pages")]
         [XmlArrayItem("Page")]
-        public List<Page> Pages { get; set; }
+        public List<PageNode> Pages { get; set; }
 
         /// <summary>
         /// 大纲,有关大纲的描述见7.8 
