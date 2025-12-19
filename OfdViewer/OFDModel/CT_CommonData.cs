@@ -16,7 +16,7 @@ namespace OFDViewer.OFDModel
         /// <summary>
         /// 当前文档中所有对象使用标识的最大值,初始值为0。MaxUnitID
         /// 主要用于文档编辑,在向文档中新增加一个对象时,需要分配一个
-        /// 新的标识, 新标识取值宜为 MaxUnitID + 1,同时需要修改此 Max-UnitID值
+        /// 新的标识, 新标识取值宜为 MaxUnitID + 1,同时需要修改此 Max-UnitID 值
         /// 必选
         /// </summary>
         [XmlElement("MaxUnitID")]
@@ -35,14 +35,14 @@ namespace OFDViewer.OFDModel
         /// 可选（0..∞）
         /// </summary>
         [XmlElement("PublicRes")]
-        public string PublicResPath
+        public List<string> PublicResPath
         {
-            get => PublicRes.ToString();
-            set => PublicRes = value;
+            get => PublicRes?.Select(item => item.ToString()).ToList() ?? new List<string>();
+            set => PublicRes = value?.Select(item => new ST_Loc(item)).ToList() ?? new List<ST_Loc>();
         }
 
         [XmlIgnore]
-        public ST_Loc PublicRes { get; set; }
+        public List<ST_Loc> PublicRes { get; set; }
 
         /// <summary>
         /// 文档资源序列,每个节点指向 OFD包内的一个资源描述文档,资源
@@ -50,14 +50,14 @@ namespace OFDViewer.OFDModel
         /// 可选（0..∞）
         /// </summary>
         [XmlElement("DocumentRes")]
-        public string DocumentResPath
+        public List<string> DocumentResPath
         {
-            get => DocumentRes.ToString();
-            set => DocumentRes = value;
+            get => DocumentRes?.Select(item => item.ToString()).ToList() ?? new List<string>();
+            set => DocumentRes = value?.Select(item => new ST_Loc(item)).ToList() ?? new List<ST_Loc>();
         }
 
         [XmlIgnore]
-        public ST_Loc DocumentRes { get; set; }
+        public List<ST_Loc> DocumentRes { get; set; }
 
         /// <summary>
         /// 模板页序列,为一系列模板页的集合,模板页内容结构和普通页相同,描述见7.7

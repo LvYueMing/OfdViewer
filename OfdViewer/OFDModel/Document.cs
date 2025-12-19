@@ -26,8 +26,9 @@ namespace OFDViewer.OFDModel
         /// 页树,有关页树的描述见7.6 
         /// 必选
         /// </summary>
-        [XmlElement("Pages")]
-        public Pages Pages { get; set; }
+        [XmlArray("Pages")]
+        [XmlArrayItem("Page")]
+        public List<Page> Pages { get; set; }
 
         /// <summary>
         /// 大纲,有关大纲的描述见7.8 

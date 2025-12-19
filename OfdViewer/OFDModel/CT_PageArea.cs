@@ -17,7 +17,7 @@ namespace OFDViewer.OFDModel
         /// 物理区域
         /// 页面物理区域,左上角的坐标为页面空间坐标系的原点 必选
         /// </summary>
-        [XmlElement("PhysicalBox")]
+        [XmlElement("PhysicalBox",IsNullable =true)]
         public ST_Box PhysicalBox { get; set; }
 
         /// <summary>

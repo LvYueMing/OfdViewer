@@ -9,6 +9,7 @@ namespace OFDViewer.BaseType
 {
     /// <summary>
     /// ST_Pos 点坐标，以空格分割，前者为x值，后者为y值
+    /// 可以是整数或者浮点数 “0 0”
     /// </summary>
     public struct ST_Pos : IEquatable<ST_Pos>
     {
@@ -21,6 +22,16 @@ namespace OFDViewer.BaseType
         public static readonly ST_Pos Zero = new ST_Pos(0, 0);
 
         /// <summary>
+        /// X坐标
+        /// </summary>
+        public double X => _x;
+
+        /// <summary>
+        /// Y坐标
+        /// </summary>
+        public double Y => _y;
+
+        /// <summary>
         /// 初始化点坐标
         /// </summary>
         /// <param name="x">X坐标</param>
@@ -31,15 +42,6 @@ namespace OFDViewer.BaseType
             _y = y;
         }
 
-        /// <summary>
-        /// X坐标
-        /// </summary>
-        public double X => _x;
-
-        /// <summary>
-        /// Y坐标
-        /// </summary>
-        public double Y => _y;
 
         /// <summary>
         /// 从字符串解析点坐标
@@ -108,6 +110,11 @@ namespace OFDViewer.BaseType
 
         public static ST_Pos operator -(ST_Pos left, ST_Pos right) =>
             new ST_Pos(left._x - right._x, left._y - right._y);
+        
+        public static explicit operator ST_Pos(string pos) => Parse(pos);
+
+        public static explicit operator string(ST_Pos pos) => pos.ToString();
+
         #endregion
     }
 }

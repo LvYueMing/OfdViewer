@@ -5,6 +5,8 @@ using System.Text;
 using System.Threading.Tasks;
 using OFDViewer.BaseType;
 using System.Xml.Serialization;
+using OFDViewer.OFDEnum;
+using OFDViewer.Utils;
 
 namespace OFDViewer.OFDModel
 {
@@ -17,14 +19,14 @@ namespace OFDViewer.OFDModel
         /// 模板页的标识,不能与已有标识重复 
         /// 必选
         /// </summary>
-        [XmlElement("ID", IsNullable = false)] 
-        public ST_ID ID { get; set; } = new ST_ID();
+        [XmlAttribute("ID")] 
+        public ST_ID ID { get; set; }
 
         /// <summary>
         /// 模板页名称 
         /// 可选
         /// </summary>
-        [XmlElement("Name")]
+        [XmlAttribute("Name")]
         public string Name { get; set; }
 
         /// <summary>
@@ -32,14 +34,19 @@ namespace OFDViewer.OFDModel
         /// 如果页面引用的多个模板的此属性相同, 则应根据引用的顺序来显示,先引用者先绘制默认值为 Background
         /// 可选
         /// </summary>
-        [XmlElement("ZOrder")]
-        public string ZOrder { get; set; } = "Background"; // 默认值体现default约束
+        [XmlAttribute("ZOrder")]
+        public string ZOrderString
+        {
+            get => ZOrder.ToString();
+            set => ZOrder = EnumHelper.ParseEnum<LayerType>(value);
+        }
+        public LayerType ZOrder { get; set; }= LayerType.Background;
 
         /// <summary>
         /// 指向模板页内容描述文件 
         /// 必选 IsNullable=false 体现required约束
         /// </summary>
-        [XmlElement("BaseLoc", IsNullable = false)]
+        [XmlAttribute("BaseLoc")]
         public string BaseLocPath
         {
             get => BaseLoc.ToString();

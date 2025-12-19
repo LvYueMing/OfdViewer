@@ -34,6 +34,14 @@ namespace OFDViewer.Utils
             return Enum.TryParse(name, false, out result);
         }
 
+
+        // 通过名称字符串转换为枚举值
+        public static T ParseEnum<T>(string name) where T : struct, Enum
+        {
+            Enum.TryParse(name, false, out T result);
+            return result;
+        }
+
         // 通过描述字符串反向匹配枚举值
         public static bool TryParseByDesc<T>(string desc, out T result) where T : Enum
         {
@@ -48,7 +56,23 @@ namespace OFDViewer.Utils
                 }
             }
             return false;
-
         }
+
+
+        // 通过描述字符串反向匹配枚举值
+        public static T ParseByDesc<T>(string desc) where T : Enum
+        {
+            T result = default;
+            // 遍历所有枚举成员，匹配描述
+            foreach (var enumValue in Enum.GetValues(typeof(T)).Cast<T>())
+            {
+                if (GetEnumDesc(enumValue) == desc)
+                {
+                    return enumValue;
+                }
+            }
+            return result;
+        }
+
     }
 }

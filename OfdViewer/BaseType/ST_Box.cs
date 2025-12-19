@@ -17,37 +17,6 @@ namespace OFDViewer.BaseType
         private readonly double _height;
 
         /// <summary>
-        /// 初始化矩形区域
-        /// </summary>
-        /// <param name="x">左上角X坐标</param>
-        /// <param name="y">左上角Y坐标</param>
-        /// <param name="width">宽度（必须大于0）</param>
-        /// <param name="height">高度（必须大于0）</param>
-        public ST_Box(double x, double y, double width, double height)
-        {
-            if (width <= 0)
-                throw new ArgumentOutOfRangeException(nameof(width), "宽度必须大于0");
-
-            if (height <= 0)
-                throw new ArgumentOutOfRangeException(nameof(height), "高度必须大于0");
-
-            _position = new ST_Pos(x, y);
-            _width = width;
-            _height = height;
-        }
-
-        /// <summary>
-        /// 初始化矩形区域
-        /// </summary>
-        /// <param name="position">左上角坐标</param>
-        /// <param name="width">宽度（必须大于0）</param>
-        /// <param name="height">高度（必须大于0）</param>
-        public ST_Box(ST_Pos position, double width, double height)
-            : this(position.X, position.Y, width, height)
-        {
-        }
-
-        /// <summary>
         /// 左上角X坐标
         /// </summary>
         public double X => _position.X;
@@ -81,6 +50,39 @@ namespace OFDViewer.BaseType
         /// 右下角Y坐标
         /// </summary>
         public double Bottom => Y + Height;
+
+        /// <summary>
+        /// 初始化矩形区域
+        /// </summary>
+        /// <param name="x">左上角X坐标</param>
+        /// <param name="y">左上角Y坐标</param>
+        /// <param name="width">宽度（必须大于0）</param>
+        /// <param name="height">高度（必须大于0）</param>
+        public ST_Box(double x, double y, double width, double height)
+        {
+            if (width <= 0)
+                throw new ArgumentOutOfRangeException(nameof(width), "宽度必须大于0");
+
+            if (height <= 0)
+                throw new ArgumentOutOfRangeException(nameof(height), "高度必须大于0");
+
+            _position = new ST_Pos(x, y);
+            _width = width;
+            _height = height;
+        }
+
+        /// <summary>
+        /// 初始化矩形区域
+        /// </summary>
+        /// <param name="position">左上角坐标</param>
+        /// <param name="width">宽度（必须大于0）</param>
+        /// <param name="height">高度（必须大于0）</param>
+        public ST_Box(ST_Pos position, double width, double height)
+            : this(position.X, position.Y, width, height)
+        {
+        }
+
+
 
         /// <summary>
         /// 从字符串解析矩形区域
@@ -167,6 +169,10 @@ namespace OFDViewer.BaseType
 
         public static bool operator ==(ST_Box left, ST_Box right) => left.Equals(right);
         public static bool operator !=(ST_Box left, ST_Box right) => !left.Equals(right);
+
+        public static explicit operator ST_Box(string box) => Parse(box);
+
+        public static explicit operator string(ST_Box pos) => pos.ToString();
         #endregion
     }
 }
