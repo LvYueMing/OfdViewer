@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using OFDViewer.BaseType;
 using System.Xml.Serialization;
+using OFDViewer.Actions;
 
 namespace OFDViewer.PageDescription
 {
@@ -23,12 +24,6 @@ namespace OFDViewer.PageDescription
         /// </summary>
         [XmlArray(ElementName = "Actions")]
         [XmlArrayItem(ElementName = "Action")]
-        public List<string> ActionString
-        {
-            get => Actions.Select(item => item.ToString()).ToList();
-            set => Actions = value.Select(item => CT_Action.Parse(item)).ToList();
-        }
-
         public List<CT_Action> Actions { get; set; }
 
         /// <summary>

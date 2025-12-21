@@ -23,6 +23,6 @@ namespace OFDViewer.Actions
         /// 跳转的目标书签 必选
         /// </summary>
         [XmlElement(ElementName = "Bookmark")]
-        public Bookmark Bookmark { get; set; }
+        public GotoBookmark Bookmark { get; set; }
     }
 }

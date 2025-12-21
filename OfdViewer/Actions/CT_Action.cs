@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Xml.Serialization;
 using OFDViewer.Graph;
 using OFDViewer.Graph.Shape;
+using OFDViewer.Utils;
 
 namespace OFDViewer.Actions
 {
@@ -49,6 +50,13 @@ namespace OFDViewer.Actions
         /// Event 属性（必选），对应枚举值：DO/PO/CLICK
         /// </summary>
         [XmlAttribute(AttributeName = "Event")]
-        public EventType Event { get; set; }
+        public string EventString
+        {
+            get=> Event.ToString();
+            set=> Event = EnumHelper.ParseEnum<ActionEventTypeEnum>(value);
+        }
+
+        [XmlIgnore]
+        public ActionEventTypeEnum Event { get; set; }
     }
 }
