@@ -26,6 +26,11 @@ namespace OFDViewer.OFDEnum
         /// 背景层
         /// </summary>
         [Description("背景层")]
-        Background = 2
+        Background = 2,
+        /// <summary>
+        /// 自定义层
+        /// </summary>
+        [Description("自定义层")]
+        Custom = 3
     }
 }

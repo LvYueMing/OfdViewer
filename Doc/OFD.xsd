@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xs:schema xmlns="http://www.ofdspec.org/2016" xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="http://www.ofdspec.org/2016" elementFormDefault="qualified" attributeFormDefault="unqualified">
 	<!--引入基础类型定义-->
-	<xs:include schemaLocation="D:\MySoft\GitHub\OfdViewer\Doc\Definition.xsd"/>
+	<xs:include schemaLocation="D:\MySoft\GitHub\OfdViewer\Doc\Definitions.xsd"/>
 	<!--主入口定义。 -->
 	<xs:element name="OFD">
 		<xs:complexType>
