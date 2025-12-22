@@ -1,4 +1,5 @@
-﻿using System;
+﻿using OFDViewer.BasicStructure.Pages.PageBlockItems;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -16,7 +17,7 @@ namespace OFDViewer.BasicStructure.Pages
         /// 存储每个子元素的类型标识（与PageBlocks一一对应）
         /// </summary>
         [XmlIgnore]
-        public List<PageBlockItemType> PageBlockNames { get; set; } = new List<PageBlockItemType>();
+        public List<PageBlockItemNum> PageBlockNames { get; set; } = new List<PageBlockItemNum>();
 
 
         /// <summary>
