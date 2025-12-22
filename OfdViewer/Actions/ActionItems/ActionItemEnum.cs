@@ -6,12 +6,12 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 
-namespace OFDViewer.Actions
+namespace OFDViewer.Actions.ActionItems
 {
     /// <summary>
     /// 动作类型
     /// </summary>
-    public enum ActionTypeEnum
+    public enum ActionItemEnum
     {
         /// <summary>
         /// 跳转动作

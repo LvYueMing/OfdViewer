@@ -10,7 +10,7 @@ namespace OFDViewer.Actions
     /// <summary>
     /// 动作由事件触发,事件类型限定于 DO、PO、CLICK 三种,分别对应于文档打开动作、页面打开动作和区域内单击动作,事件类型说明见表52
     /// </summary>
-    public enum ActionEventTypeEnum
+    public enum ActionEventEnum
     {
         /// <summary>
         /// 文档打开

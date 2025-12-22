@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OFDViewer.Graph.Shape
+namespace OFDViewer.Graph.ShapeItems
 {
     /// <summary>
     /// Close元素

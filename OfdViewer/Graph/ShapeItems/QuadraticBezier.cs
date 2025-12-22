@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using System.Xml.Serialization;
 using OFDViewer.BaseType;
 
-namespace OFDViewer.Graph.Shape
+namespace OFDViewer.Graph.ShapeItems
 {
     /// <summary>
     /// 二阶贝塞尔曲线

@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 using OFDViewer.BaseType;
-using OFDViewer.Graph.Shape;
+using OFDViewer.Graph.ShapeItems;
 
 namespace OFDViewer.Graph
 {
@@ -28,12 +28,13 @@ namespace OFDViewer.Graph
         [XmlElement("CubicBezier", typeof(CubicBezier))]
         [XmlElement("Arc", typeof(Arc))]
         [XmlElement("Close", typeof(Close))]
-        [XmlChoiceIdentifier(MemberName ="ShapeType")]
-        public List<object> Shapes { get; set; } = new List<object>();
+        [XmlChoiceIdentifier(MemberName = "ShapeItemNames")]
+        public List<object> ShapeItems { get; set; } = new List<object>();
+
 
         // 用于标识Choice中具体元素类型的属性（序列化时不输出）
         [XmlIgnore]
-        public List<ShapeTypeEnum> ShapeType { get; set; } = new List<ShapeTypeEnum>();
+        public List<ShapeItemEnum> ShapeItemNames { get; set; } = new List<ShapeItemEnum>();
 
         /// <summary>
         /// 定义子图形的起始点坐标 必选

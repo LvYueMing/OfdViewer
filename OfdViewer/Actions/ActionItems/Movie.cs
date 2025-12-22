@@ -8,7 +8,7 @@ using System.Xml.Serialization;
 using OFDViewer.Enums;
 using OFDViewer.Utils;
 
-namespace OFDViewer.Actions
+namespace OFDViewer.Actions.ActionItems
 {
     /// <summary>
     /// 播放视频动作

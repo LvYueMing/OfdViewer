@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using OFDViewer.BaseType;
 using System.Xml.Serialization;
 
-namespace OFDViewer.Actions
+namespace OFDViewer.Actions.ActionItems
 {
     /// <summary>
     /// 播放音频动作

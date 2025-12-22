@@ -5,8 +5,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
+using OFDViewer.Actions.ActionItems;
 using OFDViewer.Graph;
-using OFDViewer.Graph.Shape;
+using OFDViewer.Graph.ShapeItems;
 using OFDViewer.Utils;
 
 namespace OFDViewer.Actions
@@ -30,7 +31,7 @@ namespace OFDViewer.Actions
         /// 标识当前选中的 Choice 项（与 XmlChoiceIdentifier 配合）
         /// </summary>
         [XmlIgnore]
-        public ActionTypeEnum SelectedAction { get; set; }
+        public ActionItemEnum ActionItemNames { get; set; }
 
         /// <summary>
         /// 统一的 Choice 内容属性，通过 XmlChoiceIdentifier 关联枚举
@@ -40,8 +41,8 @@ namespace OFDViewer.Actions
         [XmlElement("GotoA", typeof(GotoA))]
         [XmlElement("Sound", typeof(Sound))]
         [XmlElement("Movie", typeof(Movie))]
-        [XmlChoiceIdentifier(MemberName = "SelectedAction")]
-        public object ChoiceAction { get; set; }
+        [XmlChoiceIdentifier(MemberName = "ActionItemNames")]
+        public object ActionItems { get; set; }
 
 
         #endregion
@@ -53,10 +54,10 @@ namespace OFDViewer.Actions
         public string EventString
         {
             get=> Event.ToString();
-            set=> Event = EnumHelper.ParseEnum<ActionEventTypeEnum>(value);
+            set=> Event = EnumHelper.ParseEnum<ActionEventEnum>(value);
         }
 
         [XmlIgnore]
-        public ActionEventTypeEnum Event { get; set; }
+        public ActionEventEnum Event { get; set; }
     }
 }

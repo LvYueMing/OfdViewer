@@ -4,10 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OFDViewer.Graph.Shape
+namespace OFDViewer.Graph.ShapeItems
 {
     // Choice元素类型枚举
-    public enum ShapeTypeEnum
+    public enum ShapeItemEnum
     {
         // 移动
         Move,
