@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using OFDViewer.BaseType;
 using System.Xml.Serialization;
-using OFDViewer.OFDEnum;
+using OFDViewer.Enums;
 using OFDViewer.Utils;
 
 namespace OFDViewer.Actions

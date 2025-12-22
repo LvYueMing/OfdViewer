@@ -1,4 +1,4 @@
-﻿using OFDViewer.MainEntry;
+﻿using OFDViewer.BasicStructure.MainEntry;
 using OFDViewer.Utils;
 using System;
 using System.Collections.Generic;
