@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 using OFDViewer.Enums;
+using OFDViewer.PageDescription;
 using OFDViewer.Utils;
 
 namespace OFDViewer.Graph
