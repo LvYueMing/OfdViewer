@@ -1,5 +1,6 @@
 ﻿using OFDViewer.BaseType;
 using OFDViewer.PageDescription;
+using OFDViewer.PageDescription.Colors;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;

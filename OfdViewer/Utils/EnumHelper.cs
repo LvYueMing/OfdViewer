@@ -28,51 +28,75 @@ namespace OFDViewer.Utils
         }
 
         // 通过名称字符串转换为枚举值
-        public static bool TryParseEnum<T>(string name, out T result) where T : struct, Enum
+        public static bool TryParseEnum<T>(string value, out T result) where T : struct, Enum
         {
-            // 参数1：字符串名  参数2：是否忽略大小写  参数3：输出结果
-            return Enum.TryParse(name, false, out result);
-        }
+            if (string.IsNullOrEmpty(value))
+            {
+                result = default;
+                return false;
+            }
 
+            // 尝试直接解析（支持数字字符串）
+            if (Enum.TryParse(value, false, out result))
+            {
+                return true;
+            }
 
-        // 通过名称字符串转换为枚举值
-        public static T ParseEnum<T>(string name) where T : struct, Enum
-        {
-            Enum.TryParse(name, false, out T result);
-            return result;
-        }
+            // 尝试按数字值解析（兼容 "0"/"1"/"2" 字符串）
+            if (int.TryParse(value, out var intValue) && Enum.IsDefined(typeof(T), intValue))
+            {
+                result=(T)Enum.ToObject(typeof(T), intValue);
+                return true;
+            }
 
-        // 通过描述字符串反向匹配枚举值
-        public static bool TryParseByDesc<T>(string desc, out T result) where T : Enum
-        {
-            result = default;
-            // 遍历所有枚举成员，匹配描述
+            // 尝试按Description特性值解析
             foreach (var enumValue in Enum.GetValues(typeof(T)).Cast<T>())
             {
-                if (GetEnumDesc(enumValue) == desc)
+                if (GetEnumDesc(enumValue) == value)
                 {
-                    result = enumValue;
+                    result= enumValue;
                     return true;
                 }
             }
+
+            result = default;
             return false;
         }
 
 
-        // 通过描述字符串反向匹配枚举值
-        public static T ParseByDesc<T>(string desc) where T : Enum
+        // 通过名称字符串转换为枚举值
+        public static T ParseEnum<T>(string value) where T : struct, Enum
         {
-            T result = default;
-            // 遍历所有枚举成员，匹配描述
+            if (string.IsNullOrEmpty(value))
+            {
+                return default;
+            }
+
+            // 尝试直接解析（支持数字字符串）
+            if (Enum.TryParse(value, false, out T result))
+            { 
+                return result;
+            }
+
+            // 尝试按数字值解析（兼容 "0"/"1"/"2" 字符串）
+            if (int.TryParse(value, out var intValue) && Enum.IsDefined(typeof(T), intValue))
+            {
+                return (T)Enum.ToObject(typeof(T), intValue);
+            }
+
+            // 尝试按Description特性值解析
             foreach (var enumValue in Enum.GetValues(typeof(T)).Cast<T>())
             {
-                if (GetEnumDesc(enumValue) == desc)
+                if (GetEnumDesc(enumValue) == value)
                 {
                     return enumValue;
                 }
             }
-            return result;
+
+            // 所有解析方式都失败，抛出异常
+            throw new ArgumentException($"无法将值 '{value}' 转换为枚举类型 {typeof(T).Name}，支持的解析类型：枚举名称、数字字符串、Description特性值");
         }
+
 
     }
 }

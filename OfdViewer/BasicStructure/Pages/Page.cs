@@ -1,4 +1,5 @@
-﻿using OFDViewer.BaseType;
+﻿using OFDViewer.Actions;
+using OFDViewer.BaseType;
 using OFDViewer.BasicStructure.DocumentRoot;
 using System;
 using System.Collections.Generic;
@@ -54,9 +55,13 @@ namespace OFDViewer.BasicStructure.Pages
         public List<Layer> Content { get; set; }
 
 
-
-        // Actions（包含Action，Action是1..∞ 重复）
-        [XmlElement("Actions")]
-        public ActionsItem Actions { get; set; }
+        /// <summary>
+        /// 与页面关联的动作序列。 当存在多个 Action 对象时, 所有动作依次执行
+        /// 可选 0..1
+        /// Action是1..∞ 重复
+        /// </summary>
+        [XmlArray("Actions")]
+        [XmlArrayItem("Action")]
+        public List<CT_Action> Actions { get; set; }
     }
 }

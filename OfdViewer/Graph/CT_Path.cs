@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Xml.Serialization;
 using OFDViewer.Enums;
 using OFDViewer.PageDescription;
+using OFDViewer.PageDescription.Colors;
 using OFDViewer.Utils;
 
 namespace OFDViewer.Graph
@@ -61,10 +62,10 @@ namespace OFDViewer.Graph
         public string RuleString
         {
             get => Rule.ToString();
-            set => Rule = EnumHelper.ParseByDesc<PathFillRule>(value);
+            set => Rule = EnumHelper.ParseEnum<PathFillRule>(value);
         }
-        
 
+        [XmlIgnore]
         public PathFillRule Rule { get; set; } = PathFillRule.NonZero;
 
     }

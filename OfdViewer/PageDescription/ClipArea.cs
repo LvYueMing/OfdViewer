@@ -5,6 +5,8 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 using OFDViewer.BaseType;
+using OFDViewer.Fonts;
+using OFDViewer.Graph;
 
 namespace OFDViewer.PageDescription
 {

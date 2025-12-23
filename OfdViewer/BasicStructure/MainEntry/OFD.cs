@@ -83,7 +83,7 @@ namespace OFDViewer.BasicStructure.MainEntry
             get => EnumHelper.GetEnumDesc(DocType);
             set
             {
-                if (!EnumHelper.TryParseByDesc<DocumentType>(value, out var docType))
+                if (!EnumHelper.TryParseEnum<DocumentType>(value, out var docType))
                 {
                     throw new ArgumentException($"DocType 必须为 \"OFD\" 或 \"OFD-A\"，当前值：{value}", nameof(value));
                 }

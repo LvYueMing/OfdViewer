@@ -17,7 +17,7 @@ namespace OFDViewer.BasicStructure.Pages
         /// 存储每个子元素的类型标识（与PageBlocks一一对应）
         /// </summary>
         [XmlIgnore]
-        public List<PageBlockItemNum> PageBlockNames { get; set; } = new List<PageBlockItemNum>();
+        public List<PageBlockItemNum> PageBlockItemNames { get; set; } = new List<PageBlockItemNum>();
 
 
         /// <summary>
@@ -28,7 +28,8 @@ namespace OFDViewer.BasicStructure.Pages
         [XmlElement("ImageObject", typeof(ImageObject))]
         [XmlElement("CompositeObject", typeof(CompositeObject))]
         [XmlElement("PageBlock", typeof(NestedPageBlock))]
-        [XmlChoiceIdentifier("ItemsElementName")]
-        public List<object> PageBlocks { get; set; } = new List<object>();
+        [XmlChoiceIdentifier("PageBlockItemNames")]
+        public List<object> PageBlockItems { get; set; } = new List<object>();
+
     }
 }

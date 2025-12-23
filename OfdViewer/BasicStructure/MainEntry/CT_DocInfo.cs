@@ -55,8 +55,7 @@ namespace OFDViewer.BasicStructure.MainEntry
             get => EnumHelper.GetEnumName(DocUsage);
             set
             {
-                EnumHelper.TryParseEnum(value, out DocumentUsage result);
-                DocUsage = result;
+                DocUsage= EnumHelper.ParseEnum<DocumentUsage>(value);
             }
         }
 

@@ -1,4 +1,5 @@
 ﻿using OFDViewer.BaseType;
+using OFDViewer.Versions;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -30,7 +31,7 @@ namespace OFDViewer.BasicStructure.MainEntry
 
         [XmlArray("Versions")]
         [XmlArrayItem("Version")]
-        public List<Version> Versions { get; set; }
+        public List<Versions.Version> Versions { get; set; }
 
         [XmlIgnore]
         public ST_Loc Signatures { get; set; }
