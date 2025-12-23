@@ -5,7 +5,9 @@ using System.Net.Mail;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
+using OFDViewer.Actions;
 using OFDViewer.BaseType;
+using OFDViewer.BasicStructure.Outlines;
 
 namespace OFDViewer.BasicStructure.DocumentRoot
 {
@@ -28,14 +30,15 @@ namespace OFDViewer.BasicStructure.DocumentRoot
         /// </summary>
         [XmlArray("Pages")]
         [XmlArrayItem("Page")]
-        public List<DocumentPage> Pages { get; set; }
+        public List<DocumentPage> Pages { get; set; } = new List<DocumentPage>();
 
         /// <summary>
         /// 大纲,有关大纲的描述见7.8 
         /// 可选
         /// </summary>
-        [XmlElement("Outlines")]
-        public Outlines Outlines { get; set; }
+        [XmlArray("Outlines")]
+        [XmlArrayItem("OutlineElem")]
+        public List<CT_OutlineElem> Outlines { get; set; }
 
         /// <summary>
         /// 文档的权限声明 
@@ -50,7 +53,7 @@ namespace OFDViewer.BasicStructure.DocumentRoot
         /// </summary>
         [XmlArray("Actions")]
         [XmlArrayItem("Action")]
-        public List<Action> Actions { get; set; }
+        public List<CT_Action> Actions { get; set; }
 
         /// <summary>
         /// 文档的视图首选项 

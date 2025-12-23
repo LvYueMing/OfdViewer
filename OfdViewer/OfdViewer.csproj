@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="BasicStructure\Outlines\" />
     <Folder Include="BasicStructure\Res\" />
   </ItemGroup>
 
