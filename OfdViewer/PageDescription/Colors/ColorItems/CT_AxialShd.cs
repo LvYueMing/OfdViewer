@@ -60,7 +60,7 @@ namespace OFDViewer.PageDescription.Colors.ColorItems
         public string ExtendString
         {
             get => EnumHelper.GetEnumDesc(Extend);
-            set => Extend = EnumHelper.ParseByDesc<AxialShdExtend>(value);
+            set => Extend = EnumHelper.ParseEnum<AxialShdExtend>(value);
         }
 
 

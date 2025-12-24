@@ -14,7 +14,7 @@ namespace OFDViewer.BasicStructure.DocumentRoot
     /// <summary>
     /// 文档根节点结构 图5
     /// </summary>
-    [XmlRoot("Document", Namespace = Constants.OFD_NAMESPACE_URI)] // 可选：指定根节点的XML名称
+    [XmlRoot("Document", Namespace = Constants.OFD_NAMESPACE_URI)] 
     public class Document
     {
         /// <summary>
@@ -49,7 +49,7 @@ namespace OFDViewer.BasicStructure.DocumentRoot
 
         /// <summary>
         /// 文档关联的动作序列,当存在多个Action对象时,所有动作依次执行 
-        /// 可选
+        /// 可选 1..n
         /// </summary>
         [XmlArray("Actions")]
         [XmlArrayItem("Action")]
@@ -64,11 +64,11 @@ namespace OFDViewer.BasicStructure.DocumentRoot
 
         /// <summary>
         /// 文档的书签集,包含一组书签 
-        /// 可选
+        /// 可选  1..n
         /// </summary>
         [XmlArray("Bookmarks")]
         [XmlArrayItem("Bookmark")]
-        public List<Bookmark> Bookmarks { get; set; }
+        public List<CT_Bookmark> Bookmarks { get; set; }
 
         /// <summary>
         /// 指向注释列表文件,有关注释描述见第15章

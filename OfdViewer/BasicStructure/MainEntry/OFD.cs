@@ -26,7 +26,6 @@ namespace OFDViewer.BasicStructure.MainEntry
         public const string DefaultVersion = "1.0";
         #endregion
 
-
         #region 命名空间声明（简化写法，避免硬编码）
         /// <summary>
         /// XML 命名空间声明（确保序列化时使用 ofd 前缀）

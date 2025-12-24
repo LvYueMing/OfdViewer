@@ -27,7 +27,7 @@ namespace OFDViewer.BasicStructure.Pages
         [XmlElement("PathObject", typeof(PathObject))]
         [XmlElement("ImageObject", typeof(ImageObject))]
         [XmlElement("CompositeObject", typeof(CompositeObject))]
-        [XmlElement("PageBlock", typeof(NestedPageBlock))]
+        [XmlElement("PageBlock", typeof(PageBlock))]
         [XmlChoiceIdentifier("PageBlockItemNames")]
         public List<object> PageBlockItems { get; set; } = new List<object>();
 
