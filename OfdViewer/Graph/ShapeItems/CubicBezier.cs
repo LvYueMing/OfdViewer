@@ -48,5 +48,13 @@ namespace OFDViewer.Graph.ShapeItems
         }
         [XmlIgnore]
         public ST_Pos Point3 { get; set; }
+
+        //无参构造函数
+        public CubicBezier()
+        {
+            Point1 = ST_Pos.Zero;
+            Point2 = ST_Pos.Zero;
+            Point3 = ST_Pos.Zero;
+        }
     }
 }

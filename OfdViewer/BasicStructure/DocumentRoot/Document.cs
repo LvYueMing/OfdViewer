@@ -125,5 +125,6 @@ namespace OFDViewer.BasicStructure.DocumentRoot
 
         [XmlIgnore]
         public ST_Loc Extensions { get; set; }
+
     }
 }

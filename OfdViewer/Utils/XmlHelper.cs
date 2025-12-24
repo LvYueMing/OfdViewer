@@ -64,6 +64,19 @@ namespace OFDViewer.Utils
         /// </summary>
         public static void SerializeToFile<T>(T obj, string filePath)
         {
+            // 校验参数（避免空引用）
+            if (obj == null)
+                throw new ArgumentNullException(nameof(obj));
+            if (string.IsNullOrEmpty(filePath))
+                throw new ArgumentException("文件路径不能为空", nameof(filePath));
+
+            // 创建目录（避免路径不存在）
+            var directory = Path.GetDirectoryName(filePath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
             using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write);
             SerializeToStream(obj, fs);
         }
@@ -73,6 +86,12 @@ namespace OFDViewer.Utils
         /// </summary>
         public static void SerializeToStream<T>(T obj, Stream stream)
         {
+            // 校验参数
+            if (obj == null)
+                throw new ArgumentNullException(nameof(obj));
+            if (stream == null)
+                throw new ArgumentNullException(nameof(stream));
+
             var serializer = new XmlSerializer(typeof(T));
             using var writer = XmlWriter.Create(stream, DefaultSettings);
 
@@ -100,6 +119,10 @@ namespace OFDViewer.Utils
         /// </summary>
         public static string SerializeToString<T>(T obj)
         {
+            // 校验参数
+            if (obj == null)
+                throw new ArgumentNullException(nameof(obj));
+
             using var sw = new StringWriter();
             var serializer = new XmlSerializer(typeof(T));
             using var writer = XmlWriter.Create(sw, DefaultSettings);

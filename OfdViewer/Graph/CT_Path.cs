@@ -21,14 +21,14 @@ namespace OFDViewer.Graph
         /// 勾边颜色 默认为黑色
         /// 可选
         /// </summary>
-        [XmlElement(ElementName = "StrokeColor", IsNullable = true)]
+        [XmlElement(ElementName = "StrokeColor", IsNullable = false)]
         public CT_Color StrokeColor { get; set; }
 
         /// <summary>
         /// 填充颜色 默认为透明色
         /// 可选
         /// </summary>
-        [XmlElement(ElementName = "FillColor", IsNullable = true)]
+        [XmlElement(ElementName = "FillColor", IsNullable = false)]
         public CT_Color FillColor { get; set; }
 
         /// <summary>

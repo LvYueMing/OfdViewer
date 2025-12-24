@@ -21,13 +21,27 @@ namespace OFDViewer.BasicStructure.DocumentRoot
         /// 有效期开始日期 可选
         /// </summary>
         [XmlAttribute(AttributeName = "StartDate")]
+        public string StartDateString
+        {
+            get => StartDate?.ToString("yyyy-MM-dd HH:mm:ss");
+            set => StartDate = string.IsNullOrEmpty(value) ? null : DateTime.Parse(value);
+        }
+        [XmlIgnore]
         public DateTime? StartDate { get; set; }
 
         /// <summary>
         /// 有效期结束日期 可选
         /// </summary>
         [XmlAttribute(AttributeName = "EndDate")]
+        public string EndDateString
+        {
+            get => EndDate?.ToString("yyyy-MM-dd HH:mm:ss");
+            set => EndDate = string.IsNullOrEmpty(value) ? null : DateTime.Parse(value);
+        }
+
+        [XmlIgnore]
         public DateTime? EndDate { get; set; }
+
 
         /// <summary>
         /// 仅当 StartDate 有值时才序列化

@@ -23,7 +23,7 @@ namespace OFDViewer.PageDescription
         /// 用于裁剪的图形,见9.1图形对象 必选
         /// </summary>
         /// <remarks>Path、Text元素（xs:choice 二选一）</remarks>
-        [XmlElement("Path", IsNullable = true)]
+        [XmlElement("Path", IsNullable = false)]
         public CT_Path Path
         {
             get => _path;
@@ -42,7 +42,7 @@ namespace OFDViewer.PageDescription
         /// 用于裁剪的文本,见11.2文字对象 必选
         /// </summary>
         /// <remarks>Path、Text元素（xs:choice 二选一）</remarks>
-        [XmlElement("Text", IsNullable = true)]
+        [XmlElement("Text", IsNullable = false)]
         public CT_Text Text
         {
             get => _text;

@@ -20,6 +20,12 @@ namespace OFDViewer.Actions.ActionItems
         /// 引用资源文件中定义的视频资源标识 必选
         /// </summary>
         [XmlAttribute(AttributeName = "ResourceID")]
+        public string ResourceIDString
+        {
+            get => ResourceID.ToString();
+            set => ResourceID = ST_RefID.Parse(value);
+        }
+        [XmlIgnore]
         public ST_RefID ResourceID { get; set; }
 
         /// <summary>

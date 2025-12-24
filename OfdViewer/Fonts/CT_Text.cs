@@ -44,7 +44,7 @@ namespace OFDViewer.Fonts
         /// 若 TextCode 作为占位符使用时, 一律采用“¤”(u00A4) 占位
         /// 必选
         /// </summary>
-        [XmlElement(ElementName = "TextCode", IsNullable = true)]
+        [XmlElement(ElementName = "TextCode", IsNullable = false)]
         public List<TextCode> TextCodes { get; set; } = new List<TextCode>();
 
         /// <summary>

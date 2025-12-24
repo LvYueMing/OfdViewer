@@ -18,7 +18,7 @@ namespace OFDViewer.Fonts
         /// <summary>
         /// 变换后的字形索引列表 必选
         /// </summary>
-        [XmlElement(ElementName = "Glyphs", IsNullable = true)]
+        [XmlElement(ElementName = "Glyphs", IsNullable = false)]
         public string GlyphsString
         {
             get => Glyphs.ToString();

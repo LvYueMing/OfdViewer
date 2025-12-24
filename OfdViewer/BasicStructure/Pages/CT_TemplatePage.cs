@@ -19,7 +19,13 @@ namespace OFDViewer.BasicStructure.Pages
         /// 模板页的标识,不能与已有标识重复 
         /// 必选
         /// </summary>
-        [XmlAttribute("ID")] 
+        [XmlAttribute("ID")]
+        public string IDString
+        {
+            get => ID.ToString();
+            set => ID = ST_ID.Parse(value);
+        }
+        [XmlIgnore]
         public ST_ID ID { get; set; }
 
         /// <summary>

@@ -18,7 +18,14 @@ namespace OFDViewer.BasicStructure.DocumentRoot
     {
         //声明该页的标识, 不能与已有标识重复 必选
         [XmlAttribute("ID")]
+        public string IDString
+        {
+            get => ID.ToString();
+            set => ID = ST_ID.Parse(value);
+        }
+        [XmlIgnore]
         public ST_ID ID { get; set; }
+
 
         //指向页对象描述文件 必选
         [XmlAttribute("BaseLoc")]

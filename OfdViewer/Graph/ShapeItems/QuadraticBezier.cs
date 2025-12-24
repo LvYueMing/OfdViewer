@@ -38,5 +38,12 @@ namespace OFDViewer.Graph.ShapeItems
 
         [XmlIgnore]
         public ST_Pos Point2 { get; set; }
+
+        //无参构造函数
+        public QuadraticBezier()
+        {
+            Point1 = new ST_Pos(0, 0);
+            Point2 = new ST_Pos(0, 0);
+        }
     }
 }

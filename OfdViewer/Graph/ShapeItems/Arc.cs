@@ -75,5 +75,15 @@ namespace OFDViewer.Graph.ShapeItems
 
         [XmlIgnore]
         public ST_Pos EndPoint { get; set; }
+
+        //无参构造函数
+        public Arc()
+        {
+            SweepDirection = true;
+            LargeArc = false;
+            RotationAngle = 0;
+            EllipseSize = new ST_Array();
+            EndPoint = new ST_Pos();
+        }
     }
 }

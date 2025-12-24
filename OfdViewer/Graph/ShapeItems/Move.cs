@@ -26,5 +26,11 @@ namespace OFDViewer.Graph.ShapeItems
 
         [XmlIgnore]
         public ST_Pos Point1 { get; set; }
+
+        //无参构造函数
+        public Move()
+        {
+            Point1 = ST_Pos.Zero;
+        }
     }
 }

@@ -20,7 +20,7 @@ namespace OFDViewer.PageDescription.Colors.ColorItems
         /// <summary>
         /// 颜色段, 至少出现两个
         /// </summary>
-        [XmlElement("Segment", IsNullable = true)]
+        [XmlElement("Segment", IsNullable = false)]
         public List<RadialShdSegment> Segment { get; set; } = new List<RadialShdSegment>();
 
         /// <summary>
