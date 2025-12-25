@@ -11,7 +11,7 @@ namespace OFDViewer.Actions.ActionItems
     /// URI动作
     /// URI动作表明的是指向一个 URI位置。URI动作结构如图77所示。
     /// </summary>
-    public class URI
+    public class URI : BaseAction
     {
         /// <summary>
         /// 目标 URI的位置 必选

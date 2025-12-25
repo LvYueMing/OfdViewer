@@ -12,7 +12,7 @@ namespace OFDViewer.Actions.ActionItems
     /// 播放音频动作
     /// Sound动作表明播放一段音频。Sound动作结构如图78所示
     /// </summary>
-    public class Sound
+    public class Sound : BaseAction
     {
         /// <summary>
         /// 引用资源文件中的音频资源标识 必选

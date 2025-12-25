@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using OFDViewer.BaseType;
-using OFDViewer.Graph.ShapeItems;
+using OFDViewer.Graph.PathItems;
 using OFDViewer.Graph;
 using Xunit;
 using OFDViewer.Utils;
@@ -22,7 +22,9 @@ namespace OFDViewer.Tests
             {
                 Start = new ST_Pos(100, 200) // 假设 ST_Pos 有接收X/Y的构造函数
             };
-            originalRegion.AddShapeItem(new Move());
+            originalRegion.AddPathItem(new Move());
+            originalRegion.AddPathItem(new Arc());
+            originalRegion.AddPathItem(new Close());
 
             // 2. 执行序列化和反序列化
             XmlHelper.SerializeToFile(originalRegion,"RegionArea.xml");

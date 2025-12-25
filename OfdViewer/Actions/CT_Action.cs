@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.Xml.Serialization;
 using OFDViewer.Actions.ActionItems;
 using OFDViewer.Graph;
-using OFDViewer.Graph.ShapeItems;
+using OFDViewer.Graph.PathItems;
 using OFDViewer.Utils;
 
 namespace OFDViewer.Actions
@@ -27,23 +27,17 @@ namespace OFDViewer.Actions
 
 
         #region xs:choice 核心实现
-        /// <summary>
-        /// 标识当前选中的 Choice 项（与 XmlChoiceIdentifier 配合）
-        /// </summary>
-        [XmlIgnore]
-        public ActionItemEnum ActionItemNames { get; set; }
 
         /// <summary>
-        /// 统一的 Choice 内容属性，通过 XmlChoiceIdentifier 关联枚举
+        /// 通过多个XmlElement标记，指定不同子类型对应的XML节点名
+        /// 让 ActionItem 属性在序列化 / 反序列化时自动匹配对应的 XML 节点类型，实现 “多选一”
         /// </summary>
         [XmlElement("Goto", typeof(Goto))]
         [XmlElement("URI", typeof(URI))]
         [XmlElement("GotoA", typeof(GotoA))]
         [XmlElement("Sound", typeof(Sound))]
         [XmlElement("Movie", typeof(Movie))]
-        [XmlChoiceIdentifier(MemberName = "ActionItemNames")]
-        public object ActionItems { get; set; }
-
+        public BaseAction ActionItem { get; set; }
 
         #endregion
 
@@ -59,5 +53,7 @@ namespace OFDViewer.Actions
 
         [XmlIgnore]
         public ActionEventEnum Event { get; set; }
+
+
     }
 }

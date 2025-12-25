@@ -14,7 +14,7 @@ namespace OFDViewer.Actions.ActionItems
     /// 播放视频动作
     /// Movie动作用于播放视频。播放视频动作结构如图79所示。
     /// </summary>
-    public class Movie
+    public class Movie : BaseAction
     {
         /// <summary>
         /// 引用资源文件中定义的视频资源标识 必选

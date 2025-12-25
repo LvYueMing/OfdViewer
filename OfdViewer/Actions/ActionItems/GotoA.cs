@@ -11,7 +11,7 @@ namespace OFDViewer.Actions.ActionItems
     /// 附件动作
     /// 附件动作表明打开当前文档内的一个附件,附件动作的结构如图76所示
     /// </summary>
-    public class GotoA
+    public class GotoA : BaseAction
     {
         /// <summary>
         /// 附件的标识 必选

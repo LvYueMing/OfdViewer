@@ -6,12 +6,12 @@ using System.Threading.Tasks;
 using System.Xml.Serialization;
 using OFDViewer.BaseType;
 
-namespace OFDViewer.Graph.ShapeItems
+namespace OFDViewer.Graph.PathItems
 {
     /// <summary>
     /// 二阶贝塞尔曲线
     /// </summary>
-    public class QuadraticBezier
+    public class QuadraticBezier : AreaPath
     {
         /// <summary>
         /// 二次贝塞尔曲线的控制点 必选

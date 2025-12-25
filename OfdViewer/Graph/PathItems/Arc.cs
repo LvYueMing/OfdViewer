@@ -6,12 +6,12 @@ using System.Threading.Tasks;
 using System.Xml.Serialization;
 using OFDViewer.BaseType;
 
-namespace OFDViewer.Graph.ShapeItems
+namespace OFDViewer.Graph.PathItems
 {
     /// <summary>
     /// 圆弧
     /// </summary>
-    public class Arc
+    public class Arc : AreaPath
     {
         /// <summary>
         /// 弧线方向是否为顺时针

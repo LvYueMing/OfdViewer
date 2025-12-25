@@ -11,7 +11,7 @@ namespace OFDViewer.Actions.ActionItems
     /// 跳转动作
     /// 跳转动作表明同一个文档内的跳转,包含一个目标区域或者书签位置,如图74所示。
     /// </summary>
-    public class Goto
+    public class Goto : BaseAction
     {
         /// <summary>
         /// 跳转的目标区域 必选

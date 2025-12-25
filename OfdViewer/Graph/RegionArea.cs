@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 using OFDViewer.BaseType;
-using OFDViewer.Graph.ShapeItems;
+using OFDViewer.Graph.PathItems;
 
 namespace OFDViewer.Graph
 {
@@ -16,26 +16,17 @@ namespace OFDViewer.Graph
     public class RegionArea
     {
         /// <summary>
-        /// 图形对象描述
+        /// 混合路径节点集合：匹配 xs:choice maxOccurs="unbounded"
+        /// 无外层包裹，直接生成Move/Line等节点
         /// </summary>
-        /// <remarks>
-        /// Choice节点（Move/Line/QuadraticBezier/CubicBezier/Arc/Close）可重复
-        /// 注意：XmlChoiceIdentifier 用于标识具体选择的元素类型
-        /// </remarks>
         [XmlElement("Move",typeof(Move))]
         [XmlElement("Line", typeof(Line))]
         [XmlElement("QuadraticBezier", typeof(QuadraticBezier))]
         [XmlElement("CubicBezier", typeof(CubicBezier))]
         [XmlElement("Arc", typeof(Arc))]
         [XmlElement("Close", typeof(Close))]
-        [XmlChoiceIdentifier(MemberName = "ShapeItemNames")]
-        public List<object> ShapeItems { get; set; } = new List<object>();
+        public List<AreaPath> PathItems { get; set; } = new List<AreaPath>();
 
-
-        // 用于标识Choice中具体元素类型的属性（序列化时不输出）
-        // 数组类型，这是XmlChoiceIdentifier的强制要求
-        [XmlIgnore]
-        public ShapeItemEnum[] ShapeItemNames { get; set; } = Array.Empty<ShapeItemEnum>();
 
         /// <summary>
         /// 定义子图形的起始点坐标 必选
@@ -58,35 +49,16 @@ namespace OFDViewer.Graph
 
 
         // 封装添加方法，自动同步枚举
-        public void AddShapeItem(object aShapeItem)
+        public void AddPathItem(AreaPath aPathItem)
         {
             // 1. 添加图形元素到ShapeItems
-            this.ShapeItems.Add(aShapeItem);
-
-            // 2. 匹配对应的枚举
-            var itemEnum = aShapeItem switch
-            {
-                Move => ShapeItemEnum.Move,
-                Line => ShapeItemEnum.Line,
-                QuadraticBezier => ShapeItemEnum.QuadraticBezier,
-                CubicBezier => ShapeItemEnum.CubicBezier,
-                Arc => ShapeItemEnum.Arc,
-                Close => ShapeItemEnum.Close,
-                _ => throw new ArgumentException($"不支持的图形类型：{aShapeItem.GetType().Name}")
-            };
-
-            //// 3. 同步更新ShapeItemNames数组（转为列表操作后再转回数组）
-            var _enumList = new List<ShapeItemEnum>(ShapeItemNames);
-            _enumList.Add(itemEnum);
-            this.ShapeItemNames = _enumList.ToArray();
-
+            this.PathItems.Add(aPathItem);
         }
 
         // 添加清空方法，保证两个集合同时清空
         public void ClearShapeItems()
         {
-            ShapeItems.Clear();
-            ShapeItemNames = Array.Empty<ShapeItemEnum>();
+            PathItems.Clear();
         }
     }
 }

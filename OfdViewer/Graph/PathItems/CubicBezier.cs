@@ -6,12 +6,12 @@ using System.Threading.Tasks;
 using System.Xml.Serialization;
 using OFDViewer.BaseType;
 
-namespace OFDViewer.Graph.ShapeItems
+namespace OFDViewer.Graph.PathItems
 {
     /// <summary>
     /// 三阶贝塞尔曲线
     /// </summary>
-    public class CubicBezier
+    public class CubicBezier : AreaPath
     {
         /// <summary>
         /// 三次贝塞尔曲线的第一个控制点 可选
