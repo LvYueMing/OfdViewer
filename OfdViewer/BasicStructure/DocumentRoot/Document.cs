@@ -8,6 +8,7 @@ using System.Xml.Serialization;
 using OFDViewer.Actions;
 using OFDViewer.BaseType;
 using OFDViewer.BasicStructure.Outlines;
+using OFDViewer.Utils;
 
 namespace OFDViewer.BasicStructure.DocumentRoot
 {
@@ -22,7 +23,8 @@ namespace OFDViewer.BasicStructure.DocumentRoot
         /// 必选
         /// </summary>
         [XmlElement("CommonData")]
-        public CT_CommonData CommonData { get; set; }
+        [XmlRequired(ErrorMsg = "文档公共数据为必选属性，不能为空")]
+        public CT_CommonData CommonData { get; set; } = new CT_CommonData();
 
         /// <summary>
         /// 页树,有关页树的描述见7.6 
@@ -30,6 +32,7 @@ namespace OFDViewer.BasicStructure.DocumentRoot
         /// </summary>
         [XmlArray("Pages")]
         [XmlArrayItem("Page")]
+        [XmlRequired(ErrorMsg = "页树为必选属性，不能为空")]
         public List<DocumentPage> Pages { get; set; } = new List<DocumentPage>();
 
         /// <summary>

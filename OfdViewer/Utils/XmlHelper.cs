@@ -25,44 +25,61 @@ namespace OFDViewer.Utils
         /// <summary>
         /// 从文件反序列化
         /// </summary>
-        public static T DeserializeFromFile<T>(string filePath)
+        public static T DeserializeFromFile<T>(string filePath, bool validateAfterDeserialize = false) where T : class
         {
             if (!File.Exists(filePath))
                 throw new FileNotFoundException("XML 文件不存在", filePath);
 
             using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            return DeserializeFromStream<T>(fs);
+            return DeserializeFromStream<T>(fs, validateAfterDeserialize);
         }
 
         /// <summary>
         /// 从字符串反序列化
         /// </summary>
-        public static T DeserializeFromString<T>(string xmlStr)
+        public static T DeserializeFromString<T>(string xmlStr, bool validateAfterDeserialize = false) where T : class
         {
             if (string.IsNullOrWhiteSpace(xmlStr))
                 throw new ArgumentNullException(nameof(xmlStr), "XML 字符串不能为空");
 
             using var sr = new StringReader(xmlStr);
             var serializer = new XmlSerializer(typeof(T));
-            return (T)serializer.Deserialize(sr);
+
+            T obj = (T)serializer.Deserialize(sr);
+
+            // 反序列化后校验必填项（确保XML中包含所有必填项）
+            if (validateAfterDeserialize)
+            {
+                XmlRequiredValidator.Validate(obj);
+            }
+
+            return obj;
         }
 
         /// <summary>
         /// 从流反序列化
         /// </summary>
-        public static T DeserializeFromStream<T>(Stream stream)
+        public static T DeserializeFromStream<T>(Stream stream, bool validateAfterDeserialize = false) where T : class
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream), "输入流不能为空");
 
             var serializer = new XmlSerializer(typeof(T));
-            return (T)serializer.Deserialize(stream);
+            T obj = (T)serializer.Deserialize(stream);
+
+            // 反序列化后校验必填项（确保XML中包含所有必填项）
+            if (validateAfterDeserialize)
+            {
+                XmlRequiredValidator.Validate(obj);
+            }
+
+            return obj;
         }
 
         /// <summary>
         /// 序列化到文件
         /// </summary>
-        public static void SerializeToFile<T>(T obj, string filePath)
+        public static void SerializeToFile<T>(T obj, string filePath) where T : class
         {
             // 校验参数（避免空引用）
             if (obj == null)
@@ -84,13 +101,16 @@ namespace OFDViewer.Utils
         /// <summary>
         /// 序列化到流
         /// </summary>
-        public static void SerializeToStream<T>(T obj, Stream stream)
+        public static void SerializeToStream<T>(T obj, Stream stream) where T : class
         {
             // 校验参数
             if (obj == null)
                 throw new ArgumentNullException(nameof(obj));
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
+
+            // 先校验XML必填项
+            XmlRequiredValidator.Validate<T>(obj);
 
             var serializer = new XmlSerializer(typeof(T));
             using var writer = XmlWriter.Create(stream, DefaultSettings);
@@ -117,11 +137,14 @@ namespace OFDViewer.Utils
         /// <summary>
         /// 序列化到字符串
         /// </summary>
-        public static string SerializeToString<T>(T obj)
+        public static string SerializeToString<T>(T obj) where T : class
         {
             // 校验参数
             if (obj == null)
                 throw new ArgumentNullException(nameof(obj));
+
+            // 先校验XML必填项
+            XmlRequiredValidator.Validate<T>(obj);
 
             using var sw = new StringWriter();
             var serializer = new XmlSerializer(typeof(T));

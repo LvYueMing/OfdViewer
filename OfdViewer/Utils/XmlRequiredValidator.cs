@@ -1,0 +1,168 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace OFDViewer.Utils
+{
+    /// <summary>
+    /// 通用XML必填项校验工具
+    /// </summary>
+    internal class XmlRequiredValidator
+    {
+        /// <summary>
+        /// 校验指定对象的所有XML必填属性（含嵌套对象）是否有效
+        /// </summary>
+        /// <typeparam name="T">待校验对象类型</typeparam>
+        /// <param name="obj">待校验对象</param>
+        /// <exception cref="ArgumentNullException">对象为null时抛出</exception>
+        /// <exception cref="XmlRequiredValidationException">必填项无效时抛出</exception>
+        public static void Validate<T>(T obj) where T : class
+        {
+            // 内部递归校验方法，支持任意对象类型
+            InternalValidate(obj, typeof(T), string.Empty);
+        }
+
+        /// <summary>
+        /// 内部递归校验方法（核心：支持嵌套对象）
+        /// </summary>
+        /// <param name="obj">待校验对象</param>
+        /// <param name="objType">待校验对象类型</param>
+        /// <param name="parentPropertyPath">父属性路径（用于精准定位嵌套属性，如"UserInfo.Address"）</param>
+        private static void InternalValidate(object obj, Type objType, string parentPropertyPath)
+        {
+            if (obj == null)
+            {
+                // 若对象为null，且父属性路径非空（说明是嵌套属性），直接判定为无效（需结合外层[XmlRequired]）
+                // 外层校验会先判断属性是否为null，此处仅处理递归内部的非空对象
+                return;
+            }
+
+            // 获取对象所有公共属性
+            PropertyInfo[] properties = objType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+
+            // 遍历属性，扫描标记了[XmlRequired]的属性并校验
+            foreach (PropertyInfo prop in properties)
+            {
+                // 拼接当前属性路径（便于定位嵌套属性，如"Address.Street"）
+                string currentPropertyPath = string.IsNullOrEmpty(parentPropertyPath)
+                    ? prop.Name
+                    : $"{parentPropertyPath}.{prop.Name}";
+
+                // 步骤1：判断当前属性是否标记了[XmlRequired]特性
+                XmlRequiredAttribute xmlRequiredAttr = prop.GetCustomAttribute<XmlRequiredAttribute>();
+
+                // 步骤2：获取属性值
+                object propValue = prop.GetValue(obj);
+
+                // 步骤3：先校验当前属性自身的有效性（是否为null/默认值/空白字符串）
+                if (!IsPropValueValid(prop, propValue))
+                {
+                    // 抛出自定义异常，携带嵌套属性路径
+                    string errorMsg = string.IsNullOrEmpty(xmlRequiredAttr?.ErrorMsg)
+                        ? $"属性【{currentPropertyPath}】是XML序列化必填项，当前值无效（值：{propValue ?? "null"}）"
+                        : xmlRequiredAttr.ErrorMsg;
+
+                    throw new XmlRequiredValidationException(errorMsg, currentPropertyPath, objType);
+                }
+
+                // 步骤4：判断是否为嵌套自定义对象，若是则递归校验（核心升级点）
+                if (IsNestedCustomType(prop.PropertyType, propValue))
+                {
+                    // 递归调用内部校验方法，深入嵌套对象
+                    InternalValidate(propValue, prop.PropertyType, currentPropertyPath);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 私有方法：判断属性值是否有效（非空/非默认值）（保持原有逻辑不变）
+        /// </summary>
+        /// <param name="prop">属性信息</param>
+        /// <param name="propValue">属性值</param>
+        /// <returns>true=有效，false=无效</returns>
+        private static bool IsPropValueValid(PropertyInfo prop, object propValue)
+        {
+            Type propType = prop.PropertyType;
+
+            // 1. 处理引用类型（string特殊处理，排除空字符串/空白字符串）
+            if (!propType.IsValueType)
+            {
+                // string类型：不能为null、空字符串、空白字符串
+                if (propType == typeof(string))
+                {
+                    return !string.IsNullOrWhiteSpace(propValue as string);
+                }
+                // 其他引用类型：不能为null
+                return propValue != null;
+            }
+
+            // 2. 处理值类型（可空值类型+非可空值类型）
+            Type underlyingType = Nullable.GetUnderlyingType(propType);
+            if (underlyingType != null)
+            {
+                // 可空值类型（如int?、DateTime?）：不能为null（HasValue=false）
+                return propValue != null;
+            }
+            else
+            {
+                //// 非可空值类型（如int、DateTime）：不能是默认值（如int=0、DateTime=MinValue）
+                //object defaultValue = Activator.CreateInstance(propType);
+                //return !object.Equals(propValue, defaultValue);
+
+                // 非可空值类型（如int、DateTime、bool等）：只要是值类型（必然有值），直接返回true
+                // 无需判断是否为默认值（0/MinValue等均视为有效，满足“有值即可”的需求）
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// 私有方法：判断是否为需要递归校验的嵌套自定义类型（核心升级点）
+        /// </summary>
+        /// <param name="propType">属性类型</param>
+        /// <param name="propValue">属性值</param>
+        /// <returns>true=是嵌套自定义类型，需要递归；false=简单类型，无需递归</returns>
+        private static bool IsNestedCustomType(Type propType, object propValue)
+        {
+            if (propValue == null)
+            {
+                return false; // 值为null，无需递归
+            }
+
+            // 获取真实类型（处理可空类型，如AddressInfo? 转为 AddressInfo）
+            Type realType = Nullable.GetUnderlyingType(propType) ?? propType;
+
+            // 排除简单类型：无需递归校验
+            HashSet<Type> simpleTypes = new HashSet<Type>
+            {
+                typeof(string),
+                typeof(int), typeof(long), typeof(short), typeof(byte),
+                typeof(bool), typeof(decimal), typeof(float), typeof(double),
+                typeof(DateTime), typeof(Guid), typeof(DateTimeOffset)
+            };
+
+            // 条件1：不是简单类型
+            if (simpleTypes.Contains(realType))
+            {
+                return false;
+            }
+
+            // 条件2：不是枚举类型
+            if (realType.IsEnum)
+            {
+                return false;
+            }
+
+            // 条件3：不是值类型（避免struct等简单值类型递归）
+            if (realType.IsValueType && !realType.IsClass)
+            {
+                return false;
+            }
+
+            // 条件4：是自定义引用类型（类），需要递归校验
+            return realType.IsClass;
+        }
+    }
+}

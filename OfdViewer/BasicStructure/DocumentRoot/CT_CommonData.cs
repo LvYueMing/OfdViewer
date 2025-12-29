@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using OFDViewer.BaseType;
 using System.Xml.Serialization;
 using OFDViewer.BasicStructure.Pages;
+using OFDViewer.Utils;
 
 namespace OFDViewer.BasicStructure.DocumentRoot
 {
@@ -21,14 +22,23 @@ namespace OFDViewer.BasicStructure.DocumentRoot
         /// 必选
         /// </summary>
         [XmlElement("MaxUnitID")]
-        public ST_ID MaxUnitID { get; set; }
+        [XmlRequired(ErrorMsg = "标识的最大值为必选属性，不能为空")]
+        public string MaxUnitIDSring
+        {
+            get => MaxUnitID.ToString(); 
+            set => MaxUnitID = ST_ID.Parse(value);
+        }
+
+        [XmlIgnore]
+        public ST_ID MaxUnitID { get; set; } = ST_ID.Invalid;
 
         /// <summary>
         /// 指定该文档页面区域的默认大小和位置 
         /// 必选
         /// </summary>
         [XmlElement("PageArea")]
-        public CT_PageArea PageArea { get; set; }
+        [XmlRequired(ErrorMsg = "页面区域为必选属性，不能为空")]
+        public CT_PageArea PageArea { get; set; }= new CT_PageArea();
 
         /// <summary>
         /// 公共资源序列,每个节点指向 OFD包内的一个资源描述文档,资源
