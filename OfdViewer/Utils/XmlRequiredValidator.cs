@@ -43,7 +43,7 @@ namespace OFDViewer.Utils
             // 获取对象所有公共属性
             PropertyInfo[] properties = objType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
 
-            // 遍历属性，扫描标记了[XmlRequired]的属性并校验
+            // 遍历属性，仅对标记[XmlRequired]的属性执行必填校验
             foreach (PropertyInfo prop in properties)
             {
                 // 拼接当前属性路径（便于定位嵌套属性，如"Address.Street"）
@@ -51,28 +51,39 @@ namespace OFDViewer.Utils
                     ? prop.Name
                     : $"{parentPropertyPath}.{prop.Name}";
 
-                // 步骤1：判断当前属性是否标记了[XmlRequired]特性
+                // 步骤1：获取当前属性的[XmlRequired]特性（不存在则直接跳过核心校验）
+                // 在运行时通过反射，检索当前属性上是否应用了指定类型（XmlRequiredAttribute）的自定义特性。
+                //   如果该属性上显式标记了 [XmlRequired] 特性，方法会返回该特性的实例（可通过该实例访问特性的属性 / 方法）；
+                //   如果该属性上未标记该特性，方法会返回 null（这是判断特性是否存在的核心依据）。
                 XmlRequiredAttribute xmlRequiredAttr = prop.GetCustomAttribute<XmlRequiredAttribute>();
+                object propValue = null;
 
-                // 步骤2：获取属性值
-                object propValue = prop.GetValue(obj);
-
-                // 步骤3：先校验当前属性自身的有效性（是否为null/默认值/空白字符串）
-                if (!IsPropValueValid(prop, propValue))
+                //仅当 xmlRequiredAttr 不为null（标记了必填特性）时，才执行有效性校验
+                if (xmlRequiredAttr != null)
                 {
-                    // 抛出自定义异常，携带嵌套属性路径
-                    string errorMsg = string.IsNullOrEmpty(xmlRequiredAttr?.ErrorMsg)
-                        ? $"属性【{currentPropertyPath}】是XML序列化必填项，当前值无效（值：{propValue ?? "null"}）"
-                        : xmlRequiredAttr.ErrorMsg;
+                    // 步骤2：获取属性值
+                    propValue = prop.GetValue(obj);
 
-                    throw new XmlRequiredValidationException(errorMsg, currentPropertyPath, objType);
+                    // 步骤3：校验当前必填属性的值是否有效
+                    if (!IsPropValueValid(prop, propValue))
+                    {
+                        // 拼接错误信息（优先使用特性自定义错误消息，否则使用默认消息）
+                        string errorMsg = string.IsNullOrEmpty(xmlRequiredAttr?.ErrorMsg)
+                            ? $"属性【{currentPropertyPath}】是XML序列化必填项，当前值无效（值：{propValue ?? "null"}）"
+                            : xmlRequiredAttr.ErrorMsg;
+
+                        // 抛出自定义异常，携带关键定位信息
+                        throw new XmlRequiredValidationException(errorMsg, currentPropertyPath, objType);
+                    }
                 }
 
-                // 步骤4：判断是否为嵌套自定义对象，若是则递归校验（核心升级点）
+                // 步骤4：嵌套对象递归校验（两种方案，根据业务场景选择）
                 if (IsNestedCustomType(prop.PropertyType, propValue))
                 {
-                    // 递归调用内部校验方法，深入嵌套对象
+                    // 无论是否标记[XmlRequired]，都递归校验嵌套对象的内部必填属性
+                    // 优点：不遗漏嵌套对象内部的必填项；缺点：未标记必填的嵌套属性，也会触发递归（可接受，因为递归内部也会做同样优化）
                     InternalValidate(propValue, prop.PropertyType, currentPropertyPath);
+
                 }
             }
         }

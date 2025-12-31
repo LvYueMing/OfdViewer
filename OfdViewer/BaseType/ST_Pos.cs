@@ -13,8 +13,11 @@ namespace OFDViewer.BaseType
     /// </summary>
     public struct ST_Pos : IEquatable<ST_Pos>
     {
-        private readonly double _x;
-        private readonly double _y;
+        // 坐标判断容差，可按需调整
+        private const double PositionTolerance = 1e-6; 
+
+        private double _x;
+        private double _y;
 
         /// <summary>
         /// 原点坐标实例
@@ -22,14 +25,42 @@ namespace OFDViewer.BaseType
         public static readonly ST_Pos Zero = new ST_Pos(0, 0);
 
         /// <summary>
+        /// 无效坐标实例
+        /// </summary>
+        public static readonly ST_Pos InvalidValue = new ST_Pos();
+
+        /// <summary>
+        /// 是否为有效标识
+        /// </summary>
+        public bool IsValid => !Equals(InvalidValue);
+
+        /// <summary>
         /// X坐标
         /// </summary>
-        public double X => _x;
+        public double X
+        {
+            get => _x;
+            set => _x = value;
+        }
 
         /// <summary>
         /// Y坐标
         /// </summary>
-        public double Y => _y;
+        public double Y
+        {
+            get => _y;
+            set => _y = value;
+        }
+
+        /// <summary>
+        /// 初始化点坐标，创建无效点坐标(-1,-1)
+        /// </summary>
+        public ST_Pos()
+        {
+            _x = -1;
+            _y = -1;
+        }
+
 
         /// <summary>
         /// 初始化点坐标
@@ -95,8 +126,8 @@ namespace OFDViewer.BaseType
 
         #region 接口实现和运算符重载
         public bool Equals(ST_Pos other) =>
-            Math.Abs(_x - other._x) < double.Epsilon &&
-            Math.Abs(_y - other._y) < double.Epsilon;
+            Math.Abs(_x - other._x) < PositionTolerance &&
+            Math.Abs(_y - other._y) < PositionTolerance;
 
         public override bool Equals(object obj) => obj is ST_Pos other && Equals(other);
 
@@ -110,7 +141,7 @@ namespace OFDViewer.BaseType
 
         public static ST_Pos operator -(ST_Pos left, ST_Pos right) =>
             new ST_Pos(left._x - right._x, left._y - right._y);
-        
+
         public static explicit operator ST_Pos(string pos) => Parse(pos);
 
         public static explicit operator string(ST_Pos pos) => pos.ToString();

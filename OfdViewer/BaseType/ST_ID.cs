@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 
 namespace OFDViewer.BaseType
 {
-/// <summary>
-/// ST_ID 标识，无符号整数，应在文档内唯一。0 表示无效标识
-/// 支持多线程环境下的唯一标识生成
-/// </summary>
+    /// <summary>
+    /// ST_ID 标识，无符号整数，应在文档内唯一。0 表示无效标识
+    /// 支持多线程环境下的唯一标识生成
+    /// </summary>
     public struct ST_ID : IEquatable<ST_ID>, IComparable<ST_ID>
     {
         private readonly uint _value;

@@ -19,15 +19,10 @@ namespace OFDViewer.Tests
         [Fact]
         public void Serialize_Document_ShouldContainMandatoryElements()
         {
-            // 1. 准备测试数据
-            var document = new Document
-            {
-                CommonData = new CT_CommonData(), // 必选字段
-                Pages = new List<DocumentPage>
-                {
-                    new DocumentPage() // 至少需要一个页面（必选）
-                }
-            };
+            // 准备测试数据  初始化必选字段
+            var document = new Document();
+
+            document.Pages[0].BaseLocString = "Pages/Page_0/Content.xml";
 
             // 2. 执行序列化
             XmlHelper.SerializeToFile(document, "Document.xml");
@@ -61,6 +56,7 @@ namespace OFDViewer.Tests
         //    Assert.NotNull(root.Element(XName.Get("Pages", Constants.OFD_NAMESPACE_URI)));
         //    Assert.NotEmpty(root.Element(XName.Get("Pages", Constants.OFD_NAMESPACE_URI))?.Elements(XName.Get("Page", Constants.OFD_NAMESPACE_URI)));
         //}
+
 
         //// 测试缺少必填字段时的序列化问题
         //[Fact]

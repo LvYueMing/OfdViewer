@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using OFDViewer.BaseType;
 using System.Xml.Serialization;
+using OFDViewer.Utils;
 
 namespace OFDViewer.BasicStructure.DocumentRoot
 {
@@ -18,7 +19,15 @@ namespace OFDViewer.BasicStructure.DocumentRoot
         /// 页面物理区域,左上角的坐标为页面空间坐标系的原点 
         /// 必选
         /// </summary>
-        [XmlElement("PhysicalBox",IsNullable =false)]
+        [XmlElement("PhysicalBox")]
+        [XmlRequired(ErrorMsg = "物理区域为必选属性，不能为空")]
+        public string PhysicalBoxString
+        {
+            get => PhysicalBox.ToString();
+            set => PhysicalBox = ST_Box.Parse(value);
+        }
+
+        [XmlIgnore]
         public ST_Box PhysicalBox { get; set; }
 
         /// <summary>
@@ -29,7 +38,15 @@ namespace OFDViewer.BasicStructure.DocumentRoot
         /// 可选
         /// </summary>
         [XmlElement("ApplicationBox")]
-        public ST_Box ApplicationBox { get; set; }
+        public string ApplicationBoxString
+        {
+            get => ApplicationBox.IsValid ? ApplicationBox.ToString() : null;
+            set => ApplicationBox = ST_Box.Parse(value);
+        }
+
+
+        [XmlIgnore]
+        public ST_Box ApplicationBox { get; set; } = ST_Box.InvalidValue;
 
         /// <summary>
         /// 版心区域
@@ -39,7 +56,14 @@ namespace OFDViewer.BasicStructure.DocumentRoot
         /// 可选
         /// </summary>
         [XmlElement("ContentBox")]
-        public ST_Box ContentBox { get; set; }
+        public string ContentBoxString
+        {
+            get => ContentBox.IsValid ? ContentBox.ToString() : null;
+            set => ContentBox = ST_Box.Parse(value);
+        }
+
+        [XmlIgnore]
+        public ST_Box ContentBox { get; set; } = ST_Box.InvalidValue;
 
         /// <summary>
         /// 出血区域
@@ -49,6 +73,25 @@ namespace OFDViewer.BasicStructure.DocumentRoot
         /// 可选
         /// </summary>
         [XmlElement("BleedBox")]
-        public ST_Box BleedBox { get; set; }
+        public string BleedBoxString
+        {
+            get => BleedBox.IsValid ? BleedBox.ToString() : null;
+            set => BleedBox = ST_Box.Parse(value);
+        }
+
+        [XmlIgnore]
+        public ST_Box BleedBox { get; set; } = ST_Box.InvalidValue;
+
+
+        /// <summary>
+        /// 无参构造函数，必选属性初始化
+        /// </summary>
+        public CT_PageArea()
+        {
+            // A4纸张大小，单位：点
+            PhysicalBox = new ST_Box(0, 0, 595.32, 841.92); 
+        }
+
+
     }
 }

@@ -24,16 +24,16 @@ namespace OFDViewer.BasicStructure.DocumentRoot
         /// </summary>
         [XmlElement("CommonData")]
         [XmlRequired(ErrorMsg = "文档公共数据为必选属性，不能为空")]
-        public CT_CommonData CommonData { get; set; } = new CT_CommonData();
+        public CT_CommonData CommonData { get; set; }
 
         /// <summary>
         /// 页树,有关页树的描述见7.6 
-        /// 必选
+        /// 必选 1..n
         /// </summary>
         [XmlArray("Pages")]
         [XmlArrayItem("Page")]
         [XmlRequired(ErrorMsg = "页树为必选属性，不能为空")]
-        public List<DocumentPage> Pages { get; set; } = new List<DocumentPage>();
+        public List<DocumentPage> Pages { get; set; }
 
         /// <summary>
         /// 大纲,有关大纲的描述见7.8 
@@ -128,6 +128,16 @@ namespace OFDViewer.BasicStructure.DocumentRoot
 
         [XmlIgnore]
         public ST_Loc Extensions { get; set; }
+
+
+        /// <summary>
+        /// 无参构造函数，必选属性初始化
+        /// </summary>
+        public Document()
+        {
+            CommonData = new CT_CommonData();
+            Pages = new List<DocumentPage>() { new DocumentPage() };
+        }
 
     }
 }

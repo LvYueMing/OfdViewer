@@ -12,9 +12,16 @@ namespace OFDViewer.BaseType
     /// </summary>
     public struct ST_Box : IEquatable<ST_Box>
     {
-        private readonly ST_Pos _position;
+        // 坐标判断容差，可按需调整
+        private const double PositionTolerance = 1e-6;
+        private ST_Pos _position;
         private readonly double _width;
         private readonly double _height;
+
+        /// <summary>
+        /// 无效坐标实例
+        /// </summary>
+        public static readonly ST_Box InvalidValue = new ST_Box();
 
         /// <summary>
         /// 左上角X坐标
@@ -52,6 +59,22 @@ namespace OFDViewer.BaseType
         public double Bottom => Y + Height;
 
         /// <summary>
+        /// 是否为有效标识
+        /// </summary>
+        public bool IsValid => !Equals(InvalidValue);
+
+        /// <summary>
+        /// 初始化矩形区域,创建无效矩形区域(-1,-1,0,0)
+        /// </summary>
+        public ST_Box()
+        {
+            _position = ST_Pos.InvalidValue;
+            _width = 0;
+            _height = 0;
+        }
+
+
+        /// <summary>
         /// 初始化矩形区域
         /// </summary>
         /// <param name="x">左上角X坐标</param>
@@ -81,8 +104,6 @@ namespace OFDViewer.BaseType
             : this(position.X, position.Y, width, height)
         {
         }
-
-
 
         /// <summary>
         /// 从字符串解析矩形区域
@@ -160,8 +181,8 @@ namespace OFDViewer.BaseType
         #region 接口实现和运算符重载
         public bool Equals(ST_Box other) =>
             _position.Equals(other._position) &&
-            Math.Abs(_width - other._width) < double.Epsilon &&
-            Math.Abs(_height - other._height) < double.Epsilon;
+            Math.Abs(_width - other._width) < PositionTolerance &&
+            Math.Abs(_height - other._height) < PositionTolerance;
 
         public override bool Equals(object obj) => obj is ST_Box other && Equals(other);
 

@@ -30,7 +30,7 @@ namespace OFDViewer.BasicStructure.DocumentRoot
         }
 
         [XmlIgnore]
-        public ST_ID MaxUnitID { get; set; } = ST_ID.Invalid;
+        public ST_ID MaxUnitID { get; set; }
 
         /// <summary>
         /// 指定该文档页面区域的默认大小和位置 
@@ -38,7 +38,11 @@ namespace OFDViewer.BasicStructure.DocumentRoot
         /// </summary>
         [XmlElement("PageArea")]
         [XmlRequired(ErrorMsg = "页面区域为必选属性，不能为空")]
-        public CT_PageArea PageArea { get; set; }= new CT_PageArea();
+        public CT_PageArea PageArea { get; set; }
+
+
+        [XmlIgnore]
+        public List<ST_Loc> PublicRes { get; set; } = Array.Empty<ST_Loc>().ToList();
 
         /// <summary>
         /// 公共资源序列,每个节点指向 OFD包内的一个资源描述文档,资源
@@ -53,7 +57,7 @@ namespace OFDViewer.BasicStructure.DocumentRoot
         }
 
         [XmlIgnore]
-        public List<ST_Loc> PublicRes { get; set; }
+        public List<ST_Loc> DocumentRes { get; set; } = Array.Empty<ST_Loc>().ToList();
 
         /// <summary>
         /// 文档资源序列,每个节点指向 OFD包内的一个资源描述文档,资源
@@ -67,22 +71,37 @@ namespace OFDViewer.BasicStructure.DocumentRoot
             set => DocumentRes = value?.Select(item => new ST_Loc(item)).ToList() ?? new List<ST_Loc>();
         }
 
-        [XmlIgnore]
-        public List<ST_Loc> DocumentRes { get; set; }
 
         /// <summary>
         /// 模板页序列,为一系列模板页的集合,模板页内容结构和普通页相同,描述见7.7
         /// 可选（0..∞）
         /// </summary>
         [XmlElement("TemplatePage")]
-        public List<CT_TemplatePage> TemplatePage { get; set; } 
-
+        public List<CT_TemplatePage> TemplatePage { get; set; }
 
         /// <summary>
-        /// 引用在资源文件中定义的颜色空间标识,有关颜色空间的描述见8.3.1。如果此项不存在,采用 RGB作为默认颜色空间
+        /// <see cref="DefaultCSString"/>
+        /// </summary>
+        [XmlIgnore]
+        public ST_RefID DefaultCS { get; set; }
+        /// <summary>
+        /// 引用在资源文件中定义的颜色空间标识,有关颜色空间的描述见8.3.1。如果此项不存在,采用 RGB 作为默认颜色空间
         /// 可选
         /// </summary>
         [XmlElement("DefaultCS")]
-        public ST_RefID DefaultCS { get; set; }
+        public string DefaultCSString
+        {
+            get => DefaultCS.IsValid ? DefaultCS.ToString() : null;
+            set => DefaultCS = ST_RefID.Parse(value);       
+        }
+
+
+
+        //无参构造函数，必选属性初始化
+        public CT_CommonData()
+        {
+            MaxUnitID = ST_ID.Invalid;
+            PageArea = new CT_PageArea();
+        }
     }
 }

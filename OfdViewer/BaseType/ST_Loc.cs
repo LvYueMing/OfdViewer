@@ -21,6 +21,12 @@ namespace OFDViewer.BaseType
         // 是否为绝对路径
         private readonly bool _isAbsolute;
 
+        public ST_Loc()
+        {
+            _path = ".";
+            _isAbsolute = false;
+        }
+
         public ST_Loc(string path)
         {
             if (string.IsNullOrEmpty(path) || path == ".")
