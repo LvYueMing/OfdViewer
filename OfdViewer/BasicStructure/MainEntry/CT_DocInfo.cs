@@ -13,6 +13,7 @@ namespace OFDViewer.BasicStructure.MainEntry
     {
         /// <summary>
         /// 采用 UUID 算法生成的由 32 个字符组成的文件标识。 每个 DocID 在文档创建或生成的时候进行分配  
+        /// UUID（Universally Unique Identifier，通用唯一识别码）
         /// 可选
         /// </summary>
         [XmlElement("DocID")]
@@ -52,6 +53,13 @@ namespace OFDViewer.BasicStructure.MainEntry
         /// 可选
         /// </summary>
         [XmlElement("CreationDate")]
+        public string CreationDateString
+        {
+            get => CreationDate.ToString("yyyy-MM-dd");
+            set => CreationDate = DateTime.Parse(value);
+        }
+
+        [XmlIgnore]
         public DateTime CreationDate { get; set; }
 
         /// <summary>
@@ -59,6 +67,12 @@ namespace OFDViewer.BasicStructure.MainEntry
         /// 可选
         /// </summary>
         [XmlElement("ModDate")]
+        public string ModDateString
+        {
+            get => ModDate.ToString("yyyy-MM-dd");
+            set => ModDate = DateTime.Parse(value);
+        }
+        [XmlIgnore]
         public DateTime ModDate { get; set; }
 
         /// <summary>
@@ -80,13 +94,14 @@ namespace OFDViewer.BasicStructure.MainEntry
             }
         }
         [XmlIgnore]
-        public DocumentUsage DocUsage { get; set; }
+        public DocumentUsage DocUsage { get; set; } = DocumentUsage.Normal;
 
         [XmlIgnore]
         public ST_Loc Cover { get; set; }
 
         /// <summary>
-        /// 文档封面, 此路径指向一个图片文件 可选
+        /// 文档封面, 此路径指向一个图片文件 
+        /// 可选
         /// </summary>
         [XmlElement("Cover")]
         public string CoverPath
@@ -101,7 +116,7 @@ namespace OFDViewer.BasicStructure.MainEntry
         /// </summary>
         [XmlArray("Keywords")]
         [XmlArrayItem("Keyword")]
-        public List<Keyword> Keywords { get; set; } = new List<Keyword>();
+        public List<Keyword> Keywords { get; set; } = Array.Empty<Keyword>().ToList();
 
         /// <summary>
         /// 创建文档的应用程序 
@@ -123,7 +138,16 @@ namespace OFDViewer.BasicStructure.MainEntry
         /// </summary>
         [XmlArray("CustomDatas")]
         [XmlArrayItem("CustomData")]
-        public List<CustomData> CustomDatas { get; set; } = new List<CustomData>();
+        public List<CustomData> CustomDatas { get; set; } = Array.Empty<CustomData>().ToList();
+
+
+        //无参构造函数，每个 DocID 在文档创建或生成的时候进行分配  采用 UUID 算法生成的由 32 个字符组成的文件标识。  
+        public CT_DocInfo()
+        {
+            // "N":包含 32 个十六进制字符（0-9、a-f），无任何分隔符
+            this.DocID = Guid.NewGuid().ToString("N");
+            this.CreationDate = DateTime.Now;
+        }
     }
 
 }

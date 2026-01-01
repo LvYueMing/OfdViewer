@@ -193,7 +193,7 @@ namespace OFDViewer.Tests
             // 执行添加操作
             ofd.AddDocBody(docBody);
 
-            //验证ofd.DocBodies 中有两个元素
+            //验证ofd.DocBodies 中有一个元素
             Assert.Equal(1, ofd.DocBodies.Count);
             Assert.Contains(docBody, ofd.DocBodies);
         }
@@ -217,16 +217,35 @@ namespace OFDViewer.Tests
         /// <summary>
         /// 测试目标：验证默认 OFD 对象序列化为 XML 的正确性
         /// 测试场景：使用默认 OFD 对象进行 XML 序列化
-        /// 预期结果：生成的 XML 包含正确的版本、文档类型、命名空间和 DocBody 元素,元素节点应使用命名空间标识 ofd ,元素属性不使用命名空间标识
+        /// 预期结果：抛出 XmlRequiredValidationException 异常
         /// </summary>
         [Fact]
-        public void SerializeToXml_DefaultOFD_ShouldGenerateCorrectXml()
+        public void SerializeToXml_DefaultOFD_ShouldThrowXmlRequiredValidationException()
         {
             // 准备测试数据和序列化器
             var ofd = new OFD();
 
+            //XmlHelper.SerializeToString 序列化时，特性校验list数量，会异常，断言异常
+            var exception = Assert.Throws<XmlRequiredValidationException>(() => XmlHelper.SerializeToString<OFD>(ofd));
+            Assert.Equal("DocBodies", exception.PropertyName);
+            Assert.Contains("元素个数无效", exception.Message);
+        }
+
+        /// <summary>
+        /// 测试目标：验证默认 OFD 对象添加一个 DocBody 序列化为 XML 的正确性
+        /// 测试场景：使用默认 OFD 对象进行 XML 序列化
+        /// 预期结果：生成的 XML 包含正确的版本、文档类型、命名空间和 DocBody 元素,
+        ///         元素节点应使用命名空间标识 ofd ,元素属性不使用命名空间标识
+        /// </summary>
+        [Fact]
+        public void SerializeToXml_WithSingleDocBody_ShouldGenerateCorrectXml()
+        {
+            // 准备测试数据和序列化器
+            var ofd = new OFD();
+            ofd.AddDocBody(new DocBody());
+
             var xml = XmlHelper.SerializeToString(ofd);
-            //XmlHelper.SerializeToFile(ofd, "OFD.xml");
+            XmlHelper.SerializeToFile(ofd, "OFD.xml");
 
             // 使用 XmlDocument 进行详细检查
             var xmlDoc = new XmlDocument();
@@ -251,7 +270,7 @@ namespace OFDViewer.Tests
             // 验证 DocBody 元素
             var docBodyNodes = xmlDoc.SelectNodes($"//*[local-name()='DocBody' and namespace-uri()='{Constants.OFD_NAMESPACE_URI}']");
             Assert.NotNull(docBodyNodes);
-            Assert.Equal(0, docBodyNodes.Count);
+            Assert.Equal(1, docBodyNodes.Count);
 
         }
 
@@ -270,7 +289,7 @@ namespace OFDViewer.Tests
 
             // 执行序列化
             var xml = XmlHelper.SerializeToString(ofd);
-            XmlHelper.SerializeToFile(ofd, "OFD.xml");
+            //XmlHelper.SerializeToFile(ofd, "OFD.xml");
 
             // 验证 XML 结构
             var xmlDoc = new XmlDocument();
@@ -296,7 +315,7 @@ namespace OFDViewer.Tests
 
             // 执行序列化
             var xml = XmlHelper.SerializeToString(ofd);
-            XmlHelper.SerializeToFile(ofd, "OFD.xml");
+            //XmlHelper.SerializeToFile(ofd, "OFD.xml");
 
             // 验证 XML 结构
             var xmlDoc = new XmlDocument();
@@ -325,7 +344,7 @@ namespace OFDViewer.Tests
 
             // 执行序列化
             var xml = XmlHelper.SerializeToString(ofd);
-            XmlHelper.SerializeToFile(ofd, "OFD.xml");
+            //XmlHelper.SerializeToFile(ofd, "OFD.xml");
 
             // 验证 XML 结构
             var xmlDoc = new XmlDocument();
@@ -423,6 +442,39 @@ namespace OFDViewer.Tests
             // 验证特性配置
             Assert.NotNull(xmlElementAttribute);
             Assert.Equal("DocBody", xmlElementAttribute.ElementName);
+        }
+
+        // 测试目标：验证 DocBody.DocRoot 属性设置值的正确性
+        // 测试场景：将 DocRoot 属性设置为通过 Constants.GetOfdFilePath 构造的路径
+        // 预期结果：DocRoot 属性值正确反映构造的路径
+        [Fact]
+        public void SerializeToXml_WithDocRoot_SetValue_ShouldConstructCorrectPath()
+        {
+            var ofd = new OFD();
+            var docBody = new DocBody();
+            docBody.DocRoot = Constants.GetFilePath(Constants.Doc_DocumentFile);
+            ofd.AddDocBody(docBody);
+
+            var xml = XmlHelper.SerializeToString(ofd);
+            XmlHelper.SerializeToFile(ofd, "OFD.xml");
+
+            // 使用 XmlDocument 进行详细检查
+            var xmlDoc = new XmlDocument();
+            xmlDoc.LoadXml(xml);
+
+            // 创建XmlNamespaceManager实例，关联XmlDocument的NameTable
+            XmlNamespaceManager nsMgr = new XmlNamespaceManager(xmlDoc.NameTable);
+
+            // 添加命名空间前缀映射（ofd为前缀，对应OFD标准的命名空间URI）
+            // 注意：此处的命名空间URI需要与你OFD.xml中实际定义的ofd命名空间一致（通常为以下URI，可从XML根节点验证）
+            nsMgr.AddNamespace("ofd", Constants.OFD_NAMESPACE_URI);
+
+            // 在SelectSingleNode方法中传入XmlNamespaceManager实例
+            XmlNode docRootNode = xmlDoc.DocumentElement.SelectSingleNode("ofd:DocBody/ofd:DocRoot", nsMgr);
+            var rootPath = docRootNode?.InnerText;
+
+            // 验证 DocRoot 属性是否正确设置
+            Assert.Equal("./Doc_0/Document.xml", rootPath);
         }
     }
 }

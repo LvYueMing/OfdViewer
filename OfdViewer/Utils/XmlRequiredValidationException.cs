@@ -9,7 +9,7 @@ namespace OFDViewer.Utils
     /// <summary>
     /// 自定义异常：XML序列化必填项校验失败
     /// </summary>
-    internal class XmlRequiredValidationException : Exception
+    public class XmlRequiredValidationException : Exception
     {
         /// <summary>
         /// 失败的属性名称

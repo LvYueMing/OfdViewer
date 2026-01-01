@@ -97,7 +97,7 @@ namespace OFDViewer.BasicStructure.MainEntry
         /// 必选，至少包含一个 DocBody 节点
         /// </summary>
         [XmlElement("DocBody")]
-        [XmlRequired(ErrorMsg = "至少需要一个 DocBody 元素",MinItemCount =1)]
+        [XmlRequired(ErrorMsg = "至少需要一个 DocBody 元素", MinItemCount = 1)]
         public List<DocBody> DocBodies { get; set; }
 
         #endregion
