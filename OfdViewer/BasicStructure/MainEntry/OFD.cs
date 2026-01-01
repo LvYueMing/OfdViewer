@@ -50,6 +50,7 @@ namespace OFDViewer.BasicStructure.MainEntry
         /// <para>必选，取值固定为 "1.0"（符合 GB/T 33190-2016）</para>
         /// </summary>
         [XmlAttribute("Version")]
+        [XmlRequired(ErrorMsg="Version 属性为必选项，且不能为空")]
         public string Version
         {
             get => _version;
@@ -77,6 +78,7 @@ namespace OFDViewer.BasicStructure.MainEntry
         /// <para>必选，取值范围："OFD"（标准）、"OFD-A"（存档规范）</para>
         /// </summary>
         [XmlAttribute("DocType")]
+        [XmlRequired(ErrorMsg="DocType 必选属性为必选项，且不能为空")]
         public string DocTypeString
         {
             get => EnumHelper.GetEnumDesc(DocType);
@@ -92,15 +94,17 @@ namespace OFDViewer.BasicStructure.MainEntry
 
         /// <summary>
         /// 文件对象入口（必选，支持多个版式文档）
-        /// <para>必选，至少包含一个 DocBody 节点</para>
+        /// 必选，至少包含一个 DocBody 节点
         /// </summary>
-        [XmlElement("DocBody", Namespace = Constants.OFD_NAMESPACE_URI)]
-        public List<DocBody> DocBodies { get; set; } = new List<DocBody>(); // 初始化空列表，避免空引用
+        [XmlElement("DocBody")]
+        [XmlRequired(ErrorMsg = "至少需要一个 DocBody 元素",MinItemCount =1)]
+        public List<DocBody> DocBodies { get; set; }
 
         #endregion
 
 
         #region 构造函数（保证默认值符合标准）
+
         /// <summary>
         /// 无参构造函数（XmlSerializer 必需）
         /// </summary>
@@ -109,7 +113,8 @@ namespace OFDViewer.BasicStructure.MainEntry
             // 默认值符合标准，避免反序列化后空值
             Version = DefaultVersion;
             DocTypeString = "OFD";
-            DocBodies = new List<DocBody>();
+            // 不能默认包含 DocBody，避免反序化时多出一个 DocBody
+            DocBodies = Array.Empty<DocBody>().ToList();
         }
 
         /// <summary>
@@ -118,8 +123,10 @@ namespace OFDViewer.BasicStructure.MainEntry
         /// <param name="docType">文档类型（OFD/OFD-A）</param>
         /// <param name="docBodies">文件对象入口列表</param>
         /// <exception cref="ArgumentNullException">文档入口列表为空时抛出</exception>
-        public OFD(string docType, List<DocBody> docBodies) : this()
+        public OFD(string docType, List<DocBody> docBodies)
         {
+            // 默认值符合标准，避免反序列化后空值
+            Version = DefaultVersion;
             DocTypeString = docType ?? throw new ArgumentNullException(nameof(docType), "DocType 不能为空");
             DocBodies = docBodies ?? throw new ArgumentNullException(nameof(docBodies), "DocBody 列表不能为空");
 
@@ -129,6 +136,7 @@ namespace OFDViewer.BasicStructure.MainEntry
                 throw new ArgumentException("DocBody 列表至少包含一个元素", nameof(docBodies));
             }
         }
+
         #endregion
 
 

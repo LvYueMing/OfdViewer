@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -8,7 +9,7 @@ using System.Threading.Tasks;
 namespace OFDViewer.Utils
 {
     /// <summary>
-    /// 通用XML必填项校验工具
+    /// 通用XML必填项校验工具（支持集合元素个数范围校验 + 嵌套对象递归校验）
     /// </summary>
     internal class XmlRequiredValidator
     {
@@ -48,8 +49,8 @@ namespace OFDViewer.Utils
             {
                 // 拼接当前属性路径（便于定位嵌套属性，如"Address.Street"）
                 string currentPropertyPath = string.IsNullOrEmpty(parentPropertyPath)
-                    ? prop.Name
-                    : $"{parentPropertyPath}.{prop.Name}";
+                                                ? prop.Name
+                                                : $"{parentPropertyPath}.{prop.Name}";
 
                 // 步骤1：获取当前属性的[XmlRequired]特性（不存在则直接跳过核心校验）
                 // 在运行时通过反射，检索当前属性上是否应用了指定类型（XmlRequiredAttribute）的自定义特性。
@@ -64,13 +65,13 @@ namespace OFDViewer.Utils
                     // 步骤2：获取属性值
                     propValue = prop.GetValue(obj);
 
-                    // 步骤3：校验当前必填属性的值是否有效
-                    if (!IsPropValueValid(prop, propValue))
+                    // 步骤3：校验当前必填属性的值是否有效/集合元素个数范围校验
+                    if (!IsPropValueValid(prop, propValue, xmlRequiredAttr))
                     {
                         // 拼接错误信息（优先使用特性自定义错误消息，否则使用默认消息）
-                        string errorMsg = string.IsNullOrEmpty(xmlRequiredAttr?.ErrorMsg)
-                            ? $"属性【{currentPropertyPath}】是XML序列化必填项，当前值无效（值：{propValue ?? "null"}）"
-                            : xmlRequiredAttr.ErrorMsg;
+                        string defaultErrorMsg = GetDefaultErrorMsg(prop, propValue, currentPropertyPath, xmlRequiredAttr);
+                        string errorMsg = defaultErrorMsg ?? xmlRequiredAttr.ErrorMsg;
+
 
                         // 抛出自定义异常，携带关键定位信息
                         throw new XmlRequiredValidationException(errorMsg, currentPropertyPath, objType);
@@ -89,16 +90,51 @@ namespace OFDViewer.Utils
         }
 
         /// <summary>
-        /// 私有方法：判断属性值是否有效（非空/非默认值）（保持原有逻辑不变）
+        /// 私有方法：获取默认错误提示信息（针对集合/普通属性差异化提示）
         /// </summary>
         /// <param name="prop">属性信息</param>
         /// <param name="propValue">属性值</param>
+        /// <param name="propertyPath">属性路径</param>
+        /// <param name="attr">XML必填特性</param>
+        /// <returns>默认错误信息</returns>
+        private static string GetDefaultErrorMsg(PropertyInfo prop, object propValue, string propertyPath, XmlRequiredAttribute attr)
+        {
+            if (IsCollectionType(prop.PropertyType))
+            {
+                // 集合类型：提示元素个数范围
+                if (propValue == null)
+                {
+                    return $"属性【{propertyPath}】（集合类型）是XML序列化必填项，不能为null，要求最小元素数：{attr.MinItemCount}，最大元素数：{attr.MaxItemCount}";
+                }
+                ICollection collection = (ICollection)propValue;
+                return $"属性【{propertyPath}】（集合类型）元素个数无效，当前个数：{collection.Count}，要求最小元素数：{attr.MinItemCount}，最大元素数：{attr.MaxItemCount}";
+            }
+            else
+            {
+                // 普通类型：原有提示逻辑
+                return $"属性【{propertyPath}】是XML序列化必填项，当前值无效（值：{propValue ?? "null"}）";
+            }
+        }
+
+        /// <summary>
+        /// 私有方法：判断属性值是否有效（非空/非默认值）（保持原有逻辑不变）(支持集合元素个数范围校验)
+        /// </summary>
+        /// <param name="prop">属性信息</param>
+        /// <param name="propValue">属性值</param>
+        /// <param name="xmlRequiredAttr">XML必填特性（携带最小/最大元素数配置）</param>
         /// <returns>true=有效，false=无效</returns>
-        private static bool IsPropValueValid(PropertyInfo prop, object propValue)
+        private static bool IsPropValueValid(PropertyInfo prop, object propValue, XmlRequiredAttribute xmlRequiredAttr)
         {
             Type propType = prop.PropertyType;
 
-            // 1. 处理引用类型（string特殊处理，排除空字符串/空白字符串）
+            // 先判断是否为集合类型，执行集合专属校验（元素个数范围 + 非null）
+            if (IsCollectionType(propType))
+            {
+                return ValidateCollectionValue(propValue, xmlRequiredAttr.MinItemCount, xmlRequiredAttr.MaxItemCount);
+            }
+
+
+            //  处理引用类型（string特殊处理，排除空字符串/空白字符串）
             if (!propType.IsValueType)
             {
                 // string类型：不能为null、空字符串、空白字符串
@@ -110,7 +146,7 @@ namespace OFDViewer.Utils
                 return propValue != null;
             }
 
-            // 2. 处理值类型（可空值类型+非可空值类型）
+            //  处理值类型（可空值类型+非可空值类型）
             Type underlyingType = Nullable.GetUnderlyingType(propType);
             if (underlyingType != null)
             {
@@ -127,6 +163,44 @@ namespace OFDViewer.Utils
                 // 无需判断是否为默认值（0/MinValue等均视为有效，满足“有值即可”的需求）
                 return true;
             }
+        }
+
+
+        /// <summary>
+        /// 私有方法：校验集合值是否有效（非null + 元素个数在[Min, Max]范围内）
+        /// </summary>
+        /// <param name="collectionValue">集合值</param>
+        /// <param name="minCount">最小元素个数</param>
+        /// <param name="maxCount">最大元素个数</param>
+        /// <returns>true=有效，false=无效</returns>
+        private static bool ValidateCollectionValue(object collectionValue, int minCount, int maxCount)
+        {
+            // 集合为null，直接无效
+            if (collectionValue == null)
+                return false;
+
+            // 强转为ICollection，获取元素个数
+            ICollection collection = (ICollection)collectionValue;
+            int itemCount = collection.Count;
+
+            // 校验元素个数是否在[minCount, maxCount]范围内
+            return itemCount >= minCount && itemCount <= maxCount;
+        }
+
+
+        /// <summary>
+        /// 私有方法：判断是否为集合类型（支持所有ICollection实现类：List、HashSet、ArrayList等）
+        /// </summary>
+        /// <param name="type">待判断类型</param>
+        /// <returns>true=集合类型，false=非集合类型</returns>
+        private static bool IsCollectionType(Type type)
+        {
+            // 排除string类型（string实现了ICollection，但不是集合）
+            if (type == typeof(string))
+                return false;
+
+            // 判断是否实现了ICollection接口
+            return typeof(ICollection).IsAssignableFrom(type);
         }
 
         /// <summary>

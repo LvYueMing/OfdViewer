@@ -165,7 +165,7 @@ namespace OFDViewer.Utils
                 // 如果没有 XmlRootAttribute，使用默认命名空间
                 ns.Add(Constants.OFD_VALUE, Constants.OFD_NAMESPACE_URI);
             }
-            serializer.Serialize(writer, obj);
+            serializer.Serialize(writer, obj, ns);
             return sw.ToString();
         }
     }

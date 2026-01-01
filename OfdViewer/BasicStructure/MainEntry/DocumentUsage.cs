@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OFDViewer.Enums
+namespace OFDViewer.BasicStructure.MainEntry
 {
     /// <summary>
     /// 文档分类,可取值如下:
