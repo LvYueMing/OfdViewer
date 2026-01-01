@@ -8,12 +8,12 @@ using Xunit;
 
 namespace OFDViewer.Tests
 {
-    public class OfdArchiveTests : IDisposable
+    public class OFDArchiveTests : IDisposable
     {
         private readonly MemoryStream _zipStream;
-        private readonly OfdArchive _archive;
+        private readonly OFDArchive _archive;
 
-        public OfdArchiveTests()
+        public OFDArchiveTests()
         {
             // 创建内存中的 zip 包，包含一个文本文件和一个 XML 文件
             _zipStream = new MemoryStream();
@@ -32,7 +32,7 @@ namespace OFDViewer.Tests
                 }
             }
             _zipStream.Position = 0;
-            _archive = OfdArchive.OpenFromStream(_zipStream, ZipArchiveMode.Read, leaveOpen: true);
+            _archive = OFDArchive.OpenFromStream(_zipStream, ZipArchiveMode.Read, leaveOpen: true);
         }
 
         [Fact]
@@ -45,7 +45,7 @@ namespace OFDViewer.Tests
             try
             {
                 // Act
-                using var archive = OfdArchive.OpenFromFile(tempFile);
+                using var archive = OFDArchive.OpenFromFile(tempFile);
 
                 // Assert
                 Assert.NotNull(archive);
@@ -61,7 +61,7 @@ namespace OFDViewer.Tests
         [Fact]
         public void Open_Stream_ShouldOpenArchive()
         {
-            using var archive = OfdArchive.OpenFromStream(new MemoryStream(_zipStream.ToArray()));
+            using var archive = OFDArchive.OpenFromStream(new MemoryStream(_zipStream.ToArray()));
             Assert.NotNull(archive);
         }
 
@@ -146,7 +146,7 @@ namespace OFDViewer.Tests
         public void ExtractAndReadOFD_LocalFile()
         {
             string ofdPath = @"C:\Users\Administrator\Desktop\test.ofd"; // 替换为你的 OFD 文件路径
-            using var archive = OfdArchive.OpenFromFile(ofdPath);
+            using var archive = OFDArchive.OpenFromFile(ofdPath);
 
             // 解压
             var tempDir = archive.ExtractToTempDirectory();

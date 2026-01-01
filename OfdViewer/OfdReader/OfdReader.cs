@@ -11,9 +11,9 @@ using System.Xml.Serialization;
 
 namespace OFDViewer.OFDReader
 {
-    public class OfdReader : IDisposable
+    public class OFDReader : IDisposable
     {
-        private readonly OfdArchive _archive;
+        private readonly OFDArchive _archive;
         private bool _disposed = false;
 
         /// <summary>
@@ -27,7 +27,7 @@ namespace OFDViewer.OFDReader
         /// <param name="filePath">OFD 文件路径</param>
         /// <exception cref="FileNotFoundException">文件不存在时抛出</exception>
         /// <exception cref="ArgumentNullException">文件路径为空时抛出</exception>
-        public OfdReader(string filePath)
+        public OFDReader(string filePath)
         {
             if (string.IsNullOrWhiteSpace(filePath))
                 throw new ArgumentNullException(nameof(filePath), "文件路径不能为空");
@@ -35,7 +35,7 @@ namespace OFDViewer.OFDReader
             if (!File.Exists(filePath))
                 throw new FileNotFoundException("OFD 文件不存在", filePath);
 
-            _archive = OfdArchive.OpenFromFile(filePath);
+            _archive = OFDArchive.OpenFromFile(filePath);
         }
 
         /// <summary>
@@ -43,12 +43,12 @@ namespace OFDViewer.OFDReader
         /// </summary>
         /// <param name="stream">OFD 文件流</param>
         /// <param name="leaveOpen">是否保持流打开状态</param>
-        public OfdReader(Stream stream, bool leaveOpen)
+        public OFDReader(Stream stream, bool leaveOpen)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream), "输入流不能为空");
 
-            _archive = OfdArchive.OpenFromStream(stream, leaveOpen: leaveOpen);
+            _archive = OFDArchive.OpenFromStream(stream, leaveOpen: leaveOpen); 
         }
 
         /// <summary>

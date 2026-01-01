@@ -9,10 +9,10 @@ using OFDViewer.Utils;
 
 namespace OFDViewer.Tests
 {
-    public class OfdReaderTests : IDisposable
+    public class OFDReaderTests : IDisposable
     {
         private MemoryStream _ofdStream;
-        private OfdArchive _archive;
+        private OFDArchive _archive;
 
         // 简单的 OFD.xml 内容，符合 OFD 根节点要求
         private const string OfdXmlContent = """
@@ -35,15 +35,15 @@ namespace OFDViewer.Tests
                 writer.Write(OfdXmlContent);
             }
             _ofdStream.Position = 0;
-            _archive = OfdArchive.OpenFromStream(_ofdStream, System.IO.Compression.ZipArchiveMode.Read, leaveOpen: true);
+            _archive = OFDArchive.OpenFromStream(_ofdStream, System.IO.Compression.ZipArchiveMode.Read, leaveOpen: true);
         }
 
         [Fact]
         public void Ctor_FilePath_ShouldThrow_WhenFilePathIsNullOrEmpty()
         {
-            Assert.Throws<ArgumentNullException>(() => new OfdReader(null,false));
-            Assert.Throws<ArgumentNullException>(() => new OfdReader(""));
-            Assert.Throws<ArgumentNullException>(() => new OfdReader("   "));
+            Assert.Throws<ArgumentNullException>(() => new OFDReader.OFDReader(null,false));
+            Assert.Throws<ArgumentNullException>(() => new OFDReader.OFDReader(""));
+            Assert.Throws<ArgumentNullException>(() => new OFDReader.OFDReader("   "));
         }
 
         [Fact]
@@ -51,7 +51,7 @@ namespace OFDViewer.Tests
         {
             string notExistPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".ofd");
             Assert.False(File.Exists(notExistPath));
-            Assert.Throws<FileNotFoundException>(() => new OfdReader(notExistPath));
+            Assert.Throws<FileNotFoundException>(() => new OFDReader.OFDReader(notExistPath));
         }
 
         [Fact]
@@ -62,7 +62,7 @@ namespace OFDViewer.Tests
             File.WriteAllBytes(tempFile, _ofdStream.ToArray());
             try
             {
-                using var reader = new OfdReader(tempFile);
+                using var reader = new OFDReader.OFDReader(tempFile);
                 Assert.NotNull(reader);
             }
             finally
@@ -74,14 +74,14 @@ namespace OFDViewer.Tests
         [Fact]
         public void Ctor_Stream_ShouldThrow_WhenStreamIsNull()
         {
-            Assert.Throws<ArgumentNullException>(() => new OfdReader((Stream)null, false));
+            Assert.Throws<ArgumentNullException>(() => new OFDReader.OFDReader((Stream)null, false));
         }
 
         [Fact]
         public void Ctor_Stream_ShouldSucceed()
         {
             CreateOfdArchiveWithOfdXml();
-            using var reader = new OfdReader(new MemoryStream(_ofdStream.ToArray()), false);
+            using var reader = new OFDReader.OFDReader(new MemoryStream(_ofdStream.ToArray()), false);
             Assert.NotNull(reader);
         }
 
@@ -89,7 +89,7 @@ namespace OFDViewer.Tests
         public void ParseOfdDocument_ShouldParseSuccessfully()
         {
             CreateOfdArchiveWithOfdXml();
-            using var reader = new OfdReader(new MemoryStream(_ofdStream.ToArray()), false);
+            using var reader = new OFDReader.OFDReader(new MemoryStream(_ofdStream.ToArray()), false);
             var ofd = reader.ParseOfdDocument();
             Assert.NotNull(ofd);
             Assert.Equal("1.0", ofd.Version);
@@ -102,7 +102,7 @@ namespace OFDViewer.Tests
         public void ParseOfdDocument_ShouldReturnCachedInstance()
         {
             CreateOfdArchiveWithOfdXml();
-            using var reader = new OfdReader(new MemoryStream(_ofdStream.ToArray()), false);
+            using var reader = new OFDReader.OFDReader(new MemoryStream(_ofdStream.ToArray()), false);
             var ofd1 = reader.ParseOfdDocument();
             var ofd2 = reader.ParseOfdDocument();
             Assert.Same(ofd1, ofd2);
@@ -121,7 +121,7 @@ namespace OFDViewer.Tests
             }
             _ofdStream.Position = 0;
 
-            using var reader = new OfdReader(new MemoryStream(_ofdStream.ToArray()), false);
+            using var reader = new OFDReader.OFDReader(new MemoryStream(_ofdStream.ToArray()), false);
             var ex = Assert.Throws<InvalidOperationException>(() => reader.ParseOfdDocument());
             Assert.Contains("解析 OFD 文档失败", ex.Message);
         }
@@ -130,7 +130,7 @@ namespace OFDViewer.Tests
         public void Dispose_ShouldNotThrow_WhenCalledMultipleTimes()
         {
             CreateOfdArchiveWithOfdXml();
-            var reader = new OfdReader(new MemoryStream(_ofdStream.ToArray()), false);
+            var reader = new OFDReader.OFDReader(new MemoryStream(_ofdStream.ToArray()), false);
             reader.Dispose();
             reader.Dispose();
         }
@@ -141,7 +141,7 @@ namespace OFDViewer.Tests
         public void ParseOfdDocument_ShouldParse()
         {
             var path = @"C:\Users\Administrator\Desktop\test.ofd";
-            using var reader = new OfdReader(path);
+            using var reader = new OFDReader.OFDReader(path);
             var ofd = reader.ParseOfdDocument();
             Assert.NotNull(ofd);
             Assert.Equal("1.1", ofd.Version);
@@ -154,7 +154,7 @@ namespace OFDViewer.Tests
         public void ParseOfdDocument_ParseAndSerializeToFile()
         {
             var path = @"C:\Users\Administrator\Desktop\";
-            using var reader = new OfdReader(path + "test.ofd");
+            using var reader = new OFDReader.OFDReader(path + "test.ofd");
             var ofd = reader.ParseOfdDocument();
             Assert.NotNull(ofd);
             XmlHelper.SerializeToFile(ofd, path+ "test.xml");

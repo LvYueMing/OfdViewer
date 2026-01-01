@@ -9,7 +9,7 @@ using System.Xml;
 
 namespace OFDViewer.OFDReader
 {
-    public class OfdArchive : IDisposable
+    public class OFDArchive : IDisposable
     {
         private ZipArchive _zipArchive;
         private readonly ConcurrentDictionary<string, ZipArchiveEntry> _entryCache;
@@ -21,10 +21,10 @@ namespace OFDViewer.OFDReader
         /// </summary>
         /// <param name="filePath">OFD 文件路径</param>
         /// <param name="mode">打开模式</param>
-        public static OfdArchive OpenFromFile(string filePath)
+        public static OFDArchive OpenFromFile(string filePath)
         {
             var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            return new OfdArchive(stream, ZipArchiveMode.Read, leaveOpen: false);
+            return new OFDArchive(stream, ZipArchiveMode.Read, leaveOpen: false);
         }
 
         /// <summary>
@@ -33,19 +33,19 @@ namespace OFDViewer.OFDReader
         /// <param name="filePath">OFD 文件路径</param>
         /// <param name="mode">打开模式</param>
         /// <param name="leaveOpen">是否保持流打开状态</param>
-        public static OfdArchive OpenFromFile(string filePath, ZipArchiveMode mode = ZipArchiveMode.Read, bool leaveOpen = false)
+        public static OFDArchive OpenFromFile(string filePath, ZipArchiveMode mode = ZipArchiveMode.Read, bool leaveOpen = false)
         {
             var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            return new OfdArchive(stream, mode, leaveOpen);
+            return new OFDArchive(stream, mode, leaveOpen);
         }
 
 
         /// <summary>
         /// 从流打开 OFD 文件
         /// </summary>
-        public static OfdArchive OpenFromStream(Stream stream)
+        public static OFDArchive OpenFromStream(Stream stream)
         {
-            return new OfdArchive(stream, ZipArchiveMode.Read, leaveOpen: false);
+            return new OFDArchive(stream, ZipArchiveMode.Read, leaveOpen: false);
         }
 
         /// <summary>
@@ -53,13 +53,13 @@ namespace OFDViewer.OFDReader
         /// </summary>
         /// <param name="mode">打开模式</param>
         /// <param name="leaveOpen">是否保持流打开状态</param>
-        public static OfdArchive OpenFromStream(Stream stream, ZipArchiveMode mode = ZipArchiveMode.Read, bool leaveOpen = false)
+        public static OFDArchive OpenFromStream(Stream stream, ZipArchiveMode mode = ZipArchiveMode.Read, bool leaveOpen = false)
         {
-            return new OfdArchive(stream, mode, leaveOpen);
+            return new OFDArchive(stream, mode, leaveOpen);
         }
 
 
-        private OfdArchive(Stream stream, ZipArchiveMode mode, bool leaveOpen)
+        private OFDArchive(Stream stream, ZipArchiveMode mode, bool leaveOpen)
         {
             _zipArchive = new ZipArchive(stream, mode, leaveOpen);
             _entryCache = new ConcurrentDictionary<string, ZipArchiveEntry>();
