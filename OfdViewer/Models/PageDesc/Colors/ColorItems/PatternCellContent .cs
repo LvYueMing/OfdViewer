@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
-using OFDViewer.Models.BasicStructure.Pages;
+using OFDViewer.Models.BaseStructure.Pages;
 using OFDViewer.Models.BaseType;
 
 namespace OFDViewer.Models.PageDesc.Colors.ColorItems

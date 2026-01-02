@@ -18,7 +18,7 @@ namespace OFDViewer.OFD
         /// <summary>
         /// OFD 文档信息
         /// </summary>
-        public Models.BasicStructure.MainEntry.OFD OfdDocument { get; private set; }
+        public Models.BaseStructure.MainEntry.OFD OfdDocument { get; private set; }
 
         /// <summary>
         /// 初始化 OFD 读取器
@@ -53,7 +53,7 @@ namespace OFDViewer.OFD
         /// <summary>
         /// 解析 OFD 主入口文件
         /// </summary>
-        public Models.BasicStructure.MainEntry.OFD ParseOfdDocument()
+        public Models.BaseStructure.MainEntry.OFD ParseOfdDocument()
         {
             if (OfdDocument != null)
                 return OfdDocument;
@@ -67,7 +67,7 @@ namespace OFDViewer.OFD
                 //ValidateOFDSignature(ofdStream);
 
                 // 解析主文档
-                OfdDocument = XmlHelper.DeserializeFromStream<Models.BasicStructure.MainEntry.OFD>(ofdStream);
+                OfdDocument = XmlHelper.DeserializeFromStream<Models.BaseStructure.MainEntry.OFD>(ofdStream);
 
                 // 加载相关资源
                 //LoadRelatedResources();

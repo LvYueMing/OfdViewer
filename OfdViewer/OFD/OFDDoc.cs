@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using OFDViewer.Models.BasicStructure.DocumentRoot;
+using OFDViewer.Models.BaseStructure.DocumentRoot;
+using OFDViewer.Models.BaseStructure.Resources;
 
 namespace OFDViewer.OFD
 {
@@ -15,9 +16,7 @@ namespace OFDViewer.OFD
         /// <summary>
         /// 文档主描述文件，定义页面尺寸、页面总数、文档结构等属性
         /// </summary>
-        public Document _document { get; set; }
-
-
+        public Document Document { get; set; }
 
         /// <summary>
         /// 文档序号（从1开始）

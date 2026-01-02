@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using OFDViewer.Models.BasicStructure.MainEntry;
+using OFDViewer.Models.BaseStructure.MainEntry;
 
 namespace OFDViewer.OFD
 {
@@ -15,7 +15,7 @@ namespace OFDViewer.OFD
         /// <summary>
         /// OFD.xml 对应的全局元数据对象
         /// </summary>
-        public Models.BasicStructure.MainEntry.OFD Ofd { get; set; }
+        public Models.BaseStructure.MainEntry.OFD Ofd { get; set; }
 
         /// <summary>
         /// 全局元数据文件路径（相对根目录）
@@ -31,7 +31,7 @@ namespace OFDViewer.OFD
         //无参构造函数
         public OFDDocument()
         {
-            Ofd = new Models.BasicStructure.MainEntry.OFD();
+            Ofd = new Models.BaseStructure.MainEntry.OFD();
         }
 
         /// <summary>
@@ -40,7 +40,7 @@ namespace OFDViewer.OFD
         /// <returns>新增的文档对象</returns>
         public OFDDoc AddNewDoc()
         {
-
+            return null;
         }
     }
 }
