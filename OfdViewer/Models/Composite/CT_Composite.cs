@@ -7,7 +7,7 @@ using System.Xml.Serialization;
 using OFDViewer.Models.PageDesc;
 using OFDViewer.Models.BaseType;
 
-namespace OFDViewer.Models.Composites
+namespace OFDViewer.Models.Composite
 {
     /// <summary>
     /// 复合对象

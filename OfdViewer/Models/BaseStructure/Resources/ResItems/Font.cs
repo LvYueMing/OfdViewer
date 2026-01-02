@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 using OFDViewer.Models.BaseType;
-using OFDViewer.Models.Fonts;
+using OFDViewer.Models.Font;
 using OFDViewer.Utils;
 
 namespace OFDViewer.Models.BaseStructure.Resources.ResItems

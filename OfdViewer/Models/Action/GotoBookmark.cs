@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 
-namespace OFDViewer.Models.Actions
+namespace OFDViewer.Models.Action
 {
     /// <summary>
     /// 跳转的目标书签 必选

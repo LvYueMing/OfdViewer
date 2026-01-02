@@ -8,7 +8,7 @@ using OFDViewer.Utils;
 using OFDViewer.Models.Enums;
 using OFDViewer.Models.BaseType;
 
-namespace OFDViewer.Models.Actions.ActionItems
+namespace OFDViewer.Models.Action.ActionItems
 {
     /// <summary>
     /// 播放视频动作

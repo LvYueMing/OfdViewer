@@ -7,7 +7,7 @@ using OFDViewer.Utils;
 using System.Xml.Serialization;
 using OFDViewer.Models.BaseType;
 
-namespace OFDViewer.Models.Fonts
+namespace OFDViewer.Models.Font
 {
     /// <summary>
     /// 字型

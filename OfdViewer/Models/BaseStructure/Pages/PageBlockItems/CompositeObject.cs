@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
-using OFDViewer.Models.Composites;
+using OFDViewer.Models.Composite;
 using OFDViewer.Models.BaseType;
 
 namespace OFDViewer.Models.BaseStructure.Pages.PageBlockItems

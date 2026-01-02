@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 
-namespace OFDViewer.Models.Actions.ActionItems
+namespace OFDViewer.Models.Action.ActionItems
 {
     /// <summary>
     /// 附件动作

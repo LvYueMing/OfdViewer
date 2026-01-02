@@ -7,7 +7,7 @@ using System.Xml.Serialization;
 using OFDViewer.Models.BaseType;
 using OFDViewer.Models.PageDesc.Colors;
 
-namespace OFDViewer.Models.Images
+namespace OFDViewer.Models.Image
 {
     /// <summary>
     /// 图像边框设置

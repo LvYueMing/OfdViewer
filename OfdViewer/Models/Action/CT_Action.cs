@@ -5,12 +5,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
-using OFDViewer.Graph.PathItems;
-using OFDViewer.Models.Actions.ActionItems;
+using OFDViewer.Models.Graph.PathItems;
+using OFDViewer.Models.Action.ActionItems;
 using OFDViewer.Models.Graph;
 using OFDViewer.Utils;
 
-namespace OFDViewer.Models.Actions
+namespace OFDViewer.Models.Action
 {
     /// <summary>
     /// 动作描述

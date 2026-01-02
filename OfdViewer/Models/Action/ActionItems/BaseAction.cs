@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OFDViewer.Models.Actions.ActionItems
+namespace OFDViewer.Models.Action.ActionItems
 {
     public class BaseAction
     {

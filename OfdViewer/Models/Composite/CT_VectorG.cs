@@ -7,7 +7,7 @@ using System.Xml.Serialization;
 using OFDViewer.Models.BaseStructure.Pages;
 using OFDViewer.Models.BaseType;
 
-namespace OFDViewer.Models.Composites
+namespace OFDViewer.Models.Composite
 {
     /// <summary>
     /// 矢量图像结构

@@ -7,7 +7,7 @@ using System.Xml.Serialization;
 using OFDViewer.Models.Enums;
 using OFDViewer.Utils;
 
-namespace OFDViewer.Models.Actions
+namespace OFDViewer.Models.Action
 {
     /// <summary>
     /// 目标区域

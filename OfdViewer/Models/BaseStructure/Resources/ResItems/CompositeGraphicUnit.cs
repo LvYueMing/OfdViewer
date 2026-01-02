@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using OFDViewer.Models.Composites;
+using OFDViewer.Models.Composite;
 using System.Xml.Serialization;
 using OFDViewer.Models.BaseType;
 using OFDViewer.Utils;

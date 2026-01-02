@@ -23,6 +23,14 @@ namespace OFDViewer.OFD
         /// </summary>
         public int DocIndex { get; }
 
+        //全文档公共资源描述文件
+        public Res PublicRes { get; set; }
+
+        //当前文档的资源描述文件
+        public Res DocumentRes { get; set; }
+
+
+
         /// <summary>
         /// 文档主描述文件路径（相对根目录）
         /// </summary>
@@ -43,65 +51,6 @@ namespace OFDViewer.OFD
         /// </summary>
         public string ResDirectoryPath => Constants.GetFilePath(Constants.Doc_ResDirectory, DocIndex);
 
-        /// <summary>
-        /// 文档签章集合
-        /// </summary>
-        public List<OfdSign> Signs { get; set; } = new List<OfdSign>();
-
-        /// <summary>
-        /// 文档页面集合
-        /// </summary>
-        public List<OfdPage> Pages { get; set; } = new List<OfdPage>();
-
-        /// <summary>
-        /// 文档共享资源集合
-        /// </summary>
-        public List<OfdRes> SharedRes { get; set; } = new List<OfdRes>();
-
-        internal OfdDoc(OfdDocument parentDocument, int docIndex)
-        {
-            _parentDocument = parentDocument;
-            DocIndex = docIndex;
-        }
-
-        /// <summary>
-        /// 添加新签章到当前文档
-        /// </summary>
-        public OfdSign AddNewSign()
-        {
-            var newSign = new OfdSign(this, Signs.Count + 1);
-            Signs.Add(newSign);
-            return newSign;
-        }
-
-        /// <summary>
-        /// 添加新页面到当前文档
-        /// </summary>
-        public OfdPage AddNewPage()
-        {
-            var newPage = new OfdPage(this, Pages.Count + 1);
-            Pages.Add(newPage);
-            return newPage;
-        }
-
-        /// <summary>
-        /// 添加文档共享图片资源
-        /// </summary>
-        public OfdRes AddSharedImageRes(string imageName = "Image")
-        {
-            var res = new OfdRes(this, SharedRes.Count + 1, OfdResType.Image, imageName);
-            SharedRes.Add(res);
-            return res;
-        }
-
-        /// <summary>
-        /// 添加文档共享字体资源
-        /// </summary>
-        public OfdRes AddSharedFontRes(string fontName = "Font")
-        {
-            var res = new OfdRes(this, SharedRes.Count + 1, OfdResType.Font, fontName);
-            SharedRes.Add(res);
-            return res;
-        }
+       
     }
 }

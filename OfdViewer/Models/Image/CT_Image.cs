@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using OFDViewer.PageDescription.Colors;
+using OFDViewer.Models.PageDesc.Colors;
 using System.Xml.Serialization;
 using OFDViewer.Models.PageDesc;
 using OFDViewer.Models.BaseType;
 
-namespace OFDViewer.Models.Images
+namespace OFDViewer.Models.Image
 {
     /// <summary>
     /// 图像

@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
-using OFDViewer.Models.Actions;
+using OFDViewer.Models.Action;
 
-namespace OFDViewer.Models.Actions.ActionItems
+namespace OFDViewer.Models.Action.ActionItems
 {
     /// <summary>
     /// 跳转动作

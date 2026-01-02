@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 
-namespace OFDViewer.Models.Fonts
+namespace OFDViewer.Models.Font
 {
     /// <summary>
     /// 文字定位
