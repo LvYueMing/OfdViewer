@@ -1,0 +1,71 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Xml.Serialization;
+using OFDViewer.Models.PageDesc.Colors.ColorItems;
+using OFDViewer.Models.BaseType;
+
+namespace OFDViewer.Models.PageDesc.Colors
+{
+    public class CT_Color
+    {
+        /// <summary>
+        /// 颜色定义, 渐变和填充被看作颜色的一种
+        /// xs:choice minOccurs="0" maxOccurs="1"
+        /// </summary>
+        [XmlElement("Pattern", Type = typeof(CT_Pattern))]
+        [XmlElement("AxialShd", Type = typeof(CT_AxialShd))]
+        [XmlElement("RadialShd", Type = typeof(CT_RadialShd))]
+        [XmlElement("GouraudShd", Type = typeof(CT_GouraudShd))]
+        [XmlElement("LaGourandShd", Type = typeof(CT_LaGouraudShd))]
+        public BaseColor ColorItem { get; set; }
+
+        /// <summary>
+        /// 颜色值,指定了当前颜色空间下各通道的取值。Value的取值应符
+        /// 合"通道1 通道2 通道3 …"格式。此属性不出现时,应采用Index
+        /// 属性从颜色空间的调色板中的取值。当二者都不出现时,该颜色各
+        /// 通道的值全部为0
+        /// 可选
+        /// </summary>
+        [XmlAttribute("Value")]
+        public ST_Array Value { get; set; }
+
+        /// <summary>
+        /// 调色板中颜色的编号,非负整数,将从当前颜色空间的调色板中取
+        /// 出相应索引的预定义颜色用来绘制。索引从0开始
+        /// 可选
+        /// </summary>
+        [XmlAttribute("Index")]
+        public int Index { get; set; }
+
+        /// <summary>
+        /// 控制Index属性是否序列化（未赋值时不输出）
+        /// </summary>
+        [XmlIgnore]
+        public bool IndexSpecified { get; set; }
+
+        /// <summary>
+        /// 引用资源文件中颜色空间的标识
+        /// 默认值为文档设定的颜色空间
+        /// 可选
+        /// </summary>
+        [XmlAttribute("ColorSpace")]
+        public ST_RefID ColorSpace { get; set; }
+
+        /// <summary>
+        /// 颜色透明度,在0~255之间取值。默认为255,表示完全不透明 可选
+        /// </summary>
+        [XmlAttribute("Alpha")]
+        public int Alpha { get; set; } = 255;
+
+        /// <summary>
+        /// 控制Alpha属性是否序列化（默认值255时也输出）
+        /// </summary>
+        [XmlIgnore]
+        public bool AlphaSpecified { get; set; } = true;
+
+
+    }
+}
