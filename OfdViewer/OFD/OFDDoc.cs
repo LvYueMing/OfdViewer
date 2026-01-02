@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using OFDViewer.Models.BaseStructure.DocumentRoot;
 using OFDViewer.Models.BaseStructure.Resources;
+using OFDViewer.Models.Signature;
 
 namespace OFDViewer.OFD
 {
@@ -29,7 +30,13 @@ namespace OFDViewer.OFD
         //当前文档的资源描述文件
         public Res DocumentRes { get; set; }
 
+        public Signatures Signatures { get; set; }
 
+        public List<SignDoc> signDocs = new List<SignDoc>();
+
+        public List<PageDoc> signDocs = new List<PageDoc>();
+
+        public List<string> Resources;
 
         /// <summary>
         /// 文档主描述文件路径（相对根目录）
