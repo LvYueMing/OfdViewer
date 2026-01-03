@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using OFDViewer.BaseType;
-using OFDViewer.Graph.PathItems;
-using OFDViewer.Graph;
 using Xunit;
 using OFDViewer.Utils;
+using OFDViewer.Models.Graph;
+using OFDViewer.Models.BaseType;
+using OFDViewer.Models.Graph.PathItems;
 
 namespace OFDViewer.Tests
 {

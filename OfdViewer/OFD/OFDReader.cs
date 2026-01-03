@@ -1,4 +1,5 @@
-﻿using OFDViewer.Utils;
+﻿using OFDViewer.Models.BaseStructure.MainEntry;
+using OFDViewer.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,7 +19,7 @@ namespace OFDViewer.OFD
         /// <summary>
         /// OFD 文档信息
         /// </summary>
-        public Models.BaseStructure.MainEntry.OFD OfdDocument { get; private set; }
+        public RootOFD OfdDocument { get; private set; }
 
         /// <summary>
         /// 初始化 OFD 读取器
@@ -53,7 +54,7 @@ namespace OFDViewer.OFD
         /// <summary>
         /// 解析 OFD 主入口文件
         /// </summary>
-        public Models.BaseStructure.MainEntry.OFD ParseOfdDocument()
+        public RootOFD ParseOfdDocument()
         {
             if (OfdDocument != null)
                 return OfdDocument;
@@ -67,7 +68,7 @@ namespace OFDViewer.OFD
                 //ValidateOFDSignature(ofdStream);
 
                 // 解析主文档
-                OfdDocument = XmlHelper.DeserializeFromStream<Models.BaseStructure.MainEntry.OFD>(ofdStream);
+                OfdDocument = XmlHelper.DeserializeFromStream<RootOFD>(ofdStream);
 
                 // 加载相关资源
                 //LoadRelatedResources();

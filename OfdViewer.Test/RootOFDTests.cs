@@ -11,7 +11,7 @@ using Xunit;
 namespace OFDViewer.Tests
 {
 
-    public class OFDTests
+    public class RootOFDTests
     {
         /// <summary>
         /// 测试目标：验证默认构造函数是否设置正确的默认值
@@ -22,7 +22,7 @@ namespace OFDViewer.Tests
         public void Constructor_Default_ShouldSetDefaultValues()
         {
             // 准备测试数据
-            var ofd = new BasicStructure.MainEntry.OFD();
+            var ofd = new RootOFD();
 
             // 验证默认值设置
             Assert.Equal("1.0", ofd.Version);
@@ -43,7 +43,7 @@ namespace OFDViewer.Tests
             var docBodies = new List<DocBody> { new DocBody() };
 
             // 执行测试
-            var ofd = new BasicStructure.MainEntry.OFD("OFD", docBodies);
+            var ofd = new RootOFD("OFD", docBodies);
 
             // 验证属性设置
             Assert.Equal("1.0", ofd.Version);
@@ -64,7 +64,7 @@ namespace OFDViewer.Tests
             var docBodies = new List<DocBody> { new DocBody() };
 
             // 执行测试
-            var ofd = new BasicStructure.MainEntry.OFD("OFD-A", docBodies);
+            var ofd = new RootOFD("OFD-A", docBodies);
 
             // 验证文档类型设置
             Assert.Equal("OFD-A", ofd.DocTypeString);
@@ -82,7 +82,7 @@ namespace OFDViewer.Tests
             var emptyDocBodies = new List<DocBody>();
 
             // 验证异常抛出
-            var exception = Assert.Throws<ArgumentException>(() => new BasicStructure.MainEntry.OFD("OFD", emptyDocBodies));
+            var exception = Assert.Throws<ArgumentException>(() => new RootOFD("OFD", emptyDocBodies));
             Assert.Contains("至少包含一个元素", exception.Message);
         }
 
@@ -95,7 +95,7 @@ namespace OFDViewer.Tests
         public void Constructor_WithNullDocBodies_ShouldThrowArgumentNullException()
         {
             // 验证空参数异常
-            var exception = Assert.Throws<ArgumentNullException>(() => new BasicStructure.MainEntry.OFD("OFD", null));
+            var exception = Assert.Throws<ArgumentNullException>(() => new RootOFD("OFD", null));
             Assert.Equal("docBodies", exception.ParamName);
         }
 
@@ -108,7 +108,7 @@ namespace OFDViewer.Tests
         public void Version_SetValidValue_ShouldUpdateProperty()
         {
             // 准备测试数据
-            var ofd = new BasicStructure.MainEntry.OFD();
+            var ofd = new RootOFD();
 
             // 执行属性设置
             ofd.Version = "1.1";
@@ -131,7 +131,7 @@ namespace OFDViewer.Tests
         public void Version_SetInvalidValue_ShouldThrowArgumentException(string invalidVersion)
         {
             // 准备测试数据
-            var ofd = new BasicStructure.MainEntry.OFD();
+            var ofd = new RootOFD();
 
             // 验证异常抛出
             var exception = Assert.Throws<ArgumentException>(() => ofd.Version = invalidVersion);
@@ -148,7 +148,7 @@ namespace OFDViewer.Tests
         public void DocTypeString_SetValidValue_ShouldUpdateDocType()
         {
             // 准备测试数据
-            var ofd = new BasicStructure.MainEntry.OFD();
+            var ofd = new RootOFD();
 
             // 执行属性设置
             ofd.DocTypeString = "OFD-A";
@@ -170,7 +170,7 @@ namespace OFDViewer.Tests
         public void DocTypeString_SetInvalidValue_ShouldThrowArgumentException(string invalidDocType)
         {
             // 准备测试数据
-            var ofd = new BasicStructure.MainEntry.OFD();
+            var ofd = new RootOFD();
 
             // 验证异常抛出
             var exception = Assert.Throws<ArgumentException>(() => ofd.DocTypeString = invalidDocType);
@@ -187,7 +187,7 @@ namespace OFDViewer.Tests
         public void AddDocBody_ValidDocBody_ShouldAddToList()
         {
             // 准备测试数据
-            var ofd = new BasicStructure.MainEntry.OFD();
+            var ofd = new RootOFD();
             var docBody = new DocBody();
 
             // 执行添加操作
@@ -207,7 +207,7 @@ namespace OFDViewer.Tests
         public void AddDocBody_NullDocBody_ShouldThrowArgumentNullException()
         {
             // 准备测试数据
-            var ofd = new BasicStructure.MainEntry.OFD();
+            var ofd = new RootOFD();
 
             // 验证异常抛出
             var exception = Assert.Throws<ArgumentNullException>(() => ofd.AddDocBody(null));
@@ -223,10 +223,10 @@ namespace OFDViewer.Tests
         public void SerializeToXml_DefaultOFD_ShouldThrowXmlRequiredValidationException()
         {
             // 准备测试数据和序列化器
-            var ofd = new BasicStructure.MainEntry.OFD();
+            var ofd = new RootOFD();
 
             //XmlHelper.SerializeToString 序列化时，特性校验list数量，会异常，断言异常
-            var exception = Assert.Throws<XmlRequiredValidationException>(() => XmlHelper.SerializeToString<Models.BaseStructure.MainEntry.OFD>(ofd));
+            var exception = Assert.Throws<XmlRequiredValidationException>(() => XmlHelper.SerializeToString<RootOFD>(ofd));
             Assert.Equal("DocBodies", exception.PropertyName);
             Assert.Contains("元素个数无效", exception.Message);
         }
@@ -241,7 +241,7 @@ namespace OFDViewer.Tests
         public void SerializeToXml_WithSingleDocBody_ShouldGenerateCorrectXml()
         {
             // 准备测试数据和序列化器
-            var ofd = new BasicStructure.MainEntry.OFD();
+            var ofd = new RootOFD();
             ofd.AddDocBody(new DocBody());
 
             var xml = XmlHelper.SerializeToString(ofd);
@@ -284,8 +284,8 @@ namespace OFDViewer.Tests
         {
             // 准备测试数据
             var docBodies = new List<DocBody> { new DocBody(), new DocBody() };
-            var ofd = new BasicStructure.MainEntry.OFD("OFD", docBodies);
-            var serializer = new XmlSerializer(typeof(Models.BaseStructure.MainEntry.OFD));
+            var ofd = new RootOFD("OFD", docBodies);
+            var serializer = new XmlSerializer(typeof(RootOFD));
 
             // 执行序列化
             var xml = XmlHelper.SerializeToString(ofd);
@@ -311,7 +311,7 @@ namespace OFDViewer.Tests
         {
             // 准备测试数据
             var docBodies = new List<DocBody> { new DocBody() };
-            var ofd = new BasicStructure.MainEntry.OFD("OFD-A", docBodies);
+            var ofd = new RootOFD("OFD-A", docBodies);
 
             // 执行序列化
             var xml = XmlHelper.SerializeToString(ofd);
@@ -337,7 +337,7 @@ namespace OFDViewer.Tests
         {
             // 准备测试数据
             var docBodies = new List<DocBody> { new DocBody() };
-            var ofd = new BasicStructure.MainEntry.OFD("OFD", docBodies)
+            var ofd = new RootOFD("OFD", docBodies)
             {
                 Version = "1.1"
             };
@@ -366,7 +366,7 @@ namespace OFDViewer.Tests
         public void SerializeAndDeserialize_ShouldMaintainDataIntegrity()
         {
             // 准备原始测试数据
-            var original = new BasicStructure.MainEntry.OFD("OFD-A", new List<DocBody> { new DocBody() })
+            var original = new RootOFD("OFD-A", new List<DocBody> { new DocBody() })
             {
                 Version = "1.1"
             };
@@ -375,7 +375,7 @@ namespace OFDViewer.Tests
             var xml = XmlHelper.SerializeToString(original);
 
             // 执行反序列化
-            var deserialized = XmlHelper.DeserializeFromString<Models.BaseStructure.MainEntry.OFD>(xml);
+            var deserialized = XmlHelper.DeserializeFromString<RootOFD>(xml);
 
             // 验证数据完整性
             Assert.NotNull(deserialized);
@@ -397,11 +397,11 @@ namespace OFDViewer.Tests
             var xml = $@"<OFD Version=""1.0"" DocType=""OFD"" xmlns=""{Constants.OFD_NAMESPACE_URI}"">
                       <DocBody />
                     </OFD>";
-            var serializer = new XmlSerializer(typeof(Models.BaseStructure.MainEntry.OFD));
+            var serializer = new XmlSerializer(typeof(RootOFD));
 
             // 执行反序列化
             using var stringReader = new StringReader(xml);
-            var ofd = (Models.BaseStructure.MainEntry.OFD)serializer.Deserialize(stringReader);
+            var ofd = (RootOFD)serializer.Deserialize(stringReader);
 
             // 验证反序列化结果
             Assert.NotNull(ofd);
@@ -419,7 +419,7 @@ namespace OFDViewer.Tests
         public void XmlRootAttribute_ShouldHaveCorrectNamespace()
         {
             // 获取 XmlRootAttribute 特性
-            var xmlRootAttribute = typeof(Models.BaseStructure.MainEntry.OFD).GetCustomAttribute<XmlRootAttribute>();
+            var xmlRootAttribute = typeof(RootOFD).GetCustomAttribute<XmlRootAttribute>();
 
             // 验证特性配置
             Assert.NotNull(xmlRootAttribute);
@@ -436,7 +436,7 @@ namespace OFDViewer.Tests
         public void XmlElementAttribute_ForDocBodies_ShouldHaveCorrectNamespace()
         {
             // 获取属性信息
-            var propertyInfo = typeof(Models.BaseStructure.MainEntry.OFD).GetProperty("DocBodies");
+            var propertyInfo = typeof(RootOFD).GetProperty("DocBodies");
             var xmlElementAttribute = propertyInfo.GetCustomAttribute<XmlElementAttribute>();
 
             // 验证特性配置
@@ -450,7 +450,7 @@ namespace OFDViewer.Tests
         [Fact]
         public void SerializeToXml_WithDocRoot_SetValue_ShouldConstructCorrectPath()
         {
-            var ofd = new BasicStructure.MainEntry.OFD();
+            var ofd = new RootOFD();
             var docBody = new DocBody();
             docBody.DocRoot = Constants.GetFilePath(Constants.Doc_DocumentFile);
             ofd.AddDocBody(docBody);

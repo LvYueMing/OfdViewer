@@ -1,5 +1,5 @@
-using OFDViewer.BaseType;
 using System;
+using OFDViewer.Models.BaseType;
 using Xunit;
 
 namespace OFDViewer.Tests

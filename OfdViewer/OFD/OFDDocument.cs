@@ -8,39 +8,68 @@ using OFDViewer.Models.BaseStructure.MainEntry;
 namespace OFDViewer.OFD
 {
     /// <summary>
-    /// OFD根文档对象，对应整个OFD压缩包
+    /// OFD根文档对象，对应整个OFD压缩包（ZIP容器）
     /// </summary>
     public class OFDDocument
     {
         /// <summary>
-        /// OFD.xml 对应的全局元数据对象
+        /// OFD.xml 对应的全局元数据对象（文档根节点、版本、文档数量等核心信息）
         /// </summary>
-        public Models.BaseStructure.MainEntry.OFD Ofd { get; set; }
+        public RootOFD OfdMetadata { get; set; }
 
         /// <summary>
-        /// 全局元数据文件路径（相对根目录）
+        /// 全局元数据文件路径（相对根目录，固定路径）
         /// </summary>
-        public string OfdFilePath => Constants.Root_OfdMetadataFile;
+        public string OfdMetadataFilePath => Constants.Root_OfdMetadataFile;
 
         /// <summary>
-        /// 文档集合（对应 Doc_1、Doc_2...）
+        /// 文档集合（对应 Doc_0、Doc_1... 子文档目录，有序存储）
         /// </summary>
         public List<OFDDoc> Docs { get; set; } = new List<OFDDoc>();
 
-
-        //无参构造函数
-        public OFDDocument()
+        /// <summary>
+        /// 单文档快捷访问属性（默认获取第一个文档 DocIndex=0，适配绝大多数单文档场景）
+        /// 简化操作：无需通过 Docs[0] 遍历，直接访问 DefaultDoc
+        /// </summary>
+        public OFDDoc DefaultDoc
         {
-            Ofd = new Models.BaseStructure.MainEntry.OFD();
+            get
+            {
+                // 若文档集合为空，自动创建第一个文档（DocIndex=0，容错处理）
+                if (Docs == null || Docs.Count == 0)
+                {
+                    AddNewDoc();
+                }
+                // 返回第一个文档（DocIndex=0，默认单文档）
+                return Docs[0];
+            }
         }
 
         /// <summary>
-        /// 添加新文档到OFD根文档，并自动同步到 OfdMetadata 的 Docs 列表
+        /// 无参构造函数，初始化全局元数据对象，并自动创建第一个默认文档（DocIndex=0）
         /// </summary>
-        /// <returns>新增的文档对象</returns>
+        public OFDDocument()
+        {
+            OfdMetadata = new RootOFD();
+            // 自动初始化第一个文档（DocIndex=0），适配单文档默认场景
+            AddNewDoc();
+        }
+
+        /// <summary>
+        /// 添加新文档到OFD根文档，并自动同步文档序号
+        /// </summary>
+        /// <returns>新增的子文档对象</returns>
         public OFDDoc AddNewDoc()
         {
-            return null;
+            // 自动生成文档序号（从1开始，基于现有文档数量自增）
+            int newDocIndex = Docs.Count + 1;
+            var newDoc = new OFDDoc(newDocIndex);
+            Docs.Add(newDoc);
+
+            // 可选：同步更新全局元数据中的文档数量（贴合OFD标准）
+            // OfdMetadata.DocCount = Docs.Count;
+
+            return newDoc;
         }
     }
 }

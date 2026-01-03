@@ -1,7 +1,4 @@
-﻿using OFDViewer.Actions;
-using OFDViewer.BaseType;
-using OFDViewer.BasicStructure.DocumentRoot;
-using OFDViewer.BasicStructure.Outlines;
+﻿using OFDViewer.Models.BaseStructure.DocumentRoot;
 using OFDViewer.Utils;
 using System;
 using System.Collections.Generic;

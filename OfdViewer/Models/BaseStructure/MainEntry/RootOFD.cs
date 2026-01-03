@@ -9,7 +9,7 @@ namespace OFDViewer.Models.BaseStructure.MainEntry
     /// OFD 根节点模型（符合 GB/T 33190-2016 规范）
     /// </summary>
     [XmlRoot("OFD", Namespace = Constants.OFD_NAMESPACE_URI)]
-    public class OFD
+    public class RootOFD
     {
         #region 常量定义（限定合法值，符合 OFD 标准）
         /// <summary>
@@ -108,7 +108,7 @@ namespace OFDViewer.Models.BaseStructure.MainEntry
         /// <summary>
         /// 无参构造函数（XmlSerializer 必需）
         /// </summary>
-        public OFD()
+        public RootOFD()
         {
             // 默认值符合标准，避免反序列化后空值
             Version = DefaultVersion;
@@ -123,7 +123,7 @@ namespace OFDViewer.Models.BaseStructure.MainEntry
         /// <param name="docType">文档类型（OFD/OFD-A）</param>
         /// <param name="docBodies">文件对象入口列表</param>
         /// <exception cref="ArgumentNullException">文档入口列表为空时抛出</exception>
-        public OFD(string docType, List<DocBody> docBodies)
+        public RootOFD(string docType, List<DocBody> docBodies)
         {
             // 默认值符合标准，避免反序列化后空值
             Version = DefaultVersion;
