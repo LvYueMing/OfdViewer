@@ -16,6 +16,8 @@ namespace OFDViewer.OFD
         private readonly ConcurrentDictionary<string, XmlDocument> _xmlCache;
         private readonly string _tempExtractPath;
 
+
+        #region 打开归档（读取模式）
         /// <summary>
         /// 打开 OFD 文件
         /// </summary>
@@ -32,7 +34,7 @@ namespace OFDViewer.OFD
         /// </summary>
         /// <param name="filePath">OFD 文件路径</param>
         /// <param name="mode">打开模式</param>
-        /// <param name="leaveOpen">是否保持流打开状态</param>
+        /// <param name="leaveOpen">false(默认):释放ZipArchive时自动释放stream; true:释放ZipArchive时不自动释放stream </param>
         public static OFDArchive OpenFromFile(string filePath, ZipArchiveMode mode = ZipArchiveMode.Read, bool leaveOpen = false)
         {
             var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
@@ -52,11 +54,38 @@ namespace OFDViewer.OFD
         /// 从流打开 OFD 文件
         /// </summary>
         /// <param name="mode">打开模式</param>
-        /// <param name="leaveOpen">是否保持流打开状态</param>
+        /// <param name="leaveOpen">false(默认):释放ZipArchive时自动释放stream; true:释放ZipArchive时不自动释放stream </param>
         public static OFDArchive OpenFromStream(Stream stream, ZipArchiveMode mode = ZipArchiveMode.Read, bool leaveOpen = false)
         {
             return new OFDArchive(stream, mode, leaveOpen);
         }
+
+        #endregion
+
+
+        #region 创建归档（写入模式）
+        /// <summary>
+        /// 从文件路径创建OFD归档（写入模式）
+        /// </summary>
+        /// <param name="filePath">文件路径</param>
+        /// <returns>OFD归档对象</returns>
+        public static OFDArchive CreateFromFile(string filePath)
+        {
+            var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write);
+            return new OFDArchive(stream, ZipArchiveMode.Create, leaveOpen: false);
+        }
+
+        /// <summary>
+        /// 从流创建OFD归档（写入模式）
+        /// </summary>
+        /// <param name="stream">输出流</param>
+        /// <param name="leaveOpen">false(默认):释放ZipArchive时自动释放stream; true:释放ZipArchive时不自动释放stream </param>
+        /// <returns>OFD归档对象</returns>
+        public static OFDArchive CreateFromStream(Stream stream, bool leaveOpen)
+        {
+            return new OFDArchive(stream, ZipArchiveMode.Create, leaveOpen);
+        }
+        #endregion
 
 
         private OFDArchive(Stream stream, ZipArchiveMode mode, bool leaveOpen)
@@ -71,6 +100,22 @@ namespace OFDViewer.OFD
                 _entryCache.TryAdd(NormalizePath(entry.FullName), entry);
             }
         }
+
+
+        /// <summary>
+        /// 创建OFD文件写入流
+        /// </summary>
+        /// <param name="fileName">文件名称（相对路径）</param>
+        /// <returns>写入流</returns>
+        public Stream CreateFileStream(string fileName)
+        {
+            if (_zipArchive == null)
+                throw new InvalidOperationException("OFD归档已释放，无法创建文件流");
+
+            var entry = _zipArchive.CreateEntry(fileName);
+            return entry.Open();
+        }
+
 
         /// <summary>
         /// 获取文件内容流
