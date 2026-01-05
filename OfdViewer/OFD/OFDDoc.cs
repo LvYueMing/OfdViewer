@@ -17,7 +17,7 @@ namespace OFDViewer.OFD
         /// <summary>
         /// 文档主描述文件（Document.xml），定义页面尺寸、页面总数、文档结构等属性
         /// </summary>
-        public Document Document { get; set; } = new Document();
+        public Document Document { get; set; }
 
         /// <summary>
         /// 文档序号（从0开始，只读，构造时赋值）
@@ -27,32 +27,32 @@ namespace OFDViewer.OFD
         /// <summary>
         /// 全文档公共资源描述文件（PublicRes.xml）
         /// </summary>
-        public Res PublicResource { get; set; } = new Res();
+        public Res PublicResource { get; set; }
 
         /// <summary>
         /// 当前文档的资源描述文件（DocumentRes.xml）
         /// </summary>
-        public Res DocumentResource { get; set; } = new Res();
+        public Res DocumentResource { get; set; }
 
         /// <summary>
         /// 签章列表索引对象（对应Signatures.xml，记录所有签章信息）
         /// </summary>
-        public Signatures Signatures { get; set; } = new Signatures();
+        public Signatures Signatures { get; set; }
 
         /// <summary>
         /// 单个签章对象集合（对应Sign_N目录，一个文档可包含多个签章）
         /// </summary>
-        public List<SignDoc> SignDocs { get; set; } = new List<SignDoc>();
+        public List<SignDoc> SignDocs { get; set; } 
 
         /// <summary>
         /// 单个页面对象集合（对应Page_N目录，存储文档所有页面）
         /// </summary>
-        public List<PageDoc> PageDocs { get; set; } = new List<PageDoc>();
+        public List<PageDoc> PageDocs { get; set; }
 
         /// <summary>
         /// 文档级资源文件路径集合（存储Res目录下的字体、图片等资源路径）
         /// </summary>
-        public List<string> ResourceFilePaths { get; set; } = new List<string>();
+        public List<string> ResourceFilePaths { get; set; }
 
         /// <summary>
         /// 文档主描述文件路径（相对根目录，基于文档序号动态生成）
@@ -87,6 +87,7 @@ namespace OFDViewer.OFD
                 throw new ArgumentOutOfRangeException(nameof(docIndex), "文档序号必须从0开始，不允许为负数");
             }
             DocIndex = docIndex;
+            Document = new Document();
         }
 
 

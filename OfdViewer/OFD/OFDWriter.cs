@@ -16,11 +16,14 @@ namespace OFDViewer.OFD
     /// </summary>
     public class OFDWriter : IDisposable
     {
-        // 私有字段：OFD归档对象（只读，确保初始化后不可修改）
+        // OFD归档对象（只读，确保初始化后不可修改）
         private readonly OFDArchive _archive;
 
-        // 私有字段：资源释放标记（线程安全的布尔标识）
+        // 资源释放标记（线程安全的布尔标识）
         private bool _disposed = false;
+
+        // 归档是否已保存的标记，避免重复保存
+        private bool _saved = false;
 
 
         #region 构造函数
@@ -33,26 +36,26 @@ namespace OFDViewer.OFD
         /// <exception cref="DirectoryNotFoundException">输出目录不存在且无法自动创建时抛出</exception>
         public OFDWriter(string filePath)
         {
-            // 严格参数校验，与OFDReader的参数校验风格一致
+            // 严格参数校验,构造阶段的致命错误必须抛出
             if (string.IsNullOrWhiteSpace(filePath))
-                throw new ArgumentNullException(nameof(filePath), "OFD输出文件路径不能为空或仅包含空白字符");
+                throw new ArgumentNullException(nameof(filePath) ,"OFD输出文件路径不能为空");
 
-            // 确保输出目录存在，增强容错性
-            string outputDir = Path.GetDirectoryName(filePath);
-            if (!Directory.Exists(outputDir))
+            try
             {
-                try
+                // 确保输出目录存在，增强容错性
+                string outputDir = Path.GetDirectoryName(filePath);
+                if (!Directory.Exists(outputDir))
                 {
                     Directory.CreateDirectory(outputDir);
                 }
-                catch (Exception ex)
-                {
-                    throw new DirectoryNotFoundException("无法创建OFD输出目录，请检查路径权限", ex);
-                }
-            }
 
-            // 初始化OFD归档（写入模式）
-            _archive = OFDArchive.CreateFromFile(filePath);
+                // 初始化OFD归档（写入模式）
+                _archive = OFDArchive.CreateFromFile(filePath);
+            }
+            catch (Exception ex) when (ex is not ArgumentNullException)
+            {
+                throw new DirectoryNotFoundException("无法创建OFD输出目录或初始化归档，请检查路径权限", ex);
+            }
         }
 
         /// <summary>
@@ -64,7 +67,7 @@ namespace OFDViewer.OFD
         /// <exception cref="ArgumentException">输入流不支持写入时抛出</exception>
         public OFDWriter(Stream stream, bool leaveOpen)
         {
-            // 增强参数校验，与OFDReader的流校验风格一致
+            // 增强参数校验，构造阶段的致命错误必须抛出
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream), "OFD输出流不能为空");
 
@@ -74,6 +77,7 @@ namespace OFDViewer.OFD
             // 初始化OFD归档（写入模式）
             _archive = OFDArchive.CreateFromStream(stream, leaveOpen: leaveOpen);
         }
+
         #endregion
 
 
@@ -87,27 +91,26 @@ namespace OFDViewer.OFD
         /// <exception cref="ObjectDisposedException">对象已释放时抛出</exception>
         /// <exception cref="ArgumentNullException">OFD文档对象为空时抛出</exception>
         /// <exception cref="InvalidOperationException">写入过程中出现异常时抛出</exception>
-        public void WriteEntireDocument(OFDDocument ofdDocument)
+        public void WriteOFDDocument(OFDDocument ofdDocument)
         {
-            // 1. 资源状态校验
-            if (_disposed)
-                throw new ObjectDisposedException(nameof(OFDWriter), "OFD写入器已释放，无法执行写入操作");
+            // 资源状态校验 释放对象 ≠ 对象引用为空
+            EnsureNotDisposed();
 
-            // 2. 参数有效性校验
+            // 参数有效性校验
             if (ofdDocument == null)
                 throw new ArgumentNullException(nameof(ofdDocument), "待写入的OFD文档对象不能为空");
             if (ofdDocument.OfdMetadata == null)
-                throw new ArgumentNullException(nameof(ofdDocument.OfdMetadata), "OFD文档的全局元数据（OfdMetadata）不能为空");
+                throw new ArgumentNullException(nameof(ofdDocument.OfdMetadata), "OFD文档的全局元数据(RootOFD)不能为空");
             if (ofdDocument.Docs == null || ofdDocument.Docs.Count == 0)
                 throw new InvalidOperationException("OFD文档中无可用子文档，无法完成全量写入");
 
             try
             {
-                // 3. 第一步：写入核心元数据（OFD.xml），并自动创建子文档目录框架
-                int docCount = ofdDocument.Docs.Count;
-                WriteRootOFD(ofdDocument.OfdMetadata, docCount);
+                // 第一步：写入核心元数据（OFD.xml），并自动创建子文档目录框架
+                //int docCount = ofdDocument.Docs.Count;
+                WriteRootOFD(ofdDocument.OfdMetadata);
 
-                // 4. 第二步：遍历写入所有子文档元数据（Doc.xml）
+                // 第二步：遍历写入所有子文档元数据（Doc.xml）
                 foreach (var doc in ofdDocument.Docs)
                 {
                     // 跳过空的子文档，提升容错性
@@ -115,15 +118,11 @@ namespace OFDViewer.OFD
                         continue;
 
                     // 复用原有WriteDocMetadata方法，保证逻辑一致性
-                    WriteDocMetadata(doc);
+                    WriteOFDDoc(doc);
                 }
 
                 // 可选：如需写入其他附属文件（如缩略图、字体等），可在此扩展
                 // WriteAttachments(ofdDocument.Attachments);
-            }
-            catch (ArgumentNullException ex)
-            {
-                throw new InvalidOperationException("OFD文档核心参数缺失，无法完成全量写入", ex);
             }
             catch (Exception ex)
             {
@@ -139,62 +138,57 @@ namespace OFDViewer.OFD
         /// <exception cref="ObjectDisposedException">对象已释放时抛出</exception>
         /// <exception cref="ArgumentNullException">元数据对象为空时抛出</exception>
         /// <exception cref="InvalidOperationException">写入失败时抛出</exception>
-        public void WriteRootOFD(RootOFD rootOfd, int docCount = 0)
+        public void WriteRootOFD(RootOFD rootOfd)
         {
-            // 资源状态校验，避免操作已释放对象，与OFDReader对齐
-            if (_disposed)
-                throw new ObjectDisposedException(nameof(OFDWriter), "OFD写入器已释放，无法执行写入操作");
+            // 资源状态校验
+            EnsureNotDisposed();
 
             // 参数校验，保证输入有效性
             if (rootOfd == null)
-                throw new ArgumentNullException(nameof(rootOfd), "OFD全局元数据对象不能为空");
+                throw new ArgumentNullException(nameof(rootOfd), "OFD全局元数据(RootOFD)对象不能为空");
 
             try
             {
-                // 获取写入流（对应OFDReader的GetFileStream）
+                // 获取写入流；OFD根文档 OFD.xml
                 using var ofdStream = _archive.CreateFileStream("OFD.xml");
                 // 二次校验流有效性
                 if (ofdStream == null || !ofdStream.CanWrite)
                     throw new InvalidDataException("无法创建OFD核心文件OFD.xml的写入流，归档对象可能损坏");
 
-                // 序列化元数据并写入流（对应OFDReader的反序列化）
+                // 序列化元数据并写入流
                 XmlHelper.SerializeToStream(rootOfd, ofdStream);
 
-                if (docCount > 0)
-                {
-                    CreateDocDirectoryFramework(docCount);
-                }
-            }
-            catch (InvalidDataException ex)
-            {
-                throw new InvalidOperationException("写入OFD核心文件OFD.xml失败，无法创建有效写入流", ex);
+                //if (docCount > 0)
+                //{
+                //    CreateDocDirectoryFramework(docCount);
+                //}
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException("写入OFD全局元数据失败，请检查归档对象完整性", ex);
+                throw new InvalidOperationException("写入OFD全局元数据(RootOFD)失败，请检查归档对象完整性", ex);
             }
         }
 
         /// <summary>
-        /// 写入OFD子文档元数据（Doc.xml，扩展方法，增强实用性）
+        /// 写入OFD子文档元数据
         /// </summary>
         /// <param name="doc">子文档对象</param>
         /// <exception cref="ObjectDisposedException">对象已释放时抛出</exception>
         /// <exception cref="ArgumentNullException">子文档对象为空时抛出</exception>
-        public void WriteDocMetadata(OFDDoc doc)
+        public void WriteOFDDoc(OFDDoc doc)
         {
-            if (_disposed)
-                throw new ObjectDisposedException(nameof(OFDWriter), "OFD写入器已释放，无法执行写入操作");
+            // 资源状态校验
+            EnsureNotDisposed();
 
             if (doc == null)
                 throw new ArgumentNullException(nameof(doc), "OFD子文档对象不能为空");
 
             try
             {
-                // 构建子文档元数据路径（如Doc_0/Doc.xml）
-                string docXmlPath = $"{doc.DocDirectoryPath}/Doc.xml";
+                // 构建子文档元数据路径（如Doc_0/Document.xml）
+                string docXmlPath = doc.DocumentFilePath;
                 // 创建子文档目录（确保目录存在）
-                _archive.CreateDirectory(doc.DocDirectoryPath);
+                //_archive.CreateDirectory(doc.DocDirectoryPath);
                 // 创建并写入子文档元数据文件
                 using var docStream = _archive.CreateFileStream(docXmlPath);
                 if (docStream == null || !docStream.CanWrite)
@@ -209,6 +203,40 @@ namespace OFDViewer.OFD
                 throw new InvalidOperationException($"写入OFD子文档（索引：{doc.DocIndex}）元数据失败", ex);
             }
         }
+
+
+        /// <summary>
+        /// 将OFD归档数据保存为物理文件（核心：完成最终的磁盘写入）
+        /// 调用后所有写入的元数据才会真正持久化到.ofd文件中
+        /// </summary>
+        /// <exception cref="ObjectDisposedException">对象已释放时抛出</exception>
+        /// <exception cref="InvalidOperationException">保存失败时抛出</exception>
+        public void Save()
+        {
+            // 校验资源状态
+            EnsureNotDisposed();
+
+            // 避免重复保存
+            if (_saved)
+            {
+                //Console.WriteLine("OFD归档已保存，无需重复操作");
+                return;
+            }
+
+            try
+            {
+                // 调用OFDArchive的保存方法（关键！将内存数据刷入磁盘）
+                _archive.Save();
+
+                // 标记为已保存
+                _saved = true;
+                //Console.WriteLine("OFD归档保存成功，已生成物理文件");
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("保存OFD归档到物理文件失败，请检查文件路径权限或流状态", ex);
+            }
+        }
         #endregion
 
         #region 辅助方法（与OFDReader的LoadDocFramework对齐，增强实用性）
@@ -217,17 +245,27 @@ namespace OFDViewer.OFD
         /// 【改造点】：不再操作OfdDocument.Docs集合，仅负责创建归档目录
         /// </summary>
         /// <param name="docCount">子文档数量</param>
-        private void CreateDocDirectoryFramework(int docCount)
-        {
-            if (docCount <= 0) return;
+        //private void CreateDocDirectoryFramework(int docCount)
+        //{
+        //    if (docCount <= 0) return;
 
-            // 【删除】原有操作OfdDocument的逻辑：OfdDocument.Docs.Clear();
-            // 仅保留目录创建逻辑，不维护文档对象集合（由调用方自行管理）
-            for (int i = 1; i <= docCount; i++)
+        //    // 仅保留目录创建逻辑，不维护文档对象集合（由调用方自行管理）
+        //    for (int i = 1; i <= docCount; i++)
+        //    {
+        //        // 按原有规则构建目录路径（如Doc_0、Doc_1）
+        //        string docDirectoryPath = $"Doc_{i - 1}";
+        //        _archive.CreateDirectory(docDirectoryPath);
+        //    }
+        //}
+
+
+        private void EnsureNotDisposed()
+        {
+            if (_disposed)
             {
-                // 按原有规则构建目录路径（如Doc_0、Doc_1）
-                string docDirectoryPath = $"Doc_{i - 1}";
-                _archive.CreateDirectory(docDirectoryPath);
+                throw new ObjectDisposedException(
+                    nameof(OFDWriter),
+                    $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] OFD写入器（{nameof(OFDWriter)}）已释放，无法执行写入操作");
             }
         }
         #endregion

@@ -101,7 +101,7 @@ namespace OFDViewer.OFD
                 {
                     OfdDocument.OfdMetadata = rootOfd;
                     // 可选：自动加载文档数量对应的子文档框架
-                    LoadDocFramework(rootOfd.DocCount);
+                   // LoadDocFramework(rootOfd.DocCount);
                 }
 
                 // 加载相关资源（可选，保留扩展入口）

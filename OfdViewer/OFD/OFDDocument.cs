@@ -27,6 +27,9 @@ namespace OFDViewer.OFD
         /// </summary>
         public List<OFDDoc> Docs { get; set; } = new List<OFDDoc>();
 
+        //文档数量属性
+        public int DocCount => Docs.Count;
+
         /// <summary>
         /// 单文档快捷访问属性（默认获取第一个文档 DocIndex=0，适配绝大多数单文档场景）
         /// 简化操作：无需通过 Docs[0] 遍历，直接访问 DefaultDoc
@@ -65,9 +68,6 @@ namespace OFDViewer.OFD
             int newDocIndex = Docs.Count + 1;
             var newDoc = new OFDDoc(newDocIndex);
             Docs.Add(newDoc);
-
-            // 可选：同步更新全局元数据中的文档数量（贴合OFD标准）
-            // OfdMetadata.DocCount = Docs.Count;
 
             return newDoc;
         }
