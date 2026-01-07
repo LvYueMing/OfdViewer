@@ -19,7 +19,7 @@ namespace OFDViewer
         /// OFD全局元数据文件（根目录）
         /// 相对根目录路径：OFD.xml
         /// </summary>
-        public const string Root_OfdMetadataFile = "OFD.xml";
+        public const string Root_OfdFile = "OFD.xml";
 
         #endregion
 
@@ -158,27 +158,21 @@ namespace OFDViewer
         /// <param name="fileType">OFD路径格式常量（如：Doc_{0}/Signs/Sign_{1}/Seal.esl）</param>
         /// <param name="indices">动态序号参数（对应路径格式中的{0}、{1}、{2}...，顺序一致）</param>
         /// <returns>生成的相对根目录的实际OFD路径</returns>
-        /// <exception cref="ArgumentNullException">路径格式为空</exception>
-        /// <exception cref="ArgumentOutOfRangeException">序号小于1（无效序号）</exception>
         /// <exception cref="Exception">序号数量与占位符数量不匹配</exception>
         public static string GetFilePath(string fileType, params int[] indices)
         {
-            // 1. 校验路径格式是否为空
+            // 校验路径格式是否为空
             if (string.IsNullOrEmpty(fileType))
-            {
-                throw new ArgumentNullException(nameof(fileType), "OFD路径格式不能为空");
-            }
+                return null;
 
-            // 2. 校验序号参数合法性（所有序号必须<0）
+            // 校验序号参数合法性（所有序号必须<0）
             if (indices != null && indices.Any(index => index < 0))
-            {
-                throw new ArgumentOutOfRangeException(nameof(indices), "所有序号参数必须大于或等于0");
-            }
+                return null;
 
             try
             {
-                // 3. 格式化路径，生成实际路径（自动匹配占位符与序号数量）
-                return string.Format(fileType, indices.Length == 0 ? 0 : indices.Select(index => index.ToString()).ToArray());
+                //格式化路径，生成实际路径（自动匹配占位符与序号数量）
+                return string.Format(fileType, Array.ConvertAll(indices, x => (object)x));
             }
             catch (Exception ex)
             {

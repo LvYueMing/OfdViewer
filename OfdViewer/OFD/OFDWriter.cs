@@ -2,10 +2,12 @@
 using System.Collections.Generic;
 using System.IO.Compression;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 using OFDViewer.Models.BaseStructure.MainEntry;
+using OFDViewer.Models.Signature;
 using OFDViewer.Utils;
 
 namespace OFDViewer.OFD
@@ -99,8 +101,8 @@ namespace OFDViewer.OFD
             // 参数有效性校验
             if (ofdDocument == null)
                 throw new ArgumentNullException(nameof(ofdDocument), "待写入的OFD文档对象不能为空");
-            if (ofdDocument.OfdMetadata == null)
-                throw new ArgumentNullException(nameof(ofdDocument.OfdMetadata), "OFD文档的全局元数据(RootOFD)不能为空");
+            if (ofdDocument.RootOfd == null)
+                throw new ArgumentNullException(nameof(ofdDocument.RootOfd), "OFD文档的全局元数据(RootOFD)不能为空");
             if (ofdDocument.Docs == null || ofdDocument.Docs.Count == 0)
                 throw new InvalidOperationException("OFD文档中无可用子文档，无法完成全量写入");
 
@@ -108,7 +110,7 @@ namespace OFDViewer.OFD
             {
                 // 第一步：写入核心元数据（OFD.xml），并自动创建子文档目录框架
                 //int docCount = ofdDocument.Docs.Count;
-                WriteRootOFD(ofdDocument.OfdMetadata);
+                WriteRootOFD(ofdDocument.RootOfd);
 
                 // 第二步：遍历写入所有子文档元数据（Doc.xml）
                 foreach (var doc in ofdDocument.Docs)
@@ -158,10 +160,6 @@ namespace OFDViewer.OFD
                 // 序列化元数据并写入流
                 XmlHelper.SerializeToStream(rootOfd, ofdStream);
 
-                //if (docCount > 0)
-                //{
-                //    CreateDocDirectoryFramework(docCount);
-                //}
             }
             catch (Exception ex)
             {
@@ -173,7 +171,6 @@ namespace OFDViewer.OFD
         /// 写入OFD子文档元数据
         /// </summary>
         /// <param name="doc">子文档对象</param>
-        /// <exception cref="ObjectDisposedException">对象已释放时抛出</exception>
         /// <exception cref="ArgumentNullException">子文档对象为空时抛出</exception>
         public void WriteOFDDoc(OFDDoc doc)
         {
@@ -185,22 +182,173 @@ namespace OFDViewer.OFD
 
             try
             {
-                // 构建子文档元数据路径（如Doc_0/Document.xml）
-                string docXmlPath = doc.DocumentFilePath;
-                // 创建子文档目录（确保目录存在）
-                //_archive.CreateDirectory(doc.DocDirectoryPath);
-                // 创建并写入子文档元数据文件
-                using var docStream = _archive.CreateFileStream(docXmlPath);
-                if (docStream == null || !docStream.CanWrite)
-                    throw new InvalidDataException($"无法创建子文档文件{docXmlPath}的写入流");
+                // 文档描述文件
+                if (doc.Document != null)
+                {
+                    // 构建子文档元数据路径（如Doc_0/Document.xml）
+                    using var docStream = _archive.CreateFileStream(doc.DocumentFilePath);
 
-                // 序列化子文档元数据（此处可替换为自定义DocMetadata实体）
-                // 示例：临时序列化OFDDoc对象，实际可扩展专属DocMetadata类
-                XmlHelper.SerializeToStream(doc, docStream);
+                    // 序列化文档主描述文件（Document.xml）
+                    XmlHelper.SerializeToStream(doc.Document, docStream);
+                }
+
+                // 公共资源描述文件
+                if (doc.PublicResource != null)
+                {
+                    // 构建公共资源描述文件路径(Doc_{0}/PublicRes.xml)
+                    using var publicResStream = _archive.CreateFileStream(doc.PublicResourceFilePath);
+                    
+                        // 序列化全文档公共资源描述文件（PublicRes.xml）
+                        XmlHelper.SerializeToStream(doc.PublicResource, publicResStream);                   
+                }
+
+                // 文档文档资源描述文件
+                if (doc.DocumentResource != null)
+                {
+                    // 构建全文档文档资源描述文件路径(Doc_{0}/DocumentRes.xml)
+                    using var documentResStream = _archive.CreateFileStream(doc.DocumentResourceFilePath);
+
+                    // 序列化全文档文档资源描述文件（DocumentRes.xml）
+                    XmlHelper.SerializeToStream(doc.DocumentResource, documentResStream);
+                }
+
+                // 签章列表索引对象
+                if (doc.Signatures != null)
+                {
+                    // 构建签章列表索引文件路径(Doc_{0}/Signs/Signatures.xml)
+                    using var signaturesStream = _archive.CreateFileStream(
+                        Constants.GetFilePath(Constants.Signs_SignaturesFile, doc.DocIndex));
+
+                    //序列化签章列表索引对象（Signatures.xml）
+                    XmlHelper.SerializeToStream(doc.Signatures, signaturesStream);
+                }
+
+                // 签章对象集合
+                if (doc.SignDocs != null && doc.SignDocs.Count > 0)
+                {
+                    // 遍历写入每个签章对象
+                    for (int i = 0; i < doc.SignDocs.Count; i++)
+                    {
+                        var signDoc = doc.SignDocs[i];
+                        if (signDoc == null)
+                            continue;
+                        // 写入单个签章对象
+                        WriteSignDoc(signDoc);
+                    }
+                }
+
+                // 页面对象集合
+                if (doc.PageDocs != null && doc.PageDocs.Count > 0)
+                {
+                    // 遍历写入每个页面对象
+                    for (int i = 0; i < doc.PageDocs.Count; i++)
+                    {
+                        var pageDoc = doc.PageDocs[i];
+                        if (pageDoc == null)
+                            continue;
+                        // 写入单个页面对象
+                        WritePageDoc(pageDoc);
+                    }
+                }
+
+                //文档级资源文件集合 Dictionary<string, byte[]> ResFiles
+                if (doc.ResFiles != null && doc.ResFiles.Count > 0)
+                {
+                    // 构建文档级资源目录路径(Doc_{0}/Res/)
+                    string resDirectoryPath = Constants.GetFilePath(Constants.Doc_ResDirectory, doc.DocIndex);
+                    
+                    // 遍历写入每个资源文件
+                    foreach (var resFileEntry in doc.ResFiles)
+                    {
+                        string resFileName = resFileEntry.Key;
+                        byte[] resFileContent = resFileEntry.Value;
+                        if (string.IsNullOrWhiteSpace(resFileName) || resFileContent == null || resFileContent.Length == 0)
+                            continue;
+                        // 构建资源文件完整路径(Doc_{0}/Res/{resFileName})
+                        string resFilePath = $"{resDirectoryPath}/{resFileName}";
+                        using var resFileStream = _archive.CreateFileStream(resFilePath);
+                        // 写入资源文件内容
+                        resFileStream.Write(resFileContent, 0, resFileContent.Length);
+                    }
+                }
+
             }
             catch (Exception ex)
             {
                 throw new InvalidOperationException($"写入OFD子文档（索引：{doc.DocIndex}）元数据失败", ex);
+            }
+        }
+
+        /// <summary>
+        /// 写入单个签章对象
+        /// </summary>
+        /// <param name="signDoc">签章对象</param>
+        public void WriteSignDoc(SignDoc signDoc)
+        {
+            // 资源状态校验
+            EnsureNotDisposed();
+
+            if (signDoc == null)
+                throw new ArgumentNullException(nameof(signDoc), "SignDoc签章对象不能为空");
+            try
+            {
+                if (signDoc.Signature != null)
+                {
+                    // 构建签章属性描述文件路径(Doc_{0}/Signs/Sign_{1}/Signature.xml)
+                    using var signDocStream = _archive.CreateFileStream(
+                    Constants.GetFilePath(Constants.Sign_SignatureFile, signDoc.BelongDocIndex, signDoc.SignIndex));
+
+                    // 序列化签章属性描述文件（Signature.xml）
+                    XmlHelper.SerializeToStream(signDoc.Signature, signDocStream);
+                }
+
+                //电子印章本体文件（Seal.esl） byte[] SignedValue
+                if (signDoc.Seal != null && signDoc.Seal.Length > 0)
+                {
+                    //构建电子印章本体文件路径(Doc_{0}/Signs/Sign_{1}/Seal.esl)
+                    using var sealStream = _archive.CreateFileStream(
+                        Constants.GetFilePath(Constants.Sign_SealFile, signDoc.BelongDocIndex, signDoc.SignIndex));
+
+                    //写入电子印章本体文件（Seal.esl）
+                    sealStream.Write(signDoc.Seal, 0, signDoc.Seal.Length);
+                }
+
+                //数字签名密文文件（SignedValue.dat） byte[] SignedValue
+                if (signDoc.SignedValue != null && signDoc.SignedValue.Length > 0)
+                {
+                    //构建数字签名密文文件路径(Doc_{0}/Signs/Sign_{1}/SignedValue.dat)
+                    using var signedValueStream = _archive.CreateFileStream(
+                        Constants.GetFilePath(Constants.Sign_SignedValueFile, signDoc.BelongDocIndex, signDoc.SignIndex));
+
+                    //写入数字签名密文文件（SignedValue.dat）
+                    signedValueStream.Write(signDoc.SignedValue, 0, signDoc.SignedValue.Length);
+
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"写入签章对象失败，请检查归档对象完整性", ex);
+            }
+        }
+
+        /// <summary>
+        /// 写入单个页面对象
+        /// </summary>
+        /// <param name="pageDoc">页面对象</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="InvalidOperationException"></exception>
+        public void WritePageDoc(PageDoc pageDoc)
+        {
+            // 资源状态校验
+            EnsureNotDisposed();
+            if (pageDoc == null)
+                throw new ArgumentNullException(nameof(pageDoc), "PageDoc页面对象不能为空");
+            try
+            {
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"写入页面对象失败，请检查归档对象完整性", ex);
             }
         }
 

@@ -137,6 +137,16 @@ namespace OFDViewer.OFD
             }
         }
 
+        // 实现CreateDirectory
+        private void CreateDirectory(string path)
+        {
+            if (_zipArchive == null)
+                throw new InvalidOperationException("OFD归档已释放，无法创建目录");
+
+            var entry = _zipArchive.CreateEntry(path);
+            entry.Open();
+        }
+
 
         /// <summary>
         /// 创建OFD文件写入流

@@ -99,7 +99,7 @@ namespace OFDViewer.OFD
                 // 同步解析结果到OfdDocument属性，保持数据一致性
                 if (rootOfd != null)
                 {
-                    OfdDocument.OfdMetadata = rootOfd;
+                    OfdDocument.RootOfd = rootOfd;
                     // 可选：自动加载文档数量对应的子文档框架
                    // LoadDocFramework(rootOfd.DocCount);
                 }

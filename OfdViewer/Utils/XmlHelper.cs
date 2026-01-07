@@ -105,9 +105,9 @@ namespace OFDViewer.Utils
         {
             // 校验参数
             if (obj == null)
-                throw new ArgumentNullException(nameof(obj));
+                throw new ArgumentNullException(typeof(T).FullName, "序列化对象obj不能为空！");
             if (stream == null)
-                throw new ArgumentNullException(nameof(stream));
+                throw new ArgumentNullException(typeof(T).FullName, "输出流stream不能为空！");
 
             // 先校验XML必填项
             XmlRequiredValidator.Validate<T>(obj);

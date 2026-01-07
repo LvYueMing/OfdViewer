@@ -15,12 +15,12 @@ namespace OFDViewer.OFD
         /// <summary>
         /// OFD.xml 对应的全局元数据对象（文档根节点、版本、文档数量等核心信息）
         /// </summary>
-        public RootOFD OfdMetadata { get; set; }
+        public RootOFD RootOfd { get; set; }
 
         /// <summary>
         /// 全局元数据文件路径（相对根目录，固定路径）
         /// </summary>
-        public string OfdMetadataFilePath => Constants.Root_OfdMetadataFile;
+        public string RootOfdFilePath => Constants.Root_OfdFile;
 
         /// <summary>
         /// 文档集合（对应 Doc_0、Doc_1... 子文档目录，有序存储）
@@ -53,7 +53,7 @@ namespace OFDViewer.OFD
         /// </summary>
         public OFDDocument()
         {
-            OfdMetadata = new RootOFD();
+            RootOfd = new RootOFD();
             // 自动初始化第一个文档（DocIndex=0），适配单文档默认场景
             AddNewDoc();
         }
@@ -64,10 +64,16 @@ namespace OFDViewer.OFD
         /// <returns>新增的子文档对象</returns>
         public OFDDoc AddNewDoc()
         {
-            // 自动生成文档序号（从1开始，基于现有文档数量自增）
-            int newDocIndex = Docs.Count + 1;
+            // 自动生成文档序号（从0开始，基于现有文档数量自增）
+            int newDocIndex = this.Docs.Count + 1 - 1;
             var newDoc = new OFDDoc(newDocIndex);
-            Docs.Add(newDoc);
+            this.Docs.Add(newDoc);
+
+            // 在OFD.xml中记录 文档根节点、版本、文档数量等核心信息
+            var docBody = new DocBody();
+
+            docBody.DocRootPath = Constants.GetFilePath(Constants.Doc_DocumentFile, newDocIndex);
+            this.RootOfd.DocBodies.Add(docBody);
 
             return newDoc;
         }

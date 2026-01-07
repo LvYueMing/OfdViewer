@@ -24,22 +24,22 @@ namespace OFDViewer.OFD
         public int BelongDocIndex { get; }
 
         /// <summary>
-        /// 电子印章本体文件（Seal.esl）
-        /// 包含印章图形、签章人身份信息等核心数据
-        /// </summary>
-        public Seal Seal { get; set; } = new Seal();
-
-        /// <summary>
         /// 签章属性描述文件（Signature.xml）
         /// 记录签章位置、签署时间、加密算法等属性
         /// </summary>
         public Signature Signature { get; set; } = new Signature();
 
         /// <summary>
+        /// 电子签章/电子印章相关的二进制文件（Seal.esl）
+        /// 包含印章图形、签章人身份信息等核心数据
+        /// </summary>
+        public byte[] Seal { get; set; }
+
+        /// <summary>
         /// 数字签名密文文件（SignedValue.dat）
         /// 验签时需使用此数据验证签章有效性
         /// </summary>
-        public string SignedValue { get; set; }
+        public byte[] SignedValue { get; set; }
 
         /// <summary>
         /// 签章目录路径（相对根目录，格式：Doc_{BelongDocIndex}/Signs/Sign_{SignIndex}）

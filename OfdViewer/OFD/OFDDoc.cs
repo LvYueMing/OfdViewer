@@ -40,19 +40,19 @@ namespace OFDViewer.OFD
         public Signatures Signatures { get; set; }
 
         /// <summary>
-        /// 单个签章对象集合（对应Sign_N目录，一个文档可包含多个签章）
+        /// 签章对象集合（对应Sign_N目录，一个文档可包含多个签章）
         /// </summary>
         public List<SignDoc> SignDocs { get; set; } 
 
         /// <summary>
-        /// 单个页面对象集合（对应Page_N目录，存储文档所有页面）
+        /// 页面对象集合（对应Page_N目录，存储文档所有页面）
         /// </summary>
         public List<PageDoc> PageDocs { get; set; }
 
         /// <summary>
-        /// 文档级资源文件路径集合（存储Res目录下的字体、图片等资源路径）
+        /// 文档级资源文件集合（存储Res目录下的字体、图片等资源）
         /// </summary>
-        public List<string> ResourceFilePaths { get; set; }
+        public Dictionary<string, byte[]> ResFiles { get; set; }
 
         /// <summary>
         /// 文档主描述文件路径（相对根目录，基于文档序号动态生成）
