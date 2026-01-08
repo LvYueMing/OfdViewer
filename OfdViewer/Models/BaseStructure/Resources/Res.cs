@@ -21,7 +21,7 @@ namespace OFDViewer.Models.BaseStructure.Resources
         /// </summary>
         [XmlElement("ColorSpaces", typeof(ColorSpaces))]
         [XmlElement("DrawParams", typeof(DrawParams))]
-        [XmlElement("Fonts", typeof(ResItems.Fonts))]
+        [XmlElement("Fonts", typeof(OFDFonts))]
         [XmlElement("MultiMedias", typeof(MultiMedias))]
         [XmlElement("CompositeGraphicUnits", typeof(CompositeGraphicUnits))]
         public List<BaseRes> ResItems { get; set; }

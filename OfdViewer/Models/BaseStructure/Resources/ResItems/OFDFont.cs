@@ -10,7 +10,7 @@ using OFDViewer.Utils;
 
 namespace OFDViewer.Models.BaseStructure.Resources.ResItems
 {
-    public class Font : CT_Font
+    public class OFDFont : CT_Font
     {
         [XmlAttribute("ID")]
         [XmlRequired(ErrorMsg = "ID 必选属性为必选项，且不能为空")]

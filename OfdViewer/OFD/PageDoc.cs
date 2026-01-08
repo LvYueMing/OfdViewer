@@ -41,7 +41,7 @@ namespace OFDViewer.OFD
         /// 页面私有资源路径集合（Res目录下的图片等资源）
         /// 如局部插图、水印等
         /// </summary>
-        public List<string> PrivateResourcePaths { get; set; } = new List<string>();
+        public Dictionary<string, byte[]> PageResFiles { get; set; }
 
         /// <summary>
         /// 构造函数

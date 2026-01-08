@@ -90,6 +90,23 @@ namespace OFDViewer.OFD
             Document = new Document();
         }
 
+        //添加页面对象
+        public void AddPageDoc(PageDoc pageDoc)
+        {
+            // 校验页面序号合法性：从0开始，不允许负数
+            if (pageDoc.PageIndex < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(pageDoc.PageIndex), "页面序号必须从0开始，不允许为负数");
+            }
+            // 校验页面序号唯一性
+            if (PageDocs.Any(x => x.PageIndex == pageDoc.PageIndex))
+            {
+                throw new ArgumentException($"页面序号{pageDoc.PageIndex}已存在");
+            }
+            // 添加页面对象
+            PageDocs.Add(pageDoc);
+        }
+
 
     }
 }

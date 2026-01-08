@@ -30,6 +30,47 @@ namespace OFDViewer.OFD
         private bool _leaveOpen;
 
 
+        #region 构造函数
+
+        private OFDArchive(FileStream stream, ZipArchiveMode mode, bool leaveOpen)
+        {
+            _fileStream = stream;
+            _leaveOpen = leaveOpen;
+            _zipArchive = new ZipArchive(stream, mode, leaveOpen);
+            _entryCache = new ConcurrentDictionary<string, ZipArchiveEntry>();
+            _xmlCache = new ConcurrentDictionary<string, XmlDocument>();
+
+            // 预加载所有条目到缓存
+            if (mode == ZipArchiveMode.Read)
+            {
+                foreach (var entry in _zipArchive.Entries)
+                {
+                    _entryCache.TryAdd(NormalizePath(entry.FullName), entry);
+                }
+            }
+        }
+
+        private OFDArchive(Stream stream, ZipArchiveMode mode, bool leaveOpen)
+        {
+            _customStream = stream;
+            _leaveOpen = leaveOpen;
+            _zipArchive = new ZipArchive(stream, mode, leaveOpen);
+            _entryCache = new ConcurrentDictionary<string, ZipArchiveEntry>();
+            _xmlCache = new ConcurrentDictionary<string, XmlDocument>();
+
+            // 预加载所有条目到缓存
+            if (mode == ZipArchiveMode.Read)
+            {
+                foreach (var entry in _zipArchive.Entries)
+                {
+                    _entryCache.TryAdd(NormalizePath(entry.FullName), entry);
+                }
+            }
+        }
+
+        #endregion
+
+
         #region 打开归档（读取模式）
         /// <summary>
         /// 打开 OFD 文件
@@ -98,46 +139,136 @@ namespace OFDViewer.OFD
         {
             return new OFDArchive(stream, ZipArchiveMode.Create, leaveOpen);
         }
+
         #endregion
 
-
-        private OFDArchive(FileStream stream, ZipArchiveMode mode, bool leaveOpen)
+        /// <summary>
+        /// 检查文件是否存在于OFD归档内
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        public bool FileExists(string path)
         {
-            _fileStream = stream;
-            _leaveOpen= leaveOpen;
-            _zipArchive = new ZipArchive(stream, mode, leaveOpen);
-            _entryCache = new ConcurrentDictionary<string, ZipArchiveEntry>();
-            _xmlCache = new ConcurrentDictionary<string, XmlDocument>();
+            if (_zipArchive == null)
+                return false;
 
-            // 预加载所有条目到缓存
-            if (mode == ZipArchiveMode.Read)
-            {
-                foreach (var entry in _zipArchive.Entries)
-                {
-                    _entryCache.TryAdd(NormalizePath(entry.FullName), entry);
-                }
-            }
+            return _entryCache.ContainsKey(NormalizePath(path));
         }
 
-        private OFDArchive(Stream stream, ZipArchiveMode mode, bool leaveOpen)
+        //实现DirectoryExists
+        public bool DirectoryExists(string path)
         {
-            _customStream = stream;
-            _leaveOpen = leaveOpen;
-            _zipArchive = new ZipArchive(stream, mode, leaveOpen);
-            _entryCache = new ConcurrentDictionary<string, ZipArchiveEntry>();
-            _xmlCache = new ConcurrentDictionary<string, XmlDocument>();
-
-            // 预加载所有条目到缓存
-            if (mode == ZipArchiveMode.Read)
-            {
-                foreach (var entry in _zipArchive.Entries)
-                {
-                    _entryCache.TryAdd(NormalizePath(entry.FullName), entry);
-                }
-            }
+            if (_zipArchive == null)
+                return false;
+            var normalizedPath = NormalizePath(path).TrimEnd('/') + '/';
+            return _zipArchive.Entries.Any(e => e.FullName.StartsWith(normalizedPath, StringComparison.OrdinalIgnoreCase));
         }
 
-        // 实现CreateDirectory
+
+        /// <summary>
+        /// 获取指定目录下的【直接子文件/子文件夹】（不递归）
+        /// </summary>
+        /// <param name="path">ZIP 内的目标目录路径</param>
+        /// <returns>直接子项的名称列表（文件夹以 / 结尾）</returns>
+        public List<string> GetDirectEntriesInDirectory(string path)
+        {
+            // 校验 ZIP 归档是否有效
+            if (_zipArchive == null)
+                throw new InvalidOperationException("ZIP归档已释放，无法获取目录内容");
+
+            // 规范化路径，确保以 / 结尾（如 "docs" → "docs/"）
+            var normalizedPath = NormalizePath(path);
+            var targetPrefix = string.IsNullOrEmpty(normalizedPath) ? string.Empty : $"{normalizedPath}/";
+
+            var entries = new HashSet<string>(); // 使用 HashSet 自动去重，避免重复添加子目录
+
+
+            foreach (var entry in _zipArchive.Entries)
+            {
+                var entryFullName = entry.FullName;
+
+                // 跳过非目标目录下的条目
+                if (!entryFullName.StartsWith(targetPrefix, StringComparison.Ordinal))
+                    continue;
+
+                // 获取相对路径，即去掉目录前缀，得到文件或子目录名称
+                // 例： docs/test.txt => test.txt
+                // 例： docs/subdir/file.txt => subdir/file.txt
+                // 例： docs/subdir/signs => subdir/signs
+                var relativePath = entryFullName.Substring(targetPrefix.Length);
+                if (string.IsNullOrEmpty(relativePath))
+                    continue;
+
+                // 查找第一个 / 的位置，判断是直接子项还是深层子项
+                var firstSeparatorIndex = relativePath.IndexOf('/');
+                if (firstSeparatorIndex == 0)
+                    continue; // 排除空路径（理论上不会出现）
+
+
+                if (firstSeparatorIndex > 0)
+                {
+                    // 是子目录
+                    // 例： docs/subdir/file.txt => subdir/
+                    // 例： docs/subdir/signs => subdir/
+                    var dirName = relativePath.Substring(0, firstSeparatorIndex + 1);
+                    entries.Add(dirName);
+                }
+                else
+                {
+                    // 是直接文件
+                    // 如  docs/test.txt => test.txt
+                    entries.Add(relativePath);
+                }
+            }
+
+            // 转换为 List 并返回（保持顺序，也可按需排序）
+            return entries.ToList();
+        }
+
+
+        /// <summary>
+        /// 获取指定目录下的【所有层级文件/文件夹】（递归）
+        /// </summary>
+        /// <param name="path">ZIP 内的目标目录路径</param>
+        /// <returns>所有子项的完整相对路径列表</returns>
+        public List<string> GetAllEntriesInDirectory(string path)
+        {
+            // 校验 ZIP 归档是否有效
+            if (_zipArchive == null)
+                throw new InvalidOperationException("ZIP归档已释放，无法获取目录内容");
+
+            // 规范化路径，确保以 / 结尾
+            var normalizedPath = NormalizePath(path);
+            var targetPrefix = string.IsNullOrEmpty(normalizedPath) ? string.Empty : $"{normalizedPath}/";
+
+            var entries = new List<string>();
+
+            foreach (var entry in _zipArchive.Entries)
+            {
+                var entryFullName = entry.FullName;
+
+                // 跳过非目标目录下的条目
+                if (!entryFullName.StartsWith(targetPrefix, StringComparison.Ordinal))
+                    continue;
+
+                // 获取相对路径，即去掉目录前缀，得到文件或子目录名称
+                var relativePath = entryFullName.Substring(targetPrefix.Length);
+                if (string.IsNullOrEmpty(relativePath))
+                    continue;
+
+                entries.Add(relativePath);
+            }
+
+            return entries;
+        }
+
+
+
+        /// <summary>
+        /// 创建目录（OFD归档内虚拟目录）
+        /// </summary>
+        /// <param name="path"></param>
+        /// <exception cref="InvalidOperationException"></exception>
         private void CreateDirectory(string path)
         {
             if (_zipArchive == null)
@@ -166,7 +297,7 @@ namespace OFDViewer.OFD
         /// <summary>
         /// 获取文件内容流
         /// </summary>
-        public Stream GetFileStream(string filePath)
+        public Stream OpenFileStream(string filePath)
         {
             if (_entryCache.TryGetValue(NormalizePath(filePath), out var entry))
             {
@@ -180,7 +311,7 @@ namespace OFDViewer.OFD
         /// </summary>
         public string ReadTextFile(string filePath, Encoding encoding = null)
         {
-            using (var stream = GetFileStream(filePath))
+            using (var stream = OpenFileStream(filePath))
             using (var reader = new StreamReader(stream, encoding ?? Encoding.UTF8))
             {
                 return reader.ReadToEnd();
@@ -195,7 +326,7 @@ namespace OFDViewer.OFD
             return _xmlCache.GetOrAdd(filePath, path =>
             {
                 var xmlDoc = new XmlDocument();
-                using (var stream = GetFileStream(path))
+                using (var stream = OpenFileStream(path))
                 {
                     var settings = new XmlReaderSettings
                     {
@@ -240,14 +371,19 @@ namespace OFDViewer.OFD
             return tempPath;
         }
 
+
         /// <summary>
-        /// 规范化路径，统一使用正斜杠
+        /// 路径规范化（确保统一的路径分隔符为 /）
         /// </summary>
-        /// <param name="path"></param>
-        /// <returns></returns>
+        /// <param name="path">原始路径</param>
+        /// <returns>规范化后的路径</returns>
         private string NormalizePath(string path)
         {
-            return path.Replace('\\', '/').TrimStart('/');
+            if (string.IsNullOrWhiteSpace(path))
+                return string.Empty;
+
+            // 将 \ 替换为 /，并去除首尾多余的 /
+            return path.Replace('\\', '/').Trim('/');
         }
 
 

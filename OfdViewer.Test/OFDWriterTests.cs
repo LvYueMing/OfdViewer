@@ -15,14 +15,12 @@ namespace OFDViewer.Tests
         private readonly string _tempFilePath;
 
         // 测试用的基础元数据对象（复用）
-        private readonly RootOFD _testRootOfd;
-        private readonly OFDDoc _testDoc;
         private readonly OFDDocument _testOfdDocument;
 
         public OFDWriterTests()
         {
             // 初始化临时文件路径
-            _tempFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"{Guid.NewGuid()}.ofd");
+            _tempFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"OFD");
 
             // 创建默认OFD文档对象
             _testOfdDocument = new OFDDocument();
@@ -51,7 +49,7 @@ namespace OFDViewer.Tests
         public void Constructor_FilePath_DirectoryNotExist_CreatesDirectory()
         {
             // Arrange
-            var nonExistDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, Guid.NewGuid().ToString());
+            var nonExistDir = Path.Combine(_tempFilePath, Guid.NewGuid().ToString());
             var filePath = Path.Combine(nonExistDir, "test.ofd");
 
             // Act
@@ -125,7 +123,7 @@ namespace OFDViewer.Tests
         /// 测试：WriteEntireDocument - 文档无Metadata时抛出ArgumentNullException
         /// </summary>
         [Fact]
-        public void WriteEntireDocument_OfdMetadataNull_ThrowsArgumentNullException()
+        public void WriteEntireDocument_RootOfdNull_ThrowsArgumentNullException()
         {
             // Arrange
             var invalidDoc = new OFDDocument();
@@ -135,7 +133,7 @@ namespace OFDViewer.Tests
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() => writer.WriteOFDDocument(invalidDoc));
-            Assert.Equal("OfdMetadata", exception.ParamName);
+            Assert.Equal("RootOfd", exception.ParamName);
         }
 
         /// <summary>
@@ -164,7 +162,7 @@ namespace OFDViewer.Tests
             Assert.True(ms.Length == 0); // 保存前流没有数据
 
             using var writer = new OFDWriter(ms, leaveOpen: true);
-            writer.WriteRootOFD(_testRootOfd);
+            writer.WriteRootOFD(_testOfdDocument.RootOfd);
             
             // Act
             writer.Save();
@@ -174,10 +172,10 @@ namespace OFDViewer.Tests
 
         // 测试：Save方法 - writer.WriteRootOFD保存为磁盘文件
         [Fact]
-        public void Save_ToFile_AfterWriteRootOFD_SavesSuccessfully()
+        public void Save_ToOFDFile_AfterWriteRootOFD_SavesSuccessfully()
         {
             // Arrange
-            var filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"{Guid.NewGuid()}.ofd");
+            var filePath = Path.Combine(_tempFilePath, $"{Guid.NewGuid()}.ofd");
             if (File.Exists(filePath))
             {
                 File.Delete(filePath);
@@ -195,10 +193,10 @@ namespace OFDViewer.Tests
 
         // 测试：Save方法 - writer.WriteOFDDoc保存为磁盘文件
         [Fact]
-        public void Save_ToFile_AfterWriteOFDDoc_SavesSuccessfully()
+        public void Save_ToOFDFile_AfterWriteOFDDoc_SavesSuccessfully()
         {
             // Arrange
-            var filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"{Guid.NewGuid()}.ofd");
+            var filePath = Path.Combine(_tempFilePath, $"{Guid.NewGuid()}.ofd");
             if (File.Exists(filePath))
             {
                 File.Delete(filePath);
@@ -208,6 +206,28 @@ namespace OFDViewer.Tests
             using var writer = new OFDWriter(filePath);
             writer.WriteRootOFD(_testOfdDocument.RootOfd);
             writer.WriteOFDDoc(_testOfdDocument.DefaultDoc);
+            writer.Save();
+            // Assert
+            Assert.True(File.Exists(filePath)); // 保存后文件存在
+        }
+
+        // <summary>
+        /// 测试：Save方法 - writer.WriteOFDDocument保存为磁盘文件
+        /// </summary>
+        
+        [Fact]
+        public void Save_ToOFDFile_AfterWriteOFDDocument_SavesSuccessfully()
+        {
+            // Arrange
+            var filePath = Path.Combine(_tempFilePath, $"{Guid.NewGuid()}.ofd");
+            if (File.Exists(filePath))
+            {
+                File.Delete(filePath);
+            }
+            Assert.False(File.Exists(filePath)); // 保存前文件不存在
+            // Act
+            using var writer = new OFDWriter(filePath);
+            writer.WriteOFDDocument(_testOfdDocument);
             writer.Save();
             // Assert
             Assert.True(File.Exists(filePath)); // 保存后文件存在
@@ -249,7 +269,7 @@ namespace OFDViewer.Tests
 
             // Act & Assert
             Assert.Throws<ObjectDisposedException>(() => writer.WriteOFDDocument(_testOfdDocument));
-            Assert.Throws<ObjectDisposedException>(() => writer.WriteRootOFD(_testRootOfd));
+            Assert.Throws<ObjectDisposedException>(() => writer.WriteRootOFD(_testOfdDocument.RootOfd));
             Assert.Throws<ObjectDisposedException>(() => writer.Save());
         }
 

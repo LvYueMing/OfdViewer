@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Xml.Serialization;
 using System.Xml;
 using System.Reflection;
+using System.IO;
 
 namespace OFDViewer.Utils
 {

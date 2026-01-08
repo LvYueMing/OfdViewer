@@ -68,7 +68,7 @@ namespace OFDViewer.Tests
         [Fact]
         public void GetFileStream_ValidFile_ShouldReturnStream()
         {
-            using var stream = _archive.GetFileStream("test.txt");
+            using var stream = _archive.OpenFileStream("test.txt");
             Assert.NotNull(stream);
             using var reader = new StreamReader(stream);
             var content = reader.ReadToEnd();
@@ -78,7 +78,7 @@ namespace OFDViewer.Tests
         [Fact]
         public void GetFileStream_InvalidFile_ShouldThrow()
         {
-            Assert.Throws<FileNotFoundException>(() => _archive.GetFileStream("notfound.txt"));
+            Assert.Throws<FileNotFoundException>(() => _archive.OpenFileStream("notfound.txt"));
         }
 
         [Fact]

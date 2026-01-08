@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
@@ -83,7 +84,6 @@ namespace OFDViewer.OFD
         #endregion
 
 
-
         #region 核心写入方法
 
         /// <summary>
@@ -109,8 +109,7 @@ namespace OFDViewer.OFD
             try
             {
                 // 第一步：写入核心元数据（OFD.xml），并自动创建子文档目录框架
-                //int docCount = ofdDocument.Docs.Count;
-                WriteRootOFD(ofdDocument.RootOfd);
+                this.WriteRootOFD(ofdDocument.RootOfd);
 
                 // 第二步：遍历写入所有子文档元数据（Doc.xml）
                 foreach (var doc in ofdDocument.Docs)
@@ -119,12 +118,8 @@ namespace OFDViewer.OFD
                     if (doc == null)
                         continue;
 
-                    // 复用原有WriteDocMetadata方法，保证逻辑一致性
                     WriteOFDDoc(doc);
                 }
-
-                // 可选：如需写入其他附属文件（如缩略图、字体等），可在此扩展
-                // WriteAttachments(ofdDocument.Attachments);
             }
             catch (Exception ex)
             {
@@ -345,6 +340,44 @@ namespace OFDViewer.OFD
                 throw new ArgumentNullException(nameof(pageDoc), "PageDoc页面对象不能为空");
             try
             {
+                //页面内容描述文件（Content.xml）
+                if (pageDoc.Content != null)
+                {
+                    // 构建页面属性描述文件路径(Doc_{0}/Pages/Page_{1}/Content.xml)
+                    using var pageDocStream = _archive.CreateFileStream(
+                        Constants.GetFilePath(Constants.Page_ContentFile, pageDoc.BelongDocIndex, pageDoc.PageIndex));
+                    // 序列化页面内容描述文件（Content.xml）
+                    XmlHelper.SerializeToStream(pageDoc.Content, pageDocStream);
+                }
+                //页面资源映射文件（PageRes.xml）
+                if (pageDoc.PageRes != null)
+                {
+                    // 构建页面资源映射文件路径(Doc_{0}/Pages/Page_{1}/PageRes.xml)
+                    using var pageResStream = _archive.CreateFileStream(
+                        Constants.GetFilePath(Constants.Page_PageResFile, pageDoc.BelongDocIndex, pageDoc.PageIndex));
+                    // 序列化页面资源映射文件（PageRes.xml）
+                    XmlHelper.SerializeToStream(pageDoc.PageRes, pageResStream);
+                }
+                //页面资源文件（Res/Image_{0}.png）
+                if (pageDoc.PageResFiles != null && pageDoc.PageResFiles.Count > 0)
+                {
+                    // 构建页面资源目录路径(Doc_{0}/Pages/Page_{1}/Res/)
+                    string resDirectoryPath = Constants.GetFilePath(
+                        Constants.Page_ResDirectory, pageDoc.BelongDocIndex, pageDoc.PageIndex);
+                    // 遍历写入每个页面资源文件
+                    foreach (var resFileEntry in pageDoc.PageResFiles)
+                    {
+                        string resFileName = resFileEntry.Key;
+                        byte[] resFileContent = resFileEntry.Value;
+                        if (string.IsNullOrWhiteSpace(resFileName) || resFileContent == null || resFileContent.Length == 0)
+                            continue;
+                        // 构建页面资源文件完整路径(Doc_{0}/Pages/Page_{1}/Res/{resFileName})
+                        string resFilePath = $"{resDirectoryPath}/{resFileName}";
+                        using var resFileStream = _archive.CreateFileStream(resFilePath);
+                        // 写入页面资源文件内容
+                        resFileStream.Write(resFileContent, 0, resFileContent.Length);
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -388,24 +421,6 @@ namespace OFDViewer.OFD
         #endregion
 
         #region 辅助方法（与OFDReader的LoadDocFramework对齐，增强实用性）
-        /// <summary>
-        /// 根据文档数量创建子文档目录框架
-        /// 【改造点】：不再操作OfdDocument.Docs集合，仅负责创建归档目录
-        /// </summary>
-        /// <param name="docCount">子文档数量</param>
-        //private void CreateDocDirectoryFramework(int docCount)
-        //{
-        //    if (docCount <= 0) return;
-
-        //    // 仅保留目录创建逻辑，不维护文档对象集合（由调用方自行管理）
-        //    for (int i = 1; i <= docCount; i++)
-        //    {
-        //        // 按原有规则构建目录路径（如Doc_0、Doc_1）
-        //        string docDirectoryPath = $"Doc_{i - 1}";
-        //        _archive.CreateDirectory(docDirectoryPath);
-        //    }
-        //}
-
 
         private void EnsureNotDisposed()
         {

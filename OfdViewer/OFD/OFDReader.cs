@@ -1,7 +1,10 @@
 ﻿using OFDViewer.Models.BaseStructure.MainEntry;
+using OFDViewer.Models.BaseStructure.Resources.ResItems;
+using OFDViewer.Models.Signature;
 using OFDViewer.Utils;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection.Metadata;
 using System.Text;
@@ -12,171 +15,345 @@ using System.Xml.Serialization;
 namespace OFDViewer.OFD
 {
     /// <summary>
-    /// OFD文件读取/解析类,仅负责读取.ofd文件并解析为实体对象
-    /// 无任何写入/创建逻辑，实现IDisposable接口确保资源安全释放
+    /// OFD文件读取/解析类，负责将.ofd物理文件解析为OFDDocument对象
+    /// 无任何写入逻辑，实现IDisposable接口确保资源安全释放
     /// </summary>
     public class OFDReader : IDisposable
     {
-        // 私有字段：OFD归档对象（只读，确保初始化后不可修改）
+        // OFD归档对象（只读）
         private readonly OFDArchive _archive;
-
-        // 私有字段：是否已释放资源（线程安全的布尔标识）
         private bool _disposed = false;
 
-        /// <summary>
-        /// OFD 文档信息（延迟初始化，避免构造时提前解析造成性能损耗）
-        /// </summary>
-        public OFDDocument OfdDocument { get; private set; }
+        #region 构造函数
 
         /// <summary>
-        /// 初始化 OFD 读取器（文件路径重载，最常用）
+        /// 从文件路径初始化OFD读取器
         /// </summary>
-        /// <param name="filePath">OFD 文件路径</param>
-        /// <exception cref="ArgumentNullException">文件路径为空/空白时抛出</exception>
-        /// <exception cref="FileNotFoundException">文件不存在时抛出</exception>
+        /// <param name="filePath">输入OFD文件完整路径</param>
+        /// <exception cref="ArgumentNullException">路径为空</exception>
+        /// <exception cref="FileNotFoundException">文件不存在</exception>
         public OFDReader(string filePath)
         {
-            // 严格参数校验，明确异常信息
             if (string.IsNullOrWhiteSpace(filePath))
-                throw new ArgumentNullException(nameof(filePath), "OFD文件路径不能为空或仅包含空白字符");
+                throw new ArgumentNullException(nameof(filePath), "OFD输入文件路径不能为空");
 
             if (!File.Exists(filePath))
-                throw new FileNotFoundException("指定的OFD文件不存在，请检查路径是否正确", filePath);
+                throw new FileNotFoundException("指定的OFD文件不存在", filePath);
 
-            // 初始化OFD归档
             _archive = OFDArchive.OpenFromFile(filePath);
-            // 可选：初始化空的OFDDocument，避免后续使用时出现NullReferenceException
-            OfdDocument = new OFDDocument();
         }
 
         /// <summary>
-        /// 初始化 OFD 读取器（流重载，支持灵活的流场景）
+        /// 从流初始化OFD读取器
         /// </summary>
-        /// <param name="stream">OFD 文件流（支持FileStream/MemoryStream等）</param>
-        /// <param name="leaveOpen">是否保持流打开状态</param>
-        /// <exception cref="ArgumentNullException">输入流为空时抛出</exception>
-        /// <exception cref="ArgumentException">输入流不可读时抛出</exception>
-        public OFDReader(Stream stream, bool leaveOpen)
+        /// <param name="stream">输入OFD文件流（需支持读取）</param>
+        /// <param name="leaveOpen">是否保持流打开</param>
+        /// <exception cref="ArgumentNullException">流为空</exception>
+        /// <exception cref="ArgumentException">流不可读</exception>
+        public OFDReader(Stream stream, bool leaveOpen = false)
         {
-            // 增强参数校验，提升容错性
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream), "OFD输入流不能为空");
-
             if (!stream.CanRead)
-                throw new ArgumentException("OFD输入流不支持读取操作，请提供可读的流", nameof(stream));
+                throw new ArgumentException("OFD输入流不支持读取操作", nameof(stream));
 
-            // 初始化OFD归档
             _archive = OFDArchive.OpenFromStream(stream, leaveOpen: leaveOpen);
-            // 可选：初始化空的OFDDocument，避免后续使用时出现NullReferenceException
-            OfdDocument = new OFDDocument();
         }
 
+        #endregion
+
+        #region 核心读取方法
+
         /// <summary>
-        /// 解析 OFD 主入口文件（OFD.xml）
+        /// 一键读取完整的OFD文档为OFDDocument对象
         /// </summary>
-        /// <returns>解析后的RootOFD全局元数据对象</returns>
-        /// <exception cref="InvalidOperationException">解析失败时抛出（包含内部异常信息）</exception>
-        /// <exception cref="ObjectDisposedException">对象已释放时抛出</exception>
-        public RootOFD ParseRootOFD()
+        /// <returns>解析后的OFDDocument</returns>
+        /// <exception cref="ObjectDisposedException">对象已释放</exception>
+        /// <exception cref="InvalidOperationException">解析失败</exception>
+        public OFDDocument ReadOFDDocument()
         {
-            // 先校验对象是否已释放，避免操作已释放的资源
-            if (_disposed)
-                throw new ObjectDisposedException(nameof(OFDReader), "OFD读取器已释放，无法执行解析操作");
+            EnsureNotDisposed();
 
             try
             {
-                // 读取 OFD.xml 入口文件（核心配置文件）
-                using var ofdStream = _archive.GetFileStream("OFD.xml");
-                // 二次校验流有效性
-                if (ofdStream == null || !ofdStream.CanRead)
-                    throw new InvalidDataException("无法读取OFD核心文件OFD.xml，文件可能损坏或格式无效");
+                // 第一步：读取OFD.xml → RootOFD
+                var rootOfd = ReadRootOFD();
+                if (rootOfd == null)
+                    throw new InvalidOperationException("无法读取OFD核心元数据（OFD.xml）");
 
-                // 验证文件签名（可选，保留扩展入口）
-                // ValidateOFDSignature(ofdStream);
+                // 第二步：推断子文档数量（通过Doc_0, Doc_1...目录）
+                var docIndices = GetDocumentIndices();
+                if (docIndices.Count == 0)
+                    throw new InvalidOperationException("未发现任何子文档（Doc_x 目录）");
 
-                // 反序列化获取RootOFD对象
-                var rootOfd = XmlHelper.DeserializeFromStream<RootOFD>(ofdStream);
-                // 同步解析结果到OfdDocument属性，保持数据一致性
-                if (rootOfd != null)
+                var docs = new List<OFDDoc>();
+                foreach (int index in docIndices)
                 {
-                    OfdDocument.RootOfd = rootOfd;
-                    // 可选：自动加载文档数量对应的子文档框架
-                   // LoadDocFramework(rootOfd.DocCount);
+                    var doc = ReadOFDDoc(index);
+                    if (doc != null)
+                        docs.Add(doc);
                 }
 
-                // 加载相关资源（可选，保留扩展入口）
-                // LoadRelatedResources();
-
-                return rootOfd;
-            }
-            catch (InvalidDataException ex)
-            {
-                throw new InvalidOperationException("解析OFD核心文件OFD.xml失败，文件格式无效或已损坏", ex);
+                return new OFDDocument
+                {
+                    RootOfd = rootOfd,
+                    Docs = docs
+                };
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException("解析OFD文档失败，请检查文件完整性", ex);
+                throw new InvalidOperationException("读取完整OFD文档失败", ex);
             }
         }
 
         /// <summary>
-        /// 辅助方法：根据文档数量加载子文档框架（提升实用性）
+        /// 读取OFD.xml 全局元数据
         /// </summary>
-        /// <param name="docCount">OFD文档数量</param>
-        private void LoadDocFramework(int docCount)
+        public RootOFD ReadRootOFD()
         {
-            if (docCount <= 0) return;
+            EnsureNotDisposed();
 
-            // 清空原有文档集合，避免重复加载
-            OfdDocument.Docs.Clear();
+            if (!_archive.FileExists("OFD.xml"))
+                return null;
 
-            // 根据文档数量创建子文档框架
-            for (int i = 1; i <= docCount; i++)
-            {
-                OfdDocument.AddNewDoc();
-            }
+            using var stream = _archive.OpenFileStream("OFD.xml");
+            return XmlHelper.DeserializeFromStream<RootOFD>(stream);
         }
 
-        #region IDisposable 实现（线程安全，规范释放资源）
         /// <summary>
-        /// 受保护的释放方法，区分托管资源和非托管资源
+        /// 获取所有存在的子文档索引（如 [0, 1, 2] 对应 Doc_0, Doc_1, Doc_2）
         /// </summary>
-        /// <param name="disposing">是否释放托管资源</param>
+        private List<int> GetDocumentIndices()
+        {
+            //_archive 中可以
+
+            var indices = new List<int>();
+            for (int i = 0; i < 1000; i++) // 安全上限
+            {
+                string docPath = $"Doc_{i}";
+                if (_archive.DirectoryExists(docPath))
+                    indices.Add(i);
+                else
+                    break; // 假设连续编号
+            }
+            return indices;
+        }
+
+        /// <summary>
+        /// 读取指定索引的子文档
+        /// </summary>
+        /// <param name="docIndex">子文档索引</param>
+        /// <returns>OFDDoc对象</returns>
+        public OFDDoc ReadOFDDoc(int docIndex)
+        {
+            EnsureNotDisposed();
+
+            var doc = new OFDDoc { DocIndex = docIndex };
+
+            // Document.xml
+            string docFilePath = Constants.GetFilePath(Constants.Doc_DocumentFile, docIndex);
+            if (_archive.FileExists(docFilePath))
+            {
+                using var stream = _archive.OpenFileStream(docFilePath);
+                doc.Document = XmlHelper.DeserializeFromStream<Document>(stream);
+            }
+
+            // PublicRes.xml
+            string pubResPath = Constants.GetFilePath(Constants.Doc_PublicResFile, docIndex);
+            if (_archive.FileExists(pubResPath))
+            {
+                using var stream = _archive.OpenFileStream(pubResPath);
+                doc.PublicResource = XmlHelper.DeserializeFromStream<PublicResource>(stream);
+            }
+
+            // DocumentRes.xml
+            string docResPath = Constants.GetFilePath(Constants.Doc_DocumentResFile, docIndex);
+            if (_archive.FileExists(docResPath))
+            {
+                using var stream = _archive.OpenFileStream(docResPath);
+                doc.DocumentResource = XmlHelper.DeserializeFromStream<DocumentResource>(stream);
+            }
+
+            // Signatures.xml
+            string sigIndexPath = Constants.GetFilePath(Constants.Signs_SignaturesFile, docIndex);
+            if (_archive.FileExists(sigIndexPath))
+            {
+                using var stream = _archive.OpenFileStream(sigIndexPath);
+                doc.Signatures = XmlHelper.DeserializeFromStream<Signatures>(stream);
+            }
+
+            // 读取签章对象（Sign_0, Sign_1...）
+            doc.SignDocs = ReadSignDocs(docIndex);
+
+            // 读取页面对象（Page_0, Page_1...）
+            doc.PageDocs = ReadPageDocs(docIndex);
+
+            // 读取文档级资源 Res/
+            doc.ResFiles = ReadDocumentResources(docIndex);
+
+            return doc;
+        }
+
+        private List<SignDoc> ReadSignDocs(int docIndex)
+        {
+            var signs = new List<SignDoc>();
+            for (int i = 0; i < 100; i++)
+            {
+                string sigDir = Constants.GetFilePath("Signs/Sign_{0}", docIndex, i);
+                if (!_archive.DirectoryExists(sigDir)) break;
+
+                var signDoc = new SignDoc
+                {
+                    BelongDocIndex = docIndex,
+                    SignIndex = i
+                };
+
+                // Signature.xml
+                string sigFile = Constants.GetFilePath(Constants.Sign_SignatureFile, docIndex, i);
+                if (_archive.FileExists(sigFile))
+                {
+                    using var stream = _archive.OpenFileStream(sigFile);
+                    signDoc.Signature = XmlHelper.DeserializeFromStream<Signature>(stream);
+                }
+
+                // Seal.esl
+                string sealFile = Constants.GetFilePath(Constants.Sign_SealFile, docIndex, i);
+                if (_archive.FileExists(sealFile))
+                {
+                    using var stream = _archive.OpenFileStream(sealFile);
+                    using var ms = new MemoryStream();
+                    stream.CopyTo(ms);
+                    signDoc.Seal = ms.ToArray();
+                }
+
+                // SignedValue.dat
+                string svFile = Constants.GetFilePath(Constants.Sign_SignedValueFile, docIndex, i);
+                if (_archive.FileExists(svFile))
+                {
+                    using var stream = _archive.OpenFileStream(svFile);
+                    using var ms = new MemoryStream();
+                    stream.CopyTo(ms);
+                    signDoc.SignedValue = ms.ToArray();
+                }
+
+                signs.Add(signDoc);
+            }
+            return signs;
+        }
+
+        private List<PageDoc> ReadPageDocs(int docIndex)
+        {
+            var pages = new List<PageDoc>();
+            for (int i = 0; i < 1000; i++)
+            {
+                string pageDir = Constants.GetFilePath("Pages/Page_{0}", docIndex, i);
+                if (!_archive.DirectoryExists(pageDir)) break;
+
+                var pageDoc = new PageDoc
+                {
+                    BelongDocIndex = docIndex,
+                    PageIndex = i
+                };
+
+                // Content.xml
+                string contentFile = Constants.GetFilePath(Constants.Page_ContentFile, docIndex, i);
+                if (_archive.FileExists(contentFile))
+                {
+                    using var stream = _archive.OpenFileStream(contentFile);
+                    pageDoc.Content = XmlHelper.DeserializeFromStream<Content>(stream);
+                }
+
+                // PageRes.xml
+                string pageResFile = Constants.GetFilePath(Constants.Page_PageResFile, docIndex, i);
+                if (_archive.FileExists(pageResFile))
+                {
+                    using var stream = _archive.OpenFileStream(pageResFile);
+                    pageDoc.PageRes = XmlHelper.DeserializeFromStream<PageRes>(stream);
+                }
+
+                // 页面资源 Res/
+                pageDoc.PageResFiles = ReadPageResources(docIndex, i);
+
+                pages.Add(pageDoc);
+            }
+            return pages;
+        }
+
+        private Dictionary<string, byte[]> ReadDocumentResources(int docIndex)
+        {
+            var res = new Dictionary<string, byte[]>();
+            string resDir = Constants.GetFilePath(Constants.Doc_ResDirectory, docIndex);
+            if (!_archive.DirectoryExists(resDir)) return res;
+
+            var files = _archive.GetFilesInDirectory(resDir);
+            foreach (var file in files)
+            {
+                string fileName = Path.GetFileName(file);
+                using var stream = _archive.OpenFileStream(file);
+                using var ms = new MemoryStream();
+                stream.CopyTo(ms);
+                res[fileName] = ms.ToArray();
+            }
+            return res;
+        }
+
+        private Dictionary<string, byte[]> ReadPageResources(int docIndex, int pageIndex)
+        {
+            var res = new Dictionary<string, byte[]>();
+            string resDir = Constants.GetFilePath(Constants.Page_ResDirectory, docIndex, pageIndex);
+            if (!_archive.DirectoryExists(resDir)) return res;
+
+            var files = _archive.GetFilesInDirectory(resDir);
+            foreach (var file in files)
+            {
+                string fileName = Path.GetFileName(file);
+                using var stream = _archive.OpenFileStream(file);
+                using var ms = new MemoryStream();
+                stream.CopyTo(ms);
+                res[fileName] = ms.ToArray();
+            }
+            return res;
+        }
+
+        #endregion
+
+        #region 辅助方法
+
+        private void EnsureNotDisposed()
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(
+                    nameof(OFDReader),
+                    $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] OFD读取器（{nameof(OFDReader)}）已释放，无法执行读取操作");
+        }
+
+        #endregion
+
+        #region IDisposable 实现
+
         protected virtual void Dispose(bool disposing)
         {
-            // 双重校验，确保资源仅释放一次（线程安全）
             if (!_disposed)
             {
                 if (disposing)
                 {
-                    // 释放托管资源：OFDArchive（实现IDisposable的托管对象）
                     _archive?.Dispose();
-                    // 清空OfdDocument引用，帮助GC回收
-                    OfdDocument = null;
                 }
-
-                // 标记资源已释放
                 _disposed = true;
             }
         }
 
-        /// <summary>
-        /// 手动释放资源（公共接口）
-        /// </summary>
         public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
         }
 
-        /// <summary>
-        /// 析构函数：防止手动未调用Dispose时资源泄漏
-        /// 仅释放非托管资源（此处无自定义非托管资源，仅做兜底）
-        /// </summary>
-        ~OFDReader()
+        ～OFDReader()
         {
             Dispose(false);
         }
+
         #endregion
     }
 }
