@@ -1,12 +1,6 @@
-﻿using OFDViewer.Models.Enums;
-using OFDViewer.Models.PageDesc.Colors;
+﻿using System.Xml.Serialization;
+using OFDViewer.Models.Enums;
 using OFDViewer.Utils;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Serialization;
 
 namespace OFDViewer.Models.PageDesc.Colors.ColorItems
 {

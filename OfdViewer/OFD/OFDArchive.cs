@@ -1,12 +1,6 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.IO;
+﻿using System.Collections.Concurrent;
 using System.IO.Compression;
-using System.IO.Pipes;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Xml;
 
 namespace OFDViewer.OFD
@@ -161,7 +155,7 @@ namespace OFDViewer.OFD
             if (_zipArchive == null)
                 return false;
             var normalizedPath = NormalizePath(path).TrimEnd('/') + '/';
-            return _zipArchive.Entries.Any(e => e.FullName.StartsWith(normalizedPath, StringComparison.OrdinalIgnoreCase));
+            return _entryCache.Keys.Any(key => key.StartsWith(normalizedPath, StringComparison.OrdinalIgnoreCase));
         }
 
 
@@ -170,7 +164,7 @@ namespace OFDViewer.OFD
         /// </summary>
         /// <param name="path">ZIP 内的目标目录路径</param>
         /// <returns>直接子项的名称列表（文件夹以 / 结尾）</returns>
-        public List<string> GetDirectEntriesInDirectory(string path)
+        public List<string> GetDirectEntryNamesInDirectory(string path)
         {
             // 校验 ZIP 归档是否有效
             if (_zipArchive == null)
@@ -208,9 +202,9 @@ namespace OFDViewer.OFD
                 if (firstSeparatorIndex > 0)
                 {
                     // 是子目录
-                    // 例： docs/subdir/file.txt => subdir/
-                    // 例： docs/subdir/signs => subdir/
-                    var dirName = relativePath.Substring(0, firstSeparatorIndex + 1);
+                    // 例： docs/subdir/file.txt => subdir
+                    // 例： docs/subdir/signs => subdir
+                    var dirName = relativePath.Substring(0, firstSeparatorIndex);
                     entries.Add(dirName);
                 }
                 else
@@ -231,7 +225,7 @@ namespace OFDViewer.OFD
         /// </summary>
         /// <param name="path">ZIP 内的目标目录路径</param>
         /// <returns>所有子项的完整相对路径列表</returns>
-        public List<string> GetAllEntriesInDirectory(string path)
+        public List<string> GetAllEntryNamesInDirectory(string path)
         {
             // 校验 ZIP 归档是否有效
             if (_zipArchive == null)
@@ -260,6 +254,53 @@ namespace OFDViewer.OFD
             }
 
             return entries;
+        }
+
+
+        // <summary>
+        /// 获取指定目录下的【直接子文件,包含路径】（不递归）
+        /// </summary>
+        public List<string> GetDirectFilePathsInDirectory(string path)
+        {
+            // 校验 ZIP 归档是否有效
+            if (_zipArchive == null)
+                throw new InvalidOperationException("ZIP归档已释放，无法获取目录内容");
+
+            // 规范化路径，确保以 / 结尾（如 "docs" → "docs/"）
+            var normalizedPath = NormalizePath(path);
+            var targetPrefix = string.IsNullOrEmpty(normalizedPath) ? string.Empty : $"{normalizedPath}/";
+
+            var entries = new HashSet<string>(); // 使用 HashSet 自动去重，避免重复添加子目录
+
+            foreach (var entryName in _entryCache.Keys)
+            {
+                // 跳过非目标目录下的条目
+                if (!entryName.StartsWith(targetPrefix, StringComparison.Ordinal))
+                    continue;
+
+                // 获取相对路径，即去掉目录前缀，得到文件或子目录名称
+                // 例： docs/test.txt => test.txt
+                // 例： docs/subdir/file.txt => subdir/file.txt
+                // 例： docs/subdir/signs => subdir/signs
+                var relativePath = entryName.Substring(targetPrefix.Length);
+                if (string.IsNullOrEmpty(relativePath))
+                    continue;
+
+                // 查找第一个 / 的位置，判断是直接子项还是深层子项
+                var firstSeparatorIndex = relativePath.IndexOf('/');
+                if (firstSeparatorIndex == 0)
+                    continue; // 排除空路径（理论上不会出现）
+
+                // 是直接文件
+                // 如  docs/test.txt => test.txt
+                if (firstSeparatorIndex < 0)
+                {
+                    entries.Add(entryName);
+                }
+            }
+
+            // 转换为 List 并返回（保持顺序，也可按需排序）
+            return entries.ToList();
         }
 
 

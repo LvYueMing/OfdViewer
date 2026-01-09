@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace OFDViewer.Models.BaseStructure.Resources.ResItems
+﻿namespace OFDViewer.Models.BaseStructure.Resources.ResItems
 {
     /// <summary>
     /// 所有资源的基类

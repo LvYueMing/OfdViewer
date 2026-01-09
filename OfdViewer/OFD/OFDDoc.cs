@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using OFDViewer.Models.BaseStructure.DocumentRoot;
+﻿using OFDViewer.Models.BaseStructure.DocumentRoot;
 using OFDViewer.Models.BaseStructure.Resources;
 using OFDViewer.Models.Signature;
 
@@ -22,7 +17,7 @@ namespace OFDViewer.OFD
         /// <summary>
         /// 文档序号（从0开始，只读，构造时赋值）
         /// </summary>
-        public int DocIndex { get; }
+        public int DocIndex { get; set; }
 
         /// <summary>
         /// 全文档公共资源描述文件（PublicRes.xml）
@@ -42,7 +37,7 @@ namespace OFDViewer.OFD
         /// <summary>
         /// 签章对象集合（对应Sign_N目录，一个文档可包含多个签章）
         /// </summary>
-        public List<SignDoc> SignDocs { get; set; } 
+        public List<SignDoc> SignDocs { get; set; }
 
         /// <summary>
         /// 页面对象集合（对应Page_N目录，存储文档所有页面）
@@ -55,24 +50,34 @@ namespace OFDViewer.OFD
         public Dictionary<string, byte[]> ResFiles { get; set; }
 
         /// <summary>
-        /// 文档主描述文件路径（相对根目录，基于文档序号动态生成）
+        /// 文档主描述文件路径（Doc_{0}/Document.xml）
         /// </summary>
         public string DocumentFilePath => Constants.GetFilePath(Constants.Doc_DocumentFile, DocIndex);
 
         /// <summary>
-        /// 文档公共资源描述文件路径（相对根目录）
+        /// 文档公共资源描述文件路径（Doc_{0}/PublicRes.xml）
         /// </summary>
         public string PublicResourceFilePath => Constants.GetFilePath(Constants.Doc_PublicResFile, DocIndex);
 
         /// <summary>
-        /// 文档私有资源描述文件路径（相对根目录）
+        /// 文档私有资源描述文件路径（Doc_{0}/DocumentRes.xml）
         /// </summary>
         public string DocumentResourceFilePath => Constants.GetFilePath(Constants.Doc_DocumentResFile, DocIndex);
 
         /// <summary>
-        /// 文档级资源目录路径（对应Doc_N/Res目录，存储共享资源）
+        /// 文档级资源目录路径（Doc_{0}/Res）
         /// </summary>
         public string ResDirectoryPath => Constants.GetFilePath(Constants.Doc_ResDirectory, DocIndex);
+
+        /// <summary>
+        /// 页面对象集合目录（Doc_{0}/Pages）
+        /// </summary>
+        public string PagesDirectoryPath => Constants.GetFilePath(Constants.Pages_BaseDirectory, DocIndex);
+
+        /// <summary>
+        /// 签章对象集合目录(Doc_{0}/Signs)
+        /// </summary>
+        public string SignsDirectoryPath => Constants.GetFilePath(Constants.Signs_BaseDirectory, DocIndex);
 
 
         /// <summary>

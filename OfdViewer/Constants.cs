@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace OFDViewer
+﻿namespace OFDViewer
 {
     /// <summary>
     /// OFD 常量类（复用之前定义）

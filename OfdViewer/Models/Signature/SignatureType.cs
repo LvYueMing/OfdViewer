@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace OFDViewer.Models.Signature
+﻿namespace OFDViewer.Models.Signature
 {
     /// <summary>
     /// 签名节点的类型,目前规定了两个可选值,

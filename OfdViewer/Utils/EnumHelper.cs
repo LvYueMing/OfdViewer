@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
+﻿using System.ComponentModel;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace OFDViewer.Utils
 {
@@ -45,7 +40,7 @@ namespace OFDViewer.Utils
             // 尝试按数字值解析（兼容 "0"/"1"/"2" 字符串）
             if (int.TryParse(value, out var intValue) && Enum.IsDefined(typeof(T), intValue))
             {
-                result=(T)Enum.ToObject(typeof(T), intValue);
+                result = (T)Enum.ToObject(typeof(T), intValue);
                 return true;
             }
 
@@ -54,7 +49,7 @@ namespace OFDViewer.Utils
             {
                 if (GetEnumDesc(enumValue) == value)
                 {
-                    result= enumValue;
+                    result = enumValue;
                     return true;
                 }
             }
@@ -74,7 +69,7 @@ namespace OFDViewer.Utils
 
             // 尝试直接解析（支持数字字符串）
             if (Enum.TryParse(value, false, out T result))
-            { 
+            {
                 return result;
             }
 

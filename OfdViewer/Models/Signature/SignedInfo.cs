@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Serialization;
+﻿using System.Xml.Serialization;
 using OFDViewer.Utils;
 
 namespace OFDViewer.Models.Signature
@@ -51,8 +46,8 @@ namespace OFDViewer.Models.Signature
         /// <summary>
         /// 本签名关联的外观(用OFD中的注释来表示),该节点可出现多次
         /// 可选
-                /// </summary>
-                [XmlElement("StampAnnot", IsNullable = false)]
+        /// </summary>
+        [XmlElement("StampAnnot", IsNullable = false)]
         public List<StampAnnot> StampAnnots { get; set; }
 
         /// <summary>

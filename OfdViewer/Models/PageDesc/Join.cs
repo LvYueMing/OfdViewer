@@ -1,12 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Serialization;
-
-namespace OFDViewer.Models.PageDesc
+﻿namespace OFDViewer.Models.PageDesc
 {
     /// <summary>
     /// 线条连接样式,指定了两个线的端点结合时采用的样式

@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace OFDViewer.Models.BaseType
+﻿namespace OFDViewer.Models.BaseType
 {
     /// <summary>
     /// ST_ID 标识，无符号整数，应在文档内唯一。0 表示无效标识

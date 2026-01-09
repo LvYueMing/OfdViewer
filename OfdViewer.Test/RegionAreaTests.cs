@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Xunit;
-using OFDViewer.Utils;
+﻿using OFDViewer.Models.BaseType;
 using OFDViewer.Models.Graph;
-using OFDViewer.Models.BaseType;
 using OFDViewer.Models.Graph.PathItems;
+using OFDViewer.Utils;
+using Xunit;
 
 namespace OFDViewer.Tests
 {
@@ -27,7 +22,7 @@ namespace OFDViewer.Tests
             originalRegion.AddPathItem(new Close());
 
             // 2. 执行序列化和反序列化
-            XmlHelper.SerializeToFile(originalRegion,"RegionArea.xml");
+            XmlHelper.SerializeToFile(originalRegion, "RegionArea.xml");
 
             Console.WriteLine("序列化成功！");
         }

@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace OFDViewer.Models.BaseStructure.DocumentRoot
+﻿namespace OFDViewer.Models.BaseStructure.DocumentRoot
 {
     /// <summary>
     /// 页面布局模式, 可取值如下:

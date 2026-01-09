@@ -1,14 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.IO.Compression;
-using System.Linq;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Serialization;
-using OFDViewer.Models.BaseStructure.MainEntry;
-using OFDViewer.Models.Signature;
+﻿using OFDViewer.Models.BaseStructure.MainEntry;
 using OFDViewer.Utils;
 
 namespace OFDViewer.OFD
@@ -41,7 +31,7 @@ namespace OFDViewer.OFD
         {
             // 严格参数校验,构造阶段的致命错误必须抛出
             if (string.IsNullOrWhiteSpace(filePath))
-                throw new ArgumentNullException(nameof(filePath) ,"OFD输出文件路径不能为空");
+                throw new ArgumentNullException(nameof(filePath), "OFD输出文件路径不能为空");
 
             try
             {
@@ -192,9 +182,9 @@ namespace OFDViewer.OFD
                 {
                     // 构建公共资源描述文件路径(Doc_{0}/PublicRes.xml)
                     using var publicResStream = _archive.CreateFileStream(doc.PublicResourceFilePath);
-                    
-                        // 序列化全文档公共资源描述文件（PublicRes.xml）
-                        XmlHelper.SerializeToStream(doc.PublicResource, publicResStream);                   
+
+                    // 序列化全文档公共资源描述文件（PublicRes.xml）
+                    XmlHelper.SerializeToStream(doc.PublicResource, publicResStream);
                 }
 
                 // 文档文档资源描述文件
@@ -251,7 +241,7 @@ namespace OFDViewer.OFD
                 {
                     // 构建文档级资源目录路径(Doc_{0}/Res/)
                     string resDirectoryPath = Constants.GetFilePath(Constants.Doc_ResDirectory, doc.DocIndex);
-                    
+
                     // 遍历写入每个资源文件
                     foreach (var resFileEntry in doc.ResFiles)
                     {

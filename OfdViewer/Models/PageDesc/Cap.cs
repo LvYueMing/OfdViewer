@@ -1,12 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Serialization;
-
-namespace OFDViewer.Models.PageDesc
+﻿namespace OFDViewer.Models.PageDesc
 {
     /// <summary>
     /// 线端点样式,枚举值,指定了一条线的端点样式。

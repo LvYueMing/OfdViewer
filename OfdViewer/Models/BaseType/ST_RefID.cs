@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace OFDViewer.Models.BaseType
+﻿namespace OFDViewer.Models.BaseType
 {
     /// <summary>
     /// ST_RefID 标识引用，此标识应为文档内已定义的标识

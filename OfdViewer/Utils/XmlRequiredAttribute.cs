@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace OFDViewer.Utils
+﻿namespace OFDViewer.Utils
 {
     /// <summary>
     /// 自定义特性：标记XML序列化时的必填属性/元素（对应xs:attribute use="required"）

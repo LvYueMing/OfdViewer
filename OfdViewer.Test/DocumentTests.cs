@@ -1,11 +1,5 @@
 ﻿using OFDViewer.Models.BaseStructure.DocumentRoot;
 using OFDViewer.Utils;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Linq;
 using Xunit;
 
 namespace OFDViewer.Tests

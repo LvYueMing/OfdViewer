@@ -1,11 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using OFDViewer.Utils;
-using System.Xml.Serialization;
+﻿using System.Xml.Serialization;
 using OFDViewer.Models.BaseType;
+using OFDViewer.Utils;
 
 namespace OFDViewer.Models.PageDesc.Colors
 {

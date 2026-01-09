@@ -1,12 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Serialization;
-using OFDViewer.Models.BaseType;
+﻿using System.Xml.Serialization;
 using OFDViewer.Models.BaseStructure.Resources.ResItems;
-using OFDViewer.Models.PageDesc.Colors;
+using OFDViewer.Models.BaseType;
 using OFDViewer.Utils;
 
 namespace OFDViewer.Models.BaseStructure.Resources

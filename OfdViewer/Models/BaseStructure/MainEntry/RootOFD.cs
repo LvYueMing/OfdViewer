@@ -1,7 +1,6 @@
-﻿using OFDViewer.Models.Enums;
+﻿using System.Xml.Serialization;
+using OFDViewer.Models.Enums;
 using OFDViewer.Utils;
-using System.ComponentModel.DataAnnotations;
-using System.Xml.Serialization;
 
 namespace OFDViewer.Models.BaseStructure.MainEntry
 {

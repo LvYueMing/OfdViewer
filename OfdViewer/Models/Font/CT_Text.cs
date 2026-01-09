@@ -1,13 +1,7 @@
-﻿using OFDViewer.Models.BaseType;
+﻿using System.Xml.Serialization;
+using OFDViewer.Models.BaseType;
 using OFDViewer.Models.PageDesc;
 using OFDViewer.Models.PageDesc.Colors;
-using System;
-using System.Collections.Generic;
-using System.Data.SqlTypes;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Serialization;
 
 namespace OFDViewer.Models.Font
 {

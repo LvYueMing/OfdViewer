@@ -1,11 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using OFDViewer.Models.PageDesc.Colors;
-using System.Xml.Serialization;
+﻿using System.Xml.Serialization;
 using OFDViewer.Models.BaseType;
+using OFDViewer.Models.PageDesc.Colors;
 using OFDViewer.Utils;
 
 namespace OFDViewer.Models.PageDesc.DrawParams
@@ -65,7 +60,7 @@ namespace OFDViewer.Models.PageDesc.DrawParams
             set => Join = EnumHelper.ParseEnum<DrawParamJoinType>(value);
         }
         [XmlIgnore]
-        public DrawParamJoinType Join { get; set; }= DrawParamJoinType.Miter;
+        public DrawParamJoinType Join { get; set; } = DrawParamJoinType.Miter;
 
         /// <summary>
         /// 线端点样式,枚举值,指定了一条线的端点样式。 可取值为:
