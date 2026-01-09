@@ -49,6 +49,10 @@ namespace OFDViewer.OFD
         /// </summary>
         public Dictionary<string, byte[]> ResFiles { get; set; }
 
+
+        //当前文档路径
+        public string DocBaseDirectory => Constants.GetFilePath(Constants.Doc_BaseDirectory, DocIndex);
+
         /// <summary>
         /// 文档主描述文件路径（Doc_{0}/Document.xml）
         /// </summary>

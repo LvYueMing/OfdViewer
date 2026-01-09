@@ -11,7 +11,7 @@ namespace OFDViewer.Models.Font
     public class CT_Font
     {
         /// <summary>
-        /// 指向内嵌字型文件,嵌入字型文件应使用 OpenType格式 
+        /// 指向内嵌字型文件,嵌入字型文件应使用 OpenType 格式 
         /// 可选
         /// </summary>
         [XmlElement("FontFile")]

@@ -39,8 +39,7 @@ namespace OFDViewer.OFD
         /// <summary>
         /// 页面目录路径（相对根目录，格式：Doc_{BelongDocIndex}/Pages/Page_{PageIndex}）
         /// </summary>
-        public string PageDirectoryPath =>
-            $"Doc_{BelongDocIndex}/Pages/Page_{PageIndex}";
+        public string PageDirectoryPath => $"Doc_{BelongDocIndex}/Pages/Page_{PageIndex}";
 
         /// <summary>
         /// 构造函数

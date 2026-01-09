@@ -39,8 +39,7 @@ namespace OFDViewer.OFD
         /// <summary>
         /// 签章目录路径（相对根目录，格式：Doc_{BelongDocIndex}/Signs/Sign_{SignIndex}）
         /// </summary>
-        public string SignDirectoryPath =>
-            $"Doc_{BelongDocIndex}/Signs/Sign_{SignIndex}";
+        public string SignDirectoryPath =>$"Doc_{BelongDocIndex}/Signs/Sign_{SignIndex}";
 
         /// <summary>
         /// 构造函数，初始化签章序号和所属文档序号，校验合法性

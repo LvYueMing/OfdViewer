@@ -18,6 +18,16 @@ namespace OFDViewer.OFD
         public string RootOfdFilePath => Constants.Root_OfdFile;
 
         /// <summary>
+        /// 当前OFD根目录路径
+        /// "." 表示当前路径, ".." 表示父路径
+        /// 约定:
+        /// 1. "/"代表根节点;
+        /// 2. 未显式指定时代表当前路径;
+        /// 3. 路径区分大小写
+        /// </summary>
+        public string OFDRootDirectory => "/";
+
+        /// <summary>
         /// 文档集合（对应 Doc_0、Doc_1... 子文档目录，有序存储）
         /// </summary>
         public List<OFDDoc> Docs { get; set; } = new List<OFDDoc>();
