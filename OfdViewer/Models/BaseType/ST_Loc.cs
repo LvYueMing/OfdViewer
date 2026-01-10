@@ -11,13 +11,10 @@
     public struct ST_Loc : IEquatable<ST_Loc>
     {
         private readonly string _path;
-        // 是否为绝对路径
-        private readonly bool _isAbsolute;
 
         public ST_Loc()
         {
             _path = ".";
-            _isAbsolute = false;
         }
 
         public ST_Loc(string path)
@@ -25,58 +22,58 @@
             if (string.IsNullOrEmpty(path) || path == ".")
             {
                 _path = ".";
-                _isAbsolute = false;
             }
             else
             {
                 // 先将所有 \ 替换为 /
                 path = path.Replace('\\', '/');
 
+                // OFD文件内部路径没有绝对路径概念，将所有路径统一处理为相对路径
+                // 以/开头的路径视为从根目录开始的相对路径
                 if (path.StartsWith("/"))
                 {
-                    _path = NormalizePath(path, true);
-                    _isAbsolute = true;
+                    // 移除开头的/，并规范化路径
+                    path = path.Substring(1);
                 }
-                else
-                {
-                    // 处理相对路径，确保以 ./ 开头（除非是以 ../ 开头）
-                    if (!path.StartsWith("../"))
-                    {
-                        if (!path.StartsWith("./"))
-                        {
-                            path = "./" + path;
-                        }
-                    }
-                    _path = NormalizePath(path, false);
-                    _isAbsolute = false;
-                }
+
+                _path = NormalizePath(path);
             }
         }
 
         public string Path => _path;
-        public bool IsAbsolute => _isAbsolute;
-        public bool IsRelative => !_isAbsolute;
 
         // 规范化路径，自动处理 . 和 ..
-        private static string NormalizePath(string path, bool isAbsolute)
+        /// <summary>
+        /// 将传入的相对路径字符串进行规范化处理，解析并消除其中出现的 "." 与 ".."
+        /// 规则：
+        /// 1. 以 "/" 分隔路径片段，忽略空片段；
+        /// 2. "." 代表当前目录，直接跳过；
+        /// 3. ".." 代表返回上一级目录：
+        ///    - 若栈顶不是 ".."（即存在上级目录），则弹出栈顶，表示回退一级；
+        ///    - 若栈顶也是 ".."（或栈为空），说明已无法继续回退，需保留该 ".."；
+        /// 4. 普通目录名直接压入栈；
+        /// 5. 最终按顺序拼接栈内剩余片段，得到不含 "." 与多余 ".." 的规范相对路径；
+        /// 6. 若结果为空，则返回 "." 表示当前目录。
+        /// </summary>
+        /// <param name="path">待规范化的相对路径</param>
+        /// <returns>规范化后的相对路径</returns>
+        private static string NormalizePath(string path)
         {
             var parts = path.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
             var stack = new Stack<string>();
 
-            // 记录是否以 ../ 开头
-            bool startsWithParentRef = path.StartsWith("../");
-
             foreach (var part in parts)
-            {
+            {               
                 if (part == ".")
                     continue;
                 if (part == "..")
                 {
+                    // 若栈顶不是 ".."（即存在上级目录），则弹出栈顶，表示回退一级；
                     if (stack.Count > 0 && stack.Peek() != "..")
                         stack.Pop();
-                    else if (!isAbsolute)
+                    else
+                        // 若栈顶也是 ".."（或栈为空），说明已无法继续回退，需保留该 ".."；
                         stack.Push("..");
-                    // 绝对路径下超出根目录的 .. 忽略
                 }
                 else
                 {
@@ -84,17 +81,95 @@
                 }
             }
 
-            var normalized = string.Join("/", stack.Reverse());
-            if (isAbsolute)
-                return "/" + normalized;
-
-            // 对于相对路径，添加适当的前缀
-            if (string.IsNullOrEmpty(normalized))
+            if (stack.Count == 0)
                 return ".";
-            else if (startsWithParentRef)
-                return normalized.StartsWith("..") ? normalized : "../" + normalized;
-            else
-                return "./" + normalized;
+
+            return string.Join("/", stack.Reverse());
+        }
+
+
+        /// 根据基准位置解析当前相对路径，生成实际的相对路径
+        /// </summary>
+        /// <param name="baseLoc">基准位置路径,即当前路径</param>
+        /// <returns>解析后的实际相对路径</returns>
+        /// <summary>
+        public ST_Loc Resolve(ST_Loc currentLoc)
+        {
+            // 如果当前路径为空或为当前路径，直接返回基准位置
+            if (_path == "." || string.IsNullOrEmpty(_path))
+                return currentLoc;
+
+
+            // 确保基准路径始终基于根目录，这样才能正确解析多个..
+            // 使用List来保持路径顺序，比Stack更容易处理
+            var fullPath = new List<string>();
+
+            // 首先处理基准路径
+            if (currentLoc.Path != ".")
+            {
+                var baseParts = currentLoc.Path.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+                foreach (var part in baseParts)
+                {
+                    // 基准路径中不应出现".."，若出现则直接忽略
+                    if (part == ".")
+                        continue;
+                    if (part == "..")
+                    {
+                        // 基准路径已基于根目录，无需回退，直接跳过
+                        continue;
+                    }
+                    else
+                    {
+                        fullPath.Add(part);
+                    }
+                }
+            }
+
+            // 然后处理当前路径
+            var currentParts = _path.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var part in currentParts)
+            {
+                if (part == ".")
+                    continue;
+                if (part == "..")
+                {
+                    if (fullPath.Count > 0)
+                        fullPath.RemoveAt(fullPath.Count - 1);
+                    // 避免超出根目录的情况，不添加更多的..
+                }
+                else
+                {
+                    fullPath.Add(part);
+                }
+            }
+
+            // 构建最终路径
+            if (fullPath.Count == 0)
+                return new ST_Loc(".");
+
+            return new ST_Loc(string.Join("/", fullPath));
+        }
+
+        /// <summary>
+        /// 静态方法：根据基准位置解析相对路径，生成实际的相对路径
+        /// </summary>
+        /// <param name="relativePath">相对路径</param>
+        /// <param name="baseLoc">基准位置路径</param>
+        /// <returns>解析后的实际相对路径</returns>
+        public static ST_Loc Resolve(string relativePath, string baseLoc)
+        {
+            return Resolve(new ST_Loc(relativePath), new ST_Loc(baseLoc));
+        }
+
+        /// <summary>
+        /// 静态方法：根据基准位置解析相对路径，生成实际的相对路径
+        /// </summary>
+        /// <param name="relativePath">相对路径</param>
+        /// <param name="baseLoc">基准位置路径</param>
+        /// <returns>解析后的实际相对路径</returns>
+        public static ST_Loc Resolve(ST_Loc relativePath, ST_Loc baseLoc)
+        {
+            return relativePath.Resolve(baseLoc);
         }
 
 
