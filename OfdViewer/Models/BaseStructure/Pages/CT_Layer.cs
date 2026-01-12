@@ -34,6 +34,12 @@ namespace OFDViewer.Models.BaseStructure.Pages
         /// 可选
         /// </summary>
         [XmlAttribute("DrawParam")]
+        public string DrawParamString
+        {
+            get => DrawParam.ToString();
+            set => DrawParam = ST_RefID.Parse(value);
+        }
+        [XmlIgnore]
         public ST_RefID DrawParam { get; set; }
 
     }

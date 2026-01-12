@@ -10,7 +10,7 @@ namespace OFDViewer.Models.PageDesc.Colors
     /// 底纹
     /// 底纹是复杂颜色的一种,用于图形和文字的填充以及勾边处理。底纹结构如图26所示。
     /// </summary>
-    public class CT_Pattern : BaseColor
+    public class CT_Pattern : BaseComplexColor
     {
         /// <summary>
         /// 底纹单元,用底纹填充目标区域时,所使用的单元对象 必选

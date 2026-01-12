@@ -9,9 +9,9 @@ namespace OFDViewer.OFD
     public class PageDoc
     {
         /// <summary>
-        /// 页面序号（从0开始）
+        /// 页面序号（从0开始，自动计算）
         /// </summary>
-        public int PageIndex { get; }
+        public int PageIndex { get; internal set; }
 
         /// <summary>
         /// 所属文档序号（从0开始）
@@ -55,6 +55,14 @@ namespace OFDViewer.OFD
 
             PageIndex = pageIndex;
             BelongDocIndex = belongDocIndex;
+        }
+
+        /// <summary>
+        /// 构造函数（默认belongDocIndex为0）
+        /// </summary>
+        /// <param name="pageIndex">页面序号（从0开始）</param>
+        public PageDoc(int pageIndex) : this(pageIndex, 0)
+        {
         }
     }
 }

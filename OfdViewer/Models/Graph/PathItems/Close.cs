@@ -3,7 +3,7 @@
     /// <summary>
     /// Close元素
     /// </summary>
-    public class Close : AreaPath
+    public class Close : BasePath
     {
         // 空类，仅用于标识Close元素
 

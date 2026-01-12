@@ -15,6 +15,12 @@ namespace OFDViewer.Models.BaseStructure.Pages
         /// 必选
         /// </summary>
         [XmlAttribute("TemplateID")]
+        public string TemplateIDString
+        {
+            get => TemplateID.ToString();
+            set => TemplateID = ST_RefID.Parse(value);
+        }
+        [XmlIgnore]
         public ST_RefID TemplateID { get; set; }
 
         /// <summary>

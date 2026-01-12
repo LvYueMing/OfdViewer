@@ -6,7 +6,7 @@ namespace OFDViewer.Models.Graph.PathItems
     /// <summary>
     /// 三阶贝塞尔曲线
     /// </summary>
-    public class CubicBezier : AreaPath
+    public class CubicBezier : BasePath
     {
         /// <summary>
         /// 三次贝塞尔曲线的第一个控制点 可选

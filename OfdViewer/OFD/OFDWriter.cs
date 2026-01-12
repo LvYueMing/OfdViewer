@@ -171,7 +171,7 @@ namespace OFDViewer.OFD
                 if (doc.Document != null)
                 {
                     // 构建子文档元数据路径（如Doc_0/Document.xml）
-                    using var docStream = _archive.CreateFileStream(doc.DocumentFilePath);
+                    using var docStream = _archive.CreateFileStream(doc.DocumentFile);
 
                     // 序列化文档主描述文件（Document.xml）
                     XmlHelper.SerializeToStream(doc.Document, docStream);
@@ -181,7 +181,7 @@ namespace OFDViewer.OFD
                 if (doc.PublicResource != null)
                 {
                     // 构建公共资源描述文件路径(Doc_{0}/PublicRes.xml)
-                    using var publicResStream = _archive.CreateFileStream(doc.PublicResourceFilePath);
+                    using var publicResStream = _archive.CreateFileStream(doc.PublicResourceFile);
 
                     // 序列化全文档公共资源描述文件（PublicRes.xml）
                     XmlHelper.SerializeToStream(doc.PublicResource, publicResStream);
@@ -191,7 +191,7 @@ namespace OFDViewer.OFD
                 if (doc.DocumentResource != null)
                 {
                     // 构建全文档文档资源描述文件路径(Doc_{0}/DocumentRes.xml)
-                    using var documentResStream = _archive.CreateFileStream(doc.DocumentResourceFilePath);
+                    using var documentResStream = _archive.CreateFileStream(doc.DocumentResourceFile);
 
                     // 序列化全文档文档资源描述文件（DocumentRes.xml）
                     XmlHelper.SerializeToStream(doc.DocumentResource, documentResStream);
@@ -371,7 +371,7 @@ namespace OFDViewer.OFD
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException($"写入页面对象失败，请检查归档对象完整性", ex);
+                throw new InvalidOperationException($"写入页面对象(PageDoc)失败，请检查归档对象完整性", ex);
             }
         }
 

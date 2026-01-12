@@ -40,12 +40,12 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
         public List<ST_Loc> PublicRes { get; set; } = Array.Empty<ST_Loc>().ToList();
 
         /// <summary>
-        /// 公共资源序列,每个节点指向 OFD包内的一个资源描述文档,资源
+        /// 公共资源序列,每个节点指向 OFD 包内的一个资源描述文档,资源
         /// 部分的描述见7.9,字型和颜色空间等宜在公共资源文件中描述
         /// 可选（0..∞）
         /// </summary>
         [XmlElement("PublicRes")]
-        public List<string> PublicResPath
+        public List<string> PublicResString
         {
             get => PublicRes?.Select(item => item.ToString()).ToList() ?? new List<string>();
             set => PublicRes = value?.Select(item => new ST_Loc(item)).ToList() ?? new List<ST_Loc>();
@@ -60,7 +60,7 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
         /// 可选（0..∞）
         /// </summary>
         [XmlElement("DocumentRes")]
-        public List<string> DocumentResPath
+        public List<string> DocumentResString
         {
             get => DocumentRes?.Select(item => item.ToString()).ToList() ?? new List<string>();
             set => DocumentRes = value?.Select(item => new ST_Loc(item)).ToList() ?? new List<ST_Loc>();

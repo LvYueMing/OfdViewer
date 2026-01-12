@@ -31,6 +31,12 @@ namespace OFDViewer.Models.PageDesc.DrawParams
         /// 可选
         /// </summary>
         [XmlAttribute("Relative")]
+        public string RelativeString
+        {
+            get => Relative.ToString(); 
+            set => Relative = ST_RefID.Parse(value);
+        }
+            [XmlIgnore]
         public ST_RefID Relative { get; set; }
 
         /// <summary>
@@ -93,6 +99,13 @@ namespace OFDViewer.Models.PageDesc.DrawParams
         ///可选
         /// </summary>
         [XmlAttribute("DashPattern")]
+        public string DashPatternString
+
+        {
+            get => DashPattern.ToString();
+            set => DashPattern = ST_Array.Parse(value);
+        }
+        [XmlIgnore]
         public ST_Array DashPattern { get; set; }
 
         /// <summary>

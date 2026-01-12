@@ -6,7 +6,7 @@ namespace OFDViewer.Models.Graph.PathItems
     /// <summary>
     /// 线段
     /// </summary>
-    public class Line : AreaPath
+    public class Line : BasePath
     {
         /// <summary>
         /// 线段的结束点 必选

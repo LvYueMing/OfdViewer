@@ -13,6 +13,12 @@ namespace OFDViewer.Models.PageDesc.Colors.ColorItems
         /// 引用资源文件中缩略图图像的标识 可选
         /// </summary>
         [XmlAttribute("Thumbnail")]
+        public string ThumbnailString
+        {
+            get => Thumbnail.ToString();
+            set => Thumbnail = ST_RefID.Parse(value);
+        }
+        [XmlIgnore]
         public ST_RefID Thumbnail { get; set; }
     }
 }

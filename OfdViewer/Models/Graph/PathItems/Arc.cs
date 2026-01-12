@@ -6,7 +6,7 @@ namespace OFDViewer.Models.Graph.PathItems
     /// <summary>
     /// 圆弧
     /// </summary>
-    public class Arc : AreaPath
+    public class Arc : BasePath
     {
         /// <summary>
         /// 弧线方向是否为顺时针

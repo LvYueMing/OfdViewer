@@ -33,7 +33,7 @@ namespace OFDViewer.Tests
             Assert.Equal(1, ofdDocument.DocCount);
 
             // 验证RootOfdFilePath属性
-            Assert.Equal(Constants.Root_OfdFile, ofdDocument.RootOfdFilePath);
+            Assert.Equal(Constants.Root_OfdFile, ofdDocument.RootOfdFile);
 
             // 验证OFDRootDirectory属性
             Assert.Equal("/", ofdDocument.OFDRootDirectory);
@@ -78,7 +78,7 @@ namespace OFDViewer.Tests
             var firstDoc = ofdDocument.Docs[0];
 
             // 执行测试
-            var defaultDoc = ofdDocument.DefaultDoc;
+            var defaultDoc = ofdDocument.DefaultOFDDoc;
 
             // 验证结果
             Assert.Same(firstDoc, defaultDoc);
@@ -97,7 +97,7 @@ namespace OFDViewer.Tests
             ofdDocument.Docs.Clear();
 
             // 执行测试
-            var defaultDoc = ofdDocument.DefaultDoc;
+            var defaultDoc = ofdDocument.DefaultOFDDoc;
 
             // 验证结果
             Assert.Single(ofdDocument.Docs);
@@ -153,7 +153,7 @@ namespace OFDViewer.Tests
             // 验证DocRoot元素
             var docRootNode = docBodyNodes[0].SelectSingleNode($"*[local-name()='DocRoot' and namespace-uri()='{Constants.OFD_NAMESPACE_URI}']");
             Assert.NotNull(docRootNode);
-            Assert.Equal("./Doc_0/Document.xml", docRootNode.InnerText);
+            Assert.Equal("Doc_0/Document.xml", docRootNode.InnerText);
         }
 
         /// <summary>
@@ -186,7 +186,7 @@ namespace OFDViewer.Tests
             {
                 var docRootNode = docBodyNodes[i].SelectSingleNode($"*[local-name()='DocRoot' and namespace-uri()='{Constants.OFD_NAMESPACE_URI}']");
                 Assert.NotNull(docRootNode);
-                Assert.Equal($"./Doc_{i}/Document.xml", docRootNode.InnerText);
+                Assert.Equal($"Doc_{i}/Document.xml", docRootNode.InnerText);
             }
         }
 

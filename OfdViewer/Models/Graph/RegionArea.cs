@@ -20,7 +20,7 @@ namespace OFDViewer.Models.Graph
         [XmlElement("CubicBezier", typeof(CubicBezier))]
         [XmlElement("Arc", typeof(Arc))]
         [XmlElement("Close", typeof(Close))]
-        public List<AreaPath> PathItems { get; set; } = new List<AreaPath>();
+        public List<BasePath> PathItems { get; set; } = new List<BasePath>();
 
 
         /// <summary>
@@ -44,7 +44,7 @@ namespace OFDViewer.Models.Graph
 
 
         // 封装添加方法，自动同步枚举
-        public void AddPathItem(AreaPath aPathItem)
+        public void AddPathItem(BasePath aPathItem)
         {
             // 1. 添加图形元素到ShapeItems
             PathItems.Add(aPathItem);

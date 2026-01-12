@@ -11,6 +11,12 @@ namespace OFDViewer.Models.BaseStructure.Pages.PageBlockItems
     public class ImageObject : CT_Image
     {
         [XmlAttribute("ID")]
+        public string IDString
+        {
+            get => ID.ToString();
+            set => ID = ST_ID.Parse(value);
+        }
+        [XmlIgnore]
         public ST_ID ID { get; set; }
     }
 }

@@ -3,7 +3,7 @@ using OFDViewer.Utils;
 
 namespace OFDViewer.Models.BaseStructure.Resources.ResItems
 {
-    public class MultiMedias
+    public class MultiMedias : BaseRes
     {
         // 对应XSD中的MultiMedia元素（可重复无限次）
         [XmlElement("MultiMedia")]

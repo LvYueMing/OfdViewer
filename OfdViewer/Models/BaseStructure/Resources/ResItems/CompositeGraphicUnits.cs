@@ -3,7 +3,7 @@ using OFDViewer.Utils;
 
 namespace OFDViewer.Models.BaseStructure.Resources.ResItems
 {
-    public class CompositeGraphicUnits
+    public class CompositeGraphicUnits : BaseRes
     {
         // 对应XSD中的CompositeGraphicUnit元素（可重复无限次）
         [XmlElement("CompositeGraphicUnit")]

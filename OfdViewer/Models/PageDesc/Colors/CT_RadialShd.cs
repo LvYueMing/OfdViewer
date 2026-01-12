@@ -10,7 +10,7 @@ namespace OFDViewer.Models.PageDesc.Colors
     /// 径向渐变颜色
     /// 图 35 径向渐变结构
     /// </summary>
-    public class CT_RadialShd : BaseColor
+    public class CT_RadialShd : BaseComplexColor
     {
         /// <summary>
         /// 颜色段, 至少出现两个

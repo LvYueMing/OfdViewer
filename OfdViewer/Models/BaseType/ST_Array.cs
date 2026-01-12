@@ -12,22 +12,24 @@ namespace OFDViewer.Models.BaseType
     public struct ST_Array : IEquatable<ST_Array>, IEnumerable<object>
     {
         private readonly List<object> _values;
+
+        // 确保_values始终被初始化，即使使用默认构造函数
         private static readonly CultureInfo InvariantCulture = CultureInfo.InvariantCulture;
 
         /// <summary>
         /// 数组长度
         /// </summary>
-        public int Length => _values.Count;
+        public int Length => _values?.Count ?? 0;
 
         /// <summary>
         /// 元素个数（与 Length 相同）
         /// </summary>
-        public int Count => _values.Count;
+        public int Count => _values?.Count ?? 0;
 
         /// <summary>
         /// 是否为空的数组
         /// </summary>
-        public bool IsEmpty => _values.Count == 0;
+        public bool IsEmpty => _values?.Count == 0;
 
         /// <summary>
         /// 索引器
@@ -36,6 +38,8 @@ namespace OFDViewer.Models.BaseType
         {
             get
             {
+                if (_values == null)
+                    throw new IndexOutOfRangeException();
                 if (index < 0 || index >= _values.Count)
                     throw new IndexOutOfRangeException();
                 return _values[index];
@@ -45,7 +49,7 @@ namespace OFDViewer.Models.BaseType
         /// <summary>
         /// 获取原始列表的只读副本
         /// </summary>
-        public IReadOnlyList<object> Values => _values.AsReadOnly();
+        public IReadOnlyList<object> Values => _values?.AsReadOnly() ?? (IReadOnlyList<object>)Array.Empty<object>();
 
         /// <summary>
         /// 空数组实例
@@ -353,7 +357,7 @@ namespace OFDViewer.Models.BaseType
         /// </summary>
         public override string ToString()
         {
-            if (_values.Count == 0)
+            if (_values == null || _values.Count == 0)
                 return string.Empty;
 
             var sb = new StringBuilder();
@@ -544,6 +548,10 @@ namespace OFDViewer.Models.BaseType
         #region 接口实现和运算符重载
         public bool Equals(ST_Array other)
         {
+            if (_values == null && other._values == null)
+                return true;
+            if (_values == null || other._values == null)
+                return false;
             if (_values.Count != other._values.Count)
                 return false;
 
@@ -572,6 +580,9 @@ namespace OFDViewer.Models.BaseType
 
         public override int GetHashCode()
         {
+            if (_values == null)
+                return 0;
+                
             var hash = new HashCode();
             foreach (var value in _values)
             {
@@ -580,9 +591,9 @@ namespace OFDViewer.Models.BaseType
             return hash.ToHashCode();
         }
 
-        public IEnumerator<object> GetEnumerator() => _values.GetEnumerator();
+        public IEnumerator<object> GetEnumerator() => (_values ?? new List<object>()).GetEnumerator();
 
-        IEnumerator IEnumerable.GetEnumerator() => _values.GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => (_values ?? new List<object>()).GetEnumerator();
 
         public static bool operator ==(ST_Array left, ST_Array right) => left.Equals(right);
         public static bool operator !=(ST_Array left, ST_Array right) => !left.Equals(right);

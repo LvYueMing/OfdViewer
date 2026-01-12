@@ -31,6 +31,12 @@ namespace OFDViewer.Models.Font
         /// 可选
         /// </summary>
         [XmlAttribute(AttributeName = "DeltaX")]
+        public string DeltaXString
+        {
+            get => DeltaX.ToString();
+            set => DeltaX = ST_Array.Parse(value);
+        }
+        [XmlIgnore]
         public ST_Array DeltaX { get; set; }
 
         /// <summary>
@@ -39,6 +45,12 @@ namespace OFDViewer.Models.Font
         /// 可选
         /// </summary>
         [XmlAttribute(AttributeName = "DeltaY")]
+        public string DeltaYString
+        {
+            get => DeltaY.ToString();
+            set => DeltaY = ST_Array.Parse(value);
+        }
+        [XmlIgnore]
         public ST_Array DeltaY { get; set; }
 
 

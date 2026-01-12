@@ -15,7 +15,7 @@ namespace OFDViewer.Models.PageDesc.Colors
         [XmlElement("RadialShd", Type = typeof(CT_RadialShd))]
         [XmlElement("GouraudShd", Type = typeof(CT_GouraudShd))]
         [XmlElement("LaGourandShd", Type = typeof(CT_LaGouraudShd))]
-        public BaseColor ColorItem { get; set; }
+        public BaseComplexColor ColorItem { get; set; }
 
         /// <summary>
         /// 颜色值,指定了当前颜色空间下各通道的取值。Value的取值应符
@@ -25,6 +25,12 @@ namespace OFDViewer.Models.PageDesc.Colors
         /// 可选
         /// </summary>
         [XmlAttribute("Value")]
+        public string ValueString
+        {
+            get { return Value.ToString(); }
+            set { Value = ST_Array.Parse(value); }
+        }
+        [XmlIgnore]
         public ST_Array Value { get; set; }
 
         /// <summary>
@@ -47,6 +53,12 @@ namespace OFDViewer.Models.PageDesc.Colors
         /// 可选
         /// </summary>
         [XmlAttribute("ColorSpace")]
+        public string ColorSpaceString
+        {
+            get { return ColorSpace.ToString(); }
+            set { ColorSpace = ST_RefID.Parse(value); }
+        }
+        [XmlIgnore]
         public ST_RefID ColorSpace { get; set; }
 
         /// <summary>

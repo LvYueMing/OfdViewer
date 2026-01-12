@@ -1,5 +1,14 @@
 ﻿using OFDViewer.OFD;
 using Xunit;
+using System;
+using System.IO;
+using System.Collections.Generic;
+using OFDViewer.Models.BaseStructure.DocumentRoot;
+using OFDViewer.Models.BaseType;
+using OFDViewer.Models.BaseStructure.Pages;
+using OFDViewer.Models.BaseStructure.Pages.PageBlockItems;
+using OFDViewer.Models.Font;
+using OFDViewer.Models.PageDesc.Colors;
 
 namespace OFDViewer.Tests
 {
@@ -199,7 +208,7 @@ namespace OFDViewer.Tests
             // Act
             using var writer = new OFDWriter(filePath);
             writer.WriteRootOFD(_testOfdDocument.RootOfd);
-            writer.WriteOFDDoc(_testOfdDocument.DefaultDoc);
+            writer.WriteOFDDoc(_testOfdDocument.DefaultOFDDoc);
             writer.Save();
             // Assert
             Assert.True(File.Exists(filePath)); // 保存后文件存在
@@ -246,7 +255,202 @@ namespace OFDViewer.Tests
             Assert.True(ms.Length > 0); // 保存后流有数据
         }
 
+        /// <summary>
+        /// 测试：生成完整的OFD文档，包含文字内容并保存到本地文件系统
+        /// </summary>
+        [Fact]
+        public void Generate_FullOFDWithTextContent_SavesSuccessfully()
+        {
+            // 创建保存路径
+            var savePath = Path.Combine(_tempFilePath, $"TestFullOFD_{DateTime.Now:yyyyMMddHHmmss}.ofd");
 
+            // Arrange
+            // 创建OFD文档对象
+            var ofdDocument = new OFDDocument();
+            
+            // 获取默认子文档
+            var doc = ofdDocument.DefaultOFDDoc;
+            
+            // 初始化PublicResource
+            doc.PublicResource = new OFDViewer.Models.BaseStructure.Resources.Res();
+            
+            // 创建一个新页面
+            var pageDoc = new PageDoc(0, 0);
+            doc.AddPageDoc(pageDoc);
+            
+            // 设置页面区域（A4纸张大小）
+            pageDoc.Content.Area = new OFDViewer.Models.BaseStructure.DocumentRoot.CT_PageArea
+            {
+                PhysicalBox = new OFDViewer.Models.BaseType.ST_Box(0, 0, 210, 297),
+                ApplicationBox = new OFDViewer.Models.BaseType.ST_Box(0, 0, 210, 297),
+                ContentBox = new OFDViewer.Models.BaseType.ST_Box(20, 20, 170, 257)
+            };
+            
+            // 创建内容图层
+            var layer = new OFDViewer.Models.BaseStructure.Pages.Layer
+            {
+                ID = OFDViewer.Models.BaseType.ST_ID.CreateNew()
+            };
+            
+            // 创建文本对象
+            var textObject = new OFDViewer.Models.BaseStructure.Pages.PageBlockItems.TextObject
+            {
+                // 设置文本边界
+                Boundary = new OFDViewer.Models.BaseType.ST_Box(30, 50, 150, 50),
+                // 设置文本样式
+                Size = 12,
+                Fill = true,
+                // 设置黑色填充颜色
+                FillColor = new OFDViewer.Models.PageDesc.Colors.CT_Color
+                {
+                    Value = new OFDViewer.Models.BaseType.ST_Array(0, 0, 0, 1)
+                },
+                // 暂时不设置字体，使用默认字体
+                // 注意：在实际应用中需要正确设置字体资源
+                Weight = 400,
+                Italic = false
+            };
+            
+            // 添加文本内容
+            var textCode = new OFDViewer.Models.Font.TextCode
+            {
+                Value = "这是一个测试OFD文档，包含文字内容。\n这是第二行文字。"
+            };
+            textObject.TextCodes.Add(textCode);
+            
+            // 将文本对象添加到图层
+            layer.PageBlockItems.Add(textObject);
+            
+            // 将图层添加到页面内容
+            if (pageDoc.Content.Content == null)
+            {
+                pageDoc.Content.Content = new List<OFDViewer.Models.BaseStructure.Pages.Layer>();
+            }
+            pageDoc.Content.Content.Add(layer);
+            
+            // Act
+            // 保存OFD文档
+            using (var writer = new OFDWriter(savePath))
+            {
+                writer.WriteOFDDocument(ofdDocument);
+                writer.Save();
+            }
+            
+            // Assert
+            // 验证文件是否存在
+            Assert.True(File.Exists(savePath));
+            
+            // 打印保存路径到控制台
+            Console.WriteLine($"OFD文档已成功保存到：{savePath}");
+        }
+
+
+        /// <summary>
+        /// 测试：资源文件的BaseLoc设置和资源路径解析
+        /// </summary>
+        [Fact]
+        public void OFDDoc_ResourceBaseLocAndPath_ResolutionTest()
+        {
+            // Arrange
+            // 创建OFD文档对象
+            var ofdDocument = new OFDDocument();
+            
+            // 获取默认子文档
+            var doc = ofdDocument.DefaultOFDDoc;
+            
+            // 直接测试OFDDoc的资源属性设置
+            var docIndex = doc.DocIndex;
+            var expectedBaseLoc = $"Doc_{docIndex}/Res";
+            
+            // 创建公共资源
+            var publicRes = new OFDViewer.Models.BaseStructure.Resources.Res();
+            
+            // Act
+            doc.PublicResource = publicRes;
+            
+            // Assert
+            // 验证PublicResource的BaseLoc设置
+            Assert.Equal(expectedBaseLoc, doc.PublicResource.BaseLocString);
+            Assert.Equal(expectedBaseLoc, doc.PublicResource.BaseLoc.ToString());
+        }
+
+        /// <summary>
+        /// 测试：添加资源对象时资源文件路径的自动解析
+        /// </summary>
+        [Fact]
+        public void OFDDoc_ResourceFilePath_ResolutionTest()
+        {
+            // Arrange
+            // 创建Res对象
+            var res = new OFDViewer.Models.BaseStructure.Resources.Res();
+            res.BaseLocString = "Doc_0/Res";
+
+            // 创建字体资源
+            var fonts = new OFDViewer.Models.BaseStructure.Resources.ResItems.OFDFonts();
+            fonts.ofdFonts = new List<OFDViewer.Models.BaseStructure.Resources.ResItems.OFDFont>(); // 初始化集合
+            var font = new OFDViewer.Models.BaseStructure.Resources.ResItems.OFDFont();
+            font.ID = OFDViewer.Models.BaseType.ST_ID.CreateNew(); // 使用正确的ST_ID创建方法
+            font.FontName = "TestFont";
+            font.FontFile = "testfont.ttf"; // 相对路径
+            fonts.ofdFonts.Add(font);
+
+            // 创建多媒体资源
+            var medias = new OFDViewer.Models.BaseStructure.Resources.ResItems.MultiMedias();
+            medias.multiMedias = new List<OFDViewer.Models.BaseStructure.Resources.ResItems.MultiMedia>(); // 初始化集合
+            var media = new OFDViewer.Models.BaseStructure.Resources.ResItems.MultiMedia();
+            media.ID = OFDViewer.Models.BaseType.ST_ID.CreateNew(); // 使用正确的ST_ID创建方法
+            media.TypeString = "Image";
+            media.FormatString = "JPEG";
+            media.MediaFile = "testimage.jpg"; // 相对路径
+            medias.multiMedias.Add(media);
+
+            // Act
+            // 添加资源到ResItems
+            res.AddResource(fonts);
+            res.AddResource(medias);
+
+            // Assert
+            // 验证字体文件路径是否被正确解析
+            Assert.Equal("Doc_0/Res/testfont.ttf", fonts.ofdFonts[0].FontFile.ToString());
+
+            // 验证多媒体文件路径是否被正确解析
+            Assert.Equal("Doc_0/Res/testimage.jpg", medias.multiMedias[0].MediaFile.ToString());
+        }
+        
+        /// <summary>
+        /// 测试：OFDDocument对象包含两个OFDDoc的情况
+        /// </summary>
+        [Fact]
+        public void OFDDocument_MultipleOFDDocsTest()
+        {
+            // Arrange
+            // 创建OFD文档对象
+            var ofdDocument = new OFDDocument();
+            
+            // Act
+            // 添加第二个文档
+            var secondDoc = ofdDocument.AddNewDoc();
+            
+            // Assert
+            // 验证文档数量
+            Assert.Equal(2, ofdDocument.Docs.Count);
+            Assert.Equal(2, ofdDocument.DocCount);
+            
+            // 验证DefaultDoc仍然是第一个文档
+            Assert.Equal(0, ofdDocument.DefaultOFDDoc.DocIndex);
+            
+            // 验证文档索引
+            Assert.Equal(0, ofdDocument.Docs[0].DocIndex);
+            Assert.Equal(1, ofdDocument.Docs[1].DocIndex);
+            Assert.Equal(1, secondDoc.DocIndex);
+            
+            // 验证RootOfd中的DocBodies数量
+            Assert.Equal(2, ofdDocument.RootOfd.DocBodies.Count);
+            
+            // 验证DocBodies中的文档路径
+            Assert.Equal("Doc_0/Document.xml", ofdDocument.RootOfd.DocBodies[0].DocRootPath);
+            Assert.Equal("Doc_1/Document.xml", ofdDocument.RootOfd.DocBodies[1].DocRootPath);
+        }
         #endregion
 
         #region 资源释放测试
@@ -285,6 +489,7 @@ namespace OFDViewer.Tests
             // Assert：无异常即通过
             Assert.True(true);
         }
+        
         #endregion
 
         #region 辅助类：模拟不可写的流

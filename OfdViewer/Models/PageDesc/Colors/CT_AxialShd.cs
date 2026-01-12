@@ -11,7 +11,7 @@ namespace OFDViewer.Models.PageDesc.Colors
     /// 在轴向渐变中,颜色渐变沿着一条指定的轴线方向进行,轴线由起始点和结束点决定,与这条轴线
     /// 垂直的直线上的点颜色相同。
     /// </summary>
-    public class CT_AxialShd : BaseColor
+    public class CT_AxialShd : BaseComplexColor
     {
         /// <summary>
         /// 颜色段,至少出现两个

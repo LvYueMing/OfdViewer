@@ -10,7 +10,7 @@ namespace OFDViewer.Models.BaseStructure.Resources
     public class CT_MultiMedia
     {
         /// <summary>
-        /// 指向 OFD包内的多媒体文件的位置 
+        /// 指向 OFD 包内的多媒体文件的位置 
         /// 必选
         /// </summary>
         [XmlElement("MediaFile")]

@@ -19,7 +19,7 @@ namespace OFDViewer.Models.Font
             get => Glyphs.ToString();
             set => Glyphs = ST_Array.Parse(value);
         }
-
+        [XmlIgnore]
         public ST_Array Glyphs { get; set; }
 
         /// <summary>

@@ -1,4 +1,4 @@
-﻿using System.Xml.Serialization;
+using System.Xml.Serialization;
 using OFDViewer.Models.BaseType;
 using OFDViewer.Models.Font;
 
@@ -10,6 +10,13 @@ namespace OFDViewer.Models.BaseStructure.Pages.PageBlockItems
     public class TextObject : CT_Text
     {
         [XmlAttribute("ID")]
+        public string IDString
+        {
+            get => ID.ToString();
+            set => ID = ST_ID.Parse(value);
+        }
+
+        [XmlIgnore]
         public ST_ID ID { get; set; }
     }
 }

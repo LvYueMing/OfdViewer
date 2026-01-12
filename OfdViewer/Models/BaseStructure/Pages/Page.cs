@@ -30,7 +30,7 @@ namespace OFDViewer.Models.BaseStructure.Pages
             get => PageRes?.Select(item => item.ToString()).ToList();
             set => PageRes = value?.Select(item => (ST_Loc)item).ToList() ?? new List<ST_Loc>();
         }
-
+        [XmlIgnore]
         public List<ST_Loc> PageRes { get; set; }
 
         /// <summary>

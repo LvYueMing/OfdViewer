@@ -6,25 +6,17 @@ namespace OFDViewer.Models.BaseStructure.Pages
     /// <summary>
     /// 页面块结构
     /// </summary>
-    public class CT_PageBlock
+    public class CT_PageBlock : BasePageBlock
     {
         /// <summary>
-        /// 存储每个子元素的类型标识（与PageBlocks一一对应）
-        /// </summary>
-        [XmlIgnore]
-        public List<PageBlockItemNum> PageBlockItemNames { get; set; } = new List<PageBlockItemNum>();
-
-
-        /// <summary>
-        /// 存储CT_PageBlock的子元素（与PageBlockNames一一对应）
+        /// 存储CT_PageBlock的子元素（xs:choice minOccurs="0" maxOccurs="unbounded"）
         /// </summary>
         [XmlElement("TextObject", typeof(TextObject))]
         [XmlElement("PathObject", typeof(PathObject))]
         [XmlElement("ImageObject", typeof(ImageObject))]
         [XmlElement("CompositeObject", typeof(CompositeObject))]
         [XmlElement("PageBlock", typeof(PageBlock))]
-        [XmlChoiceIdentifier("PageBlockItemNames")]
-        public List<object> PageBlockItems { get; set; } = new List<object>();
+        public List<BasePageBlock> PageBlockItems { get; set; } = new List<BasePageBlock>();
 
     }
 }

@@ -62,8 +62,11 @@
 
         public static bool operator ==(ST_RefID left, ST_RefID right) => left.Equals(right);
         public static bool operator !=(ST_RefID left, ST_RefID right) => !left.Equals(right);
+
         public static implicit operator ST_ID(ST_RefID refId) => refId._referencedId;
         public static explicit operator ST_RefID(ST_ID id) => new ST_RefID(id);
+        //显示转换string 到 ST_RefID
+        public static explicit operator ST_RefID(string str) => Parse(str);
         #endregion
     }
 

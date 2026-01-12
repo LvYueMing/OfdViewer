@@ -1,4 +1,4 @@
-﻿namespace OFDViewer.Models.BaseType
+namespace OFDViewer.Models.BaseType
 {
     /// <summary>
     /// ST_Loc 包结构内文件的路径
@@ -12,6 +12,7 @@
     {
         private readonly string _path;
 
+        // C# 10+ 支持 struct 的无参数构造函数
         public ST_Loc()
         {
             _path = ".";
@@ -191,7 +192,7 @@
         }
 
 
-        public override string ToString() => _path;
+        public override string ToString() => _path ?? ".";
 
         // 其余接口和运算符重载可按需保留
         public bool Equals(ST_Loc other) => string.Equals(_path, other._path, StringComparison.Ordinal);

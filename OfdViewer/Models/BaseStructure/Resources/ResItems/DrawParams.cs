@@ -3,7 +3,7 @@ using OFDViewer.Utils;
 
 namespace OFDViewer.Models.BaseStructure.Resources.ResItems
 {
-    public class DrawParams
+    public class DrawParams : BaseRes
     {
         // 对应XSD中的DrawParam元素（可重复无限次）
         [XmlElement("DrawParam")]

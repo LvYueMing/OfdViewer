@@ -9,7 +9,7 @@ namespace OFDViewer.Models.PageDesc.Colors
     /// 格数(VerticesPerRow) 形成若干行列, 相邻的4 个控制点定义一个网格单元, 在一个网格单元内 
     /// EdgeFlag 固定为1, 网格单元及多个单元组成网格区域的规则如图42 所示。
     /// </summary>
-    public class CT_LaGouraudShd : BaseColor
+    public class CT_LaGouraudShd : BaseComplexColor
     {
         /// <summary>
         /// 渐变控制点, 至少出现4 个 必选

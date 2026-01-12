@@ -24,7 +24,7 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
             set => ID = ST_ID.Parse(value);
         }
         [XmlIgnore]
-        public ST_ID ID { get; set; }
+        public ST_ID ID { get; private set; }
 
 
         /// <summary>

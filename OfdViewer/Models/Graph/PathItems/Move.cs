@@ -7,7 +7,7 @@ namespace OFDViewer.Models.Graph.PathItems
     /// 移动
     /// 移动节点用于表示移动到新的绘制点指令,结构如图50所示。
     /// </summary>
-    public class Move : AreaPath
+    public class Move : BasePath
     {
         /// <summary>
         /// 移动后新的当前绘制点 必选

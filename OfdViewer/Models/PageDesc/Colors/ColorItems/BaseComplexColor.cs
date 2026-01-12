@@ -3,7 +3,7 @@
     /// <summary>
     /// 所有复杂颜色的基类
     /// </summary>
-    public class BaseColor
+    public class BaseComplexColor
     {
         // 空基类，仅用于统一集合类型
     }

@@ -1,5 +1,6 @@
 ﻿using System.Xml.Serialization;
 using OFDViewer.Models.Action;
+using OFDViewer.Models.BaseStructure.Pages.PageBlockItems;
 using OFDViewer.Models.BaseType;
 using OFDViewer.Utils;
 
@@ -11,7 +12,7 @@ namespace OFDViewer.Models.PageDesc
     /// 包括文字、图形、图像等,都属于图元对象,或是图元对象的组合。
     /// 图元对象结构如图45所示。
     /// </summary>
-    public abstract class CT_GraphicUnit
+    public abstract class CT_GraphicUnit : BasePageBlock
     {
         /// <summary>
         /// 图元对象的动作序列
@@ -61,12 +62,25 @@ namespace OFDViewer.Models.PageDesc
         /// 对象空间内的图元变换矩阵 可选
         /// </summary>
         [XmlAttribute(AttributeName = "CTM")]
+        public string CTMString
+        {
+            get => CTM.ToString();
+            set => CTM = ST_Array.Parse(value);
+        }
+        [XmlIgnore]
         public ST_Array CTM { get; set; }
 
         /// <summary>
         /// 引用资源文件中的绘制参数标识 可选
         /// </summary>
         [XmlAttribute(AttributeName = "DrawParam")]
+        public string DrawParamString
+        {
+            get => DrawParam.ToString();
+            set => DrawParam = (ST_RefID)value;
+        }
+
+        [XmlIgnore]
         public ST_RefID DrawParam { get; set; }
 
         /// <summary>

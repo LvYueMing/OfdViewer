@@ -26,8 +26,21 @@ namespace OFDViewer.Utils
             if (!File.Exists(filePath))
                 throw new FileNotFoundException("XML 文件不存在", filePath);
 
-            using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            return DeserializeFromStream<T>(fs, validateAfterDeserialize);
+            try
+            {
+                using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                return DeserializeFromStream<T>(fs, validateAfterDeserialize);
+            }
+            catch (XmlRequiredValidationException ex)
+            {
+                // 必填项校验失败，直接抛出原始异常，保持语义清晰
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // 其他异常统一包装为 InvalidOperationException，保留原始异常链
+                throw new InvalidOperationException($"XML反序列化失败：{ex.Message}", ex);
+            }
         }
 
         /// <summary>
@@ -38,18 +51,31 @@ namespace OFDViewer.Utils
             if (string.IsNullOrWhiteSpace(xmlStr))
                 throw new ArgumentNullException(nameof(xmlStr), "XML 字符串不能为空");
 
-            using var sr = new StringReader(xmlStr);
-            var serializer = new XmlSerializer(typeof(T));
-
-            T obj = (T)serializer.Deserialize(sr);
-
-            // 反序列化后校验必填项（确保XML中包含所有必填项）
-            if (validateAfterDeserialize)
+            try
             {
-                XmlRequiredValidator.Validate(obj);
-            }
+                using var sr = new StringReader(xmlStr);
+                var serializer = new XmlSerializer(typeof(T));
 
-            return obj;
+                T obj = (T)serializer.Deserialize(sr);
+
+                // 反序列化后校验必填项（确保XML中包含所有必填项）
+                if (validateAfterDeserialize)
+                {
+                    XmlRequiredValidator.Validate(obj);
+                }
+
+                return obj;
+            }
+            catch (XmlRequiredValidationException ex)
+            {
+                // 必填项校验失败，直接抛出原始异常，保持语义清晰
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // 其他异常统一包装为 InvalidOperationException，保留原始异常链
+                throw new InvalidOperationException($"XML反序列化失败：{ex.Message}", ex);
+            }
         }
 
         /// <summary>
@@ -60,16 +86,29 @@ namespace OFDViewer.Utils
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream), "输入流不能为空");
 
-            var serializer = new XmlSerializer(typeof(T));
-            T obj = (T)serializer.Deserialize(stream);
-
-            // 反序列化后校验必填项（确保XML中包含所有必填项）
-            if (validateAfterDeserialize)
+            try
             {
-                XmlRequiredValidator.Validate(obj);
-            }
+                var serializer = new XmlSerializer(typeof(T));
+                T obj = (T)serializer.Deserialize(stream);
 
-            return obj;
+                // 反序列化后校验必填项（确保XML中包含所有必填项）
+                if (validateAfterDeserialize)
+                {
+                    XmlRequiredValidator.Validate(obj);
+                }
+
+                return obj;
+            }
+            catch (XmlRequiredValidationException ex)
+            {
+                // 必填项校验失败，直接抛出原始异常，保持语义清晰
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // 其他异常统一包装为 InvalidOperationException，保留原始异常链
+                throw new InvalidOperationException($"XML反序列化失败：{ex.Message}", ex);
+            }
         }
 
         /// <summary>
@@ -79,19 +118,32 @@ namespace OFDViewer.Utils
         {
             // 校验参数（避免空引用）
             if (obj == null)
-                throw new ArgumentNullException(nameof(obj));
+                throw new ArgumentNullException(nameof(obj), "序列化对象obj不能为空！");
             if (string.IsNullOrEmpty(filePath))
                 throw new ArgumentException("文件路径不能为空", nameof(filePath));
-
-            // 创建目录（避免路径不存在）
-            var directory = Path.GetDirectoryName(filePath);
-            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                
+            try
             {
-                Directory.CreateDirectory(directory);
-            }
+                // 创建目录（避免路径不存在）
+                var directory = Path.GetDirectoryName(filePath);
+                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
 
-            using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write);
-            SerializeToStream(obj, fs);
+                using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write);
+                SerializeToStream(obj, fs);
+            }
+            catch (XmlRequiredValidationException ex)
+            {
+                // 必填项校验失败，直接抛出原始异常，保持语义清晰
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // 其他异常统一包装为 InvalidOperationException，保留原始异常链
+                throw new InvalidOperationException($"XML序列化失败：{ex.Message}", ex);
+            }
         }
 
         /// <summary>
@@ -105,29 +157,42 @@ namespace OFDViewer.Utils
             if (stream == null)
                 throw new ArgumentNullException(typeof(T).FullName, "输出流stream不能为空！");
 
-            // 先校验XML必填项
-            XmlRequiredValidator.Validate<T>(obj);
-
-            var serializer = new XmlSerializer(typeof(T));
-            using var writer = XmlWriter.Create(stream, DefaultSettings);
-
-            // 创建 XmlSerializerNamespaces 并添加命名空间前缀
-            var ns = new XmlSerializerNamespaces();
-
-            // 检查类型是否有 XmlRootAttribute
-            var xmlRootAttr = typeof(T).GetCustomAttribute<XmlRootAttribute>();
-            if (xmlRootAttr != null && !string.IsNullOrEmpty(xmlRootAttr.Namespace))
+            try
             {
-                // 使用 XmlRootAttribute 中定义的命名空间和指定前缀
-                ns.Add(Constants.OFD_VALUE, xmlRootAttr.Namespace);
-            }
-            else
-            {
-                // 如果没有 XmlRootAttribute，使用默认命名空间
-                ns.Add(Constants.OFD_VALUE, Constants.OFD_NAMESPACE_URI);
-            }
+                // 先校验XML必填项
+                XmlRequiredValidator.Validate<T>(obj);
 
-            serializer.Serialize(writer, obj, ns);
+                var serializer = new XmlSerializer(typeof(T));
+                using var writer = XmlWriter.Create(stream, DefaultSettings);
+
+                // 创建 XmlSerializerNamespaces 并添加命名空间前缀
+                var ns = new XmlSerializerNamespaces();
+
+                // 检查类型是否有 XmlRootAttribute
+                var xmlRootAttr = typeof(T).GetCustomAttribute<XmlRootAttribute>();
+                if (xmlRootAttr != null && !string.IsNullOrEmpty(xmlRootAttr.Namespace))
+                {
+                    // 使用 XmlRootAttribute 中定义的命名空间和指定前缀
+                    ns.Add(Constants.OFD_VALUE, xmlRootAttr.Namespace);
+                }
+                else
+                {
+                    // 如果没有 XmlRootAttribute，使用默认命名空间
+                    ns.Add(Constants.OFD_VALUE, Constants.OFD_NAMESPACE_URI);
+                }
+
+                serializer.Serialize(writer, obj, ns);
+            }
+            catch (XmlRequiredValidationException ex)
+            {
+                // 必填项校验失败，直接抛出原始异常，保持语义清晰
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // 其他异常统一包装为 InvalidOperationException，保留原始异常链
+                throw new InvalidOperationException($"XML序列化失败：{ex.Message}", ex);
+            }
         }
 
         /// <summary>
@@ -139,30 +204,43 @@ namespace OFDViewer.Utils
             if (obj == null)
                 throw new ArgumentNullException(nameof(obj));
 
-            // 先校验XML必填项
-            XmlRequiredValidator.Validate<T>(obj);
-
-            using var sw = new StringWriter();
-            var serializer = new XmlSerializer(typeof(T));
-            using var writer = XmlWriter.Create(sw, DefaultSettings);
-
-            // 创建 XmlSerializerNamespaces 并添加命名空间前缀
-            var ns = new XmlSerializerNamespaces();
-
-            // 检查类型是否有 XmlRootAttribute
-            var xmlRootAttr = typeof(T).GetCustomAttribute<XmlRootAttribute>();
-            if (xmlRootAttr != null && !string.IsNullOrEmpty(xmlRootAttr.Namespace))
+            try
             {
-                // 使用 XmlRootAttribute 中定义的命名空间和指定前缀
-                ns.Add(Constants.OFD_VALUE, xmlRootAttr.Namespace);
+                // 先校验XML必填项
+                XmlRequiredValidator.Validate<T>(obj);
+
+                using var sw = new StringWriter();
+                var serializer = new XmlSerializer(typeof(T));
+                using var writer = XmlWriter.Create(sw, DefaultSettings);
+
+                // 创建 XmlSerializerNamespaces 并添加命名空间前缀
+                var ns = new XmlSerializerNamespaces();
+
+                // 检查类型是否有 XmlRootAttribute
+                var xmlRootAttr = typeof(T).GetCustomAttribute<XmlRootAttribute>();
+                if (xmlRootAttr != null && !string.IsNullOrEmpty(xmlRootAttr.Namespace))
+                {
+                    // 使用 XmlRootAttribute 中定义的命名空间和指定前缀
+                    ns.Add(Constants.OFD_VALUE, xmlRootAttr.Namespace);
+                }
+                else
+                {
+                    // 如果没有 XmlRootAttribute，使用默认命名空间
+                    ns.Add(Constants.OFD_VALUE, Constants.OFD_NAMESPACE_URI);
+                }
+                serializer.Serialize(writer, obj, ns);
+                return sw.ToString();
             }
-            else
+            catch (XmlRequiredValidationException ex)
             {
-                // 如果没有 XmlRootAttribute，使用默认命名空间
-                ns.Add(Constants.OFD_VALUE, Constants.OFD_NAMESPACE_URI);
+                // 必填项校验失败，直接抛出原始异常，保持语义清晰
+                throw;
             }
-            serializer.Serialize(writer, obj, ns);
-            return sw.ToString();
+            catch (Exception ex)
+            {
+                // 其他异常统一包装为 InvalidOperationException，保留原始异常链
+                throw new InvalidOperationException($"XML序列化失败：{ex.Message}", ex);
+            }
         }
     }
 }

@@ -6,7 +6,7 @@ namespace OFDViewer.Models.Graph.PathItems
     /// <summary>
     /// 二阶贝塞尔曲线
     /// </summary>
-    public class QuadraticBezier : AreaPath
+    public class QuadraticBezier : BasePath
     {
         /// <summary>
         /// 二次贝塞尔曲线的控制点 必选

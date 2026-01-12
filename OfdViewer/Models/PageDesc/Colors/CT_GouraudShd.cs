@@ -7,7 +7,7 @@ namespace OFDViewer.Models.PageDesc.Colors
     /// 高洛德渐变
     /// 高洛德渐变的基本原理是指定三个带有可选颜色的顶点, 在其构成的三角形区域内采用高洛德算法绘制渐变图形。 如图38。
     /// </summary>
-    public class CT_GouraudShd : BaseColor
+    public class CT_GouraudShd : BaseComplexColor
     {
         /// <summary>
         /// 渐变控制点, 至少出现3 个 必选

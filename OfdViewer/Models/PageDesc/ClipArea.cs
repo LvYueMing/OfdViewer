@@ -57,12 +57,24 @@ namespace OFDViewer.Models.PageDesc
         /// 可选
         /// </summary>
         [XmlAttribute("DrawParam")]
+        public string DrawParamString
+        {
+            get => DrawParam.ToString();
+            set => DrawParam = (ST_RefID)value;
+        }
+        [XmlIgnore]
         public ST_RefID DrawParam { get; set; }
 
         /// <summary>
         /// 针对对象坐标系,对 Area下包含的Path和 Text进行进一步的变换 可选
         /// </summary>
         [XmlAttribute("CTM")]
+        public string CTMString
+        {
+            get => CTM.ToString();
+            set => CTM = ST_Array.Parse(value);
+        }
+        [XmlIgnore]
         public ST_Array CTM { get; set; }
 
         /// <summary>

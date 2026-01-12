@@ -44,31 +44,47 @@ namespace OFDViewer.Utils
             {
                 // 拼接当前属性路径（便于定位嵌套属性，如"Address.Street"）
                 string currentPropertyPath = string.IsNullOrEmpty(parentPropertyPath)
-                                                ? prop.Name
+                                                ? $"{objType.FullName}.{prop.Name}"
                                                 : $"{parentPropertyPath}.{prop.Name}";
 
                 // 步骤1：获取当前属性的[XmlRequired]特性（不存在则直接跳过核心校验）
-                // 在运行时通过反射，检索当前属性上是否应用了指定类型（XmlRequiredAttribute）的自定义特性。
-                //   如果该属性上显式标记了 [XmlRequired] 特性，方法会返回该特性的实例（可通过该实例访问特性的属性 / 方法）；
-                //   如果该属性上未标记该特性，方法会返回 null（这是判断特性是否存在的核心依据）。
                 XmlRequiredAttribute xmlRequiredAttr = prop.GetCustomAttribute<XmlRequiredAttribute>();
                 object propValue = null;
 
                 //仅当 xmlRequiredAttr 不为null（标记了必填特性）时，才执行有效性校验
                 if (xmlRequiredAttr != null)
                 {
-                    // 步骤2：获取属性值
-                    propValue = prop.GetValue(obj);
-
-                    // 步骤3：校验当前必填属性的值是否有效/集合元素个数范围校验
-                    if (!IsPropValueValid(prop, propValue, xmlRequiredAttr))
+                    try
                     {
-                        // 拼接错误信息（优先使用特性自定义错误消息，否则使用默认消息）
-                        string defaultErrorMsg = GetDefaultErrorMsg(prop, propValue, currentPropertyPath, xmlRequiredAttr);
-                        string errorMsg = defaultErrorMsg ?? xmlRequiredAttr.ErrorMsg;
+                        // 步骤2：获取属性值
+                        propValue = prop.GetValue(obj);
 
+                        // 步骤3：校验当前必填属性的值是否有效/集合元素个数范围校验
+                        if (!IsPropValueValid(prop, propValue, xmlRequiredAttr))
+                        {
+                            // 拼接错误信息（优先使用特性自定义错误消息，否则使用默认消息）
+                            string defaultErrorMsg = GetDefaultErrorMsg(prop, propValue, currentPropertyPath, xmlRequiredAttr);
+                            string errorMsg = !string.IsNullOrEmpty(defaultErrorMsg) ? defaultErrorMsg : xmlRequiredAttr.ErrorMsg;
 
-                        // 抛出自定义异常，携带关键定位信息
+                            // 抛出自定义异常，携带关键定位信息
+                            throw new XmlRequiredValidationException(errorMsg, currentPropertyPath, objType);
+                        }
+                    }
+                    catch (TargetInvocationException ex)
+                    {
+                        // 如果获取属性值时发生异常，封装为更详细的错误信息（包含属性路径）
+                        string errorMsg = $"获取属性【{currentPropertyPath}】值时发生异常：{ex.InnerException?.Message ?? ex.Message}";
+                        throw new XmlRequiredValidationException(errorMsg, currentPropertyPath, objType);
+                    }
+                    catch (XmlRequiredValidationException)
+                    {
+                        // 如果已经是XmlRequiredValidationException，直接抛出
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        // 如果发生其他异常，重新抛出但添加更详细的上下文信息
+                        string errorMsg = $"校验属性【{currentPropertyPath}】时发生异常：{ex.Message}";
                         throw new XmlRequiredValidationException(errorMsg, currentPropertyPath, objType);
                     }
                 }
@@ -76,10 +92,23 @@ namespace OFDViewer.Utils
                 // 步骤4：嵌套对象递归校验（两种方案，根据业务场景选择）
                 if (IsNestedCustomType(prop.PropertyType, propValue))
                 {
-                    // 无论是否标记[XmlRequired]，都递归校验嵌套对象的内部必填属性
-                    // 优点：不遗漏嵌套对象内部的必填项；缺点：未标记必填的嵌套属性，也会触发递归（可接受，因为递归内部也会做同样优化）
-                    InternalValidate(propValue, prop.PropertyType, currentPropertyPath);
-
+                    try
+                    {
+                        // 无论是否标记[XmlRequired]，都递归校验嵌套对象的内部必填属性
+                        // 优点：不遗漏嵌套对象内部的必填项；缺点：未标记必填的嵌套属性，也会触发递归（可接受，因为递归内部也会做同样优化）
+                        InternalValidate(propValue, prop.PropertyType, currentPropertyPath);
+                    }
+                    catch (XmlRequiredValidationException)
+                    {
+                        // 如果嵌套对象校验失败，直接抛出异常（已经包含了完整的属性路径）
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        // 如果嵌套对象递归时发生其他异常，添加上下文信息后重新抛出
+                        string errorMsg = $"嵌套对象校验失败：{ex.Message}";
+                        throw new XmlRequiredValidationException(errorMsg, currentPropertyPath, objType);
+                    }
                 }
             }
         }
