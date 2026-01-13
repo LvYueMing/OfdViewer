@@ -11,52 +11,52 @@ namespace OFDViewer.Tests
         private readonly OFDArchive _archive;
 
 
-        /*  ¸ùÄ¿Â¼½á¹¹
-            ©À©¤ root_file.txt       // Ö±½ÓÎÄ¼ş
-            ©À©¤ another_root_file.xml
-            ©À©¤ subdir/         // Ö±½ÓÎÄ¼ş¼Ğ£¨ÌõÄ¿ĞÍ£©
-            ©¦  ©À©¤ file1.txt    // Éî²ãÎÄ¼ş
-            ©¦  ©À©¤ file3.txt
-            ©¦  ©¸©¤ deep         // Éî²ãÎÄ¼ş¼Ğ£¨ÌõÄ¿ĞÍ£©
-            ©¦     ©¸©¤ nested/
-            ©¦        ©¸©¤ file2.txt // ¸üÉî²ãÎÄ¼ş
-            ©¸©¤ second_dir/second_file.txt // Éî²ãÎÄ¼ş
+        /*  ç›®å½•ç»“æ„
+            â”œâ”€â”€ root_file.txt       // æ ¹ç›®å½•æ–‡ä»¶
+            â”œâ”€â”€ another_root_file.xml
+            â”œâ”€â”€ subdir/         // æ ¹ç›®å½•ä¸‹çš„å­ç›®å½•
+            â”‚   â”œâ”€â”€ file1.txt    // å­ç›®å½•æ–‡ä»¶
+            â”‚   â”œâ”€â”€ file3.txt
+            â”‚   â”œâ”€â”€ deep         // å­ç›®å½•ä¸‹çš„åµŒå¥—ç›®å½•
+            â”‚   â”‚   â”œâ”€â”€ nested/
+            â”‚   â”‚   â”‚   â”œâ”€â”€ file2.txt // æ·±å±‚åµŒå¥—æ–‡ä»¶
+            â”œâ”€â”€ second_dir/second_file.txt // äºŒçº§ç›®å½•æ–‡ä»¶
         */
         public OFDArchiveTests()
         {
-            // ´´½¨ÄÚ´æÖĞµÄ zip µµ°¸£¬°üº¬²»Í¬²ã¼¶µÄÎÄ¼ş½á¹¹
+            // åœ¨å†…å­˜ä¸­åˆ›å»º zip åŒ…æ¥æ¨¡æ‹Ÿå¤šå±‚çº§æ–‡ä»¶ç»“æ„
             _zipStream = new MemoryStream();
             using (var zip = new ZipArchive(_zipStream, ZipArchiveMode.Update, true))
             {
-                // Ö±½ÓÎ»ÓÚ¸ùÄ¿Â¼µÄÎÄ¼ş
+                // ç›´æ¥ä½äºæ ¹ç›®å½•çš„æ–‡ä»¶
                 var rootFile = zip.CreateEntry("root_file.txt");
                 using (var writer = new StreamWriter(rootFile.Open()))
                 {
                     writer.Write("Root file content");
                 }
 
-                // ¸ùÄ¿Â¼ÏÂµÄÁíÒ»¸öÎÄ¼ş
+                // æ ¹ç›®å½•ä¸‹çš„å¦ä¸€ä¸ªæ–‡ä»¶
                 var anotherRootFile = zip.CreateEntry("another_root_file.xml");
                 using (var writer = new StreamWriter(anotherRootFile.Open()))
                 {
                     writer.Write("<?xml version=\"1.0\"?><root><child>abc</child></root>");
                 }
 
-                // Ö±½ÓÎ»ÓÚ¸ùÄ¿Â¼µÄ×ÓÄ¿Â¼
+                // ç›´æ¥ä½äºæ ¹ç›®å½•çš„å­ç›®å½•
                 var subDirFile = zip.CreateEntry("subdir/file1.txt");
                 using (var writer = new StreamWriter(subDirFile.Open()))
                 {
                     writer.Write("Subdirectory file 1 content");
                 }
 
-                // ¸üÉî²ã´ÎµÄÎÄ¼ş
+                // æ·±å±‚åµŒå¥—çš„æ–‡ä»¶
                 var deepFile = zip.CreateEntry("subdir/deep/nested/file2.txt");
                 using (var writer = new StreamWriter(deepFile.Open()))
                 {
                     writer.Write("Deep nested file content");
                 }
 
-                // Í¬Ò»Ä¿Â¼ÏÂµÄÁíÒ»¸öÎÄ¼ş
+                // åŒä¸€ç›®å½•ä¸‹çš„å¦ä¸€ä¸ªæ–‡ä»¶
                 var anotherFile = zip.CreateEntry("subdir/file3.txt");
                 using (var writer = new StreamWriter(anotherFile.Open()))
                 {
@@ -64,7 +64,7 @@ namespace OFDViewer.Tests
                 }
 
 
-                // ÁíÒ»¸ö×ÓÄ¿Â¼
+                // å¦ä¸€ä¸ªå­ç›®å½•
                 var secondSubDirFile = zip.CreateEntry("second_dir/second_file.txt");
                 using (var writer = new StreamWriter(secondSubDirFile.Open()))
                 {
@@ -92,7 +92,7 @@ namespace OFDViewer.Tests
             }
             finally
             {
-                // È·±£×ÊÔ´ÊÍ·ÅºóÔÙÉ¾³ı
+                // ç¡®ä¿èµ„æºé‡Šæ”¾å¹¶æ¸…ç†æ–‡ä»¶
                 if (File.Exists(tempFile))
                     File.Delete(tempFile);
             }
@@ -172,16 +172,16 @@ namespace OFDViewer.Tests
         [Fact]
         public void ExtractAndReadOFD_LoadLocalFile()
         {
-            string ofdPath = @"C:\Users\Administrator\Desktop\test.ofd"; // Ìæ»»ÎªÄãµÄ OFD ÎÄ¼şÂ·¾¶
+            string ofdPath = @"C:\Users\Administrator\Desktop\test.ofd"; // æ›¿æ¢ä¸ºå®é™… OFD æ–‡ä»¶è·¯å¾„
             using var archive = OFDArchive.OpenFromFile(ofdPath);
 
-            // ½âÑ¹
+            // è§£å‹
             var tempDir = archive.ExtractToTempDirectory();
             Assert.True(Directory.Exists(tempDir));
             Console.OutputEncoding = Encoding.UTF8;
-            Console.WriteLine($"ÒÑ½âÑ¹µ½£º{tempDir}");
+            Console.WriteLine($"å·²è§£å‹åˆ°{tempDir}");
 
-            // Êä³öËùÓĞÎÄ¼şÃû
+            // éå†æ‰€æœ‰æ–‡ä»¶é¡¹
             var entryCache = archive.GetType()
                 .GetField("_entryCache", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
                 .GetValue(archive) as System.Collections.IDictionary;
@@ -190,12 +190,12 @@ namespace OFDViewer.Tests
                 Console.WriteLine(((System.Collections.DictionaryEntry)entry).Key);
             }
 
-            // ¶ÁÈ¡²¢Êä³öÄ³¸ö XML ÎÄ¼şÄÚÈİ
-            string xmlFile = "Doc_0/Document.xml"; // Ìæ»»ÎªÊµ¼Ê OFD °üÄÚµÄ XML Â·¾¶
+            // è·å–æ–‡æ¡£ä¸­çš„æŸä¸ª XML æ–‡ä»¶å†…å®¹
+            string xmlFile = "Doc_0/Document.xml"; // æ›¿æ¢ä¸ºå®é™… OFD æ–‡æ¡£ä¸­çš„ XML è·¯å¾„
             var xml = archive.ReadXmlFile(xmlFile);
             Console.WriteLine(xml.OuterXml);
 
-            // ÇåÀí
+            // æ¸…ç†
             Directory.Delete(tempDir, true);
         }
 
@@ -212,7 +212,7 @@ namespace OFDViewer.Tests
             var expectedEntries = new List<string> { "root_file.txt", "another_root_file.xml", "subdir", "second_dir" };
 
             // Act
-            var result = _archive.GetDirectEntryNamesInDirectory(root); // ¸ùÄ¿Â¼
+            var result = _archive.GetDirectEntryNamesInDirectory(root); // ï¿½ï¿½Ä¿Â¼
 
             // Assert
             Assert.Equal(expectedEntries.OrderBy(x => x), result.OrderBy(x => x));
@@ -223,7 +223,7 @@ namespace OFDViewer.Tests
         public void GetDirectEntryNamesInDirectory_SubDirectory_ReturnsDirectChildrenOnly()
         {
             // Arrange
-            var expectedEntries = new List<string> { "file1.txt", "file3.txt", "deep" }; // ×¢Òâ£ºdeep ÊÇ×ÓÄ¿Â¼
+            var expectedEntries = new List<string> { "file1.txt", "file3.txt", "deep" }; // ×¢ï¿½â£ºdeep ï¿½ï¿½ï¿½ï¿½Ä¿Â¼
 
             // Act
             var result = _archive.GetDirectEntryNamesInDirectory("subdir");
@@ -249,7 +249,7 @@ namespace OFDViewer.Tests
         public void GetDirectEntryNamesInDirectory_NestedDirectory_ReturnsDirectChild()
         {
             // Arrange
-            var expectedEntries = new List<string> { "nested" }; // nested ÊÇ×ÓÄ¿Â¼
+            var expectedEntries = new List<string> { "nested" }; // nested ï¿½ï¿½ï¿½ï¿½Ä¿Â¼
 
             // Act
             var result = _archive.GetDirectEntryNamesInDirectory("subdir/deep");
@@ -258,7 +258,7 @@ namespace OFDViewer.Tests
             Assert.Equal(expectedEntries, result);
         }
 
-        // Â·¾¶¹æ·¶»¯£ºÑéÖ¤²»Í¬Â·¾¶¸ñÊ½µÄÍ³Ò»´¦Àí
+        // Â·ï¿½ï¿½ï¿½æ·¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¤ï¿½ï¿½Í¬Â·ï¿½ï¿½ï¿½ï¿½Ê½ï¿½ï¿½Í³Ò»ï¿½ï¿½ï¿½ï¿½
         [Fact]
         public void GetDirectEntryNamesInDirectory_PathWithTrailingSlash_ReturnsSameResult()
         {
@@ -271,7 +271,7 @@ namespace OFDViewer.Tests
         }
 
 
-        //±ß½çÌõ¼ş£º²âÊÔ²»´æÔÚµÄÄ¿Â¼Â·¾¶
+        //è¾¹ç•Œæµ‹è¯•ï¼šä¼ å…¥ä¸å­˜åœ¨çš„ç›®å½•è·¯å¾„
         [Fact]
         public void GetDirectEntryNamesInDirectory_NonExistentDirectory_ReturnsEmptyList()
         {
@@ -282,38 +282,38 @@ namespace OFDViewer.Tests
             Assert.Empty(result);
         }
 
-        // Òì³£Çé¿ö£º²âÊÔ ZIP ¹éµµÎª null µÄÇé¿ö
+        // å¼‚å¸¸æµ‹è¯•ï¼šå½“ ZIP å½’æ¡£ä¸º null æ—¶çš„æƒ…å†µ
         [Fact]
         public void GetDirectEntryNamesInDirectory_ArchiveDisposed_ThrowsInvalidOperationException()
         {
             // Arrange
             var archive = OFDArchive.OpenFromStream(_zipStream, ZipArchiveMode.Read, leaveOpen: true);
-            archive.Dispose(); // ÏÔÊ½ÊÍ·Åµµ°¸
+            archive.Dispose(); // æ˜¾å¼é‡Šæ”¾å½’æ¡£
 
             // Act & Assert
             var exception = Assert.Throws<InvalidOperationException>(() => archive.GetDirectEntryNamesInDirectory(""));
-            Assert.Equal("ZIP¹éµµÒÑÊÍ·Å£¬ÎŞ·¨»ñÈ¡Ä¿Â¼ÄÚÈİ", exception.Message);
+            Assert.Equal("ZIPå½’æ¡£å·²é‡Šæ”¾ï¼Œæ— æ³•è·å–ç›®å½•å†…å®¹", exception.Message);
         }
 
-        // ±ß½çÌõ¼ş£º²âÊÔÂ·¾¶¸ñÊ½£¨´óĞ¡Ğ´£©
+        // è¾¹ç•Œæµ‹è¯•ï¼šæµ‹è¯•è·¯å¾„æ ¼å¼çš„å¤§å°å†™
         [Fact]
         public void GetDirectEntryNamesInDirectory_NormalizePathFormat()
         {
-            // ²âÊÔ²»Í¬µÄÂ·¾¶¸ñÊ½Ó¦¸Ã±»¹æ·¶»¯
-            var result1 = _archive.GetDirectEntryNamesInDirectory("SUBDIR"); // ´óĞ´
-            var result2 = _archive.GetDirectEntryNamesInDirectory("subdir"); // Ğ¡Ğ´
+            // æµ‹è¯•ä¸åŒçš„è·¯å¾„æ ¼å¼åº”è¢«æ ‡å‡†åŒ–
+            var result1 = _archive.GetDirectEntryNamesInDirectory("SUBDIR"); // å¤§å†™
+            var result2 = _archive.GetDirectEntryNamesInDirectory("subdir"); // å°å†™
 
-            // ×¢Òâ£ºÊµ¼ÊĞĞÎªÈ¡¾öÓÚ NormalizePath µÄÊµÏÖ£¬ÕâÀï¼ÙÉèËü»á´¦Àí´óĞ¡Ğ´
-            // Èç¹û NormalizePath Çø·Ö´óĞ¡Ğ´£¬ÔòÕâÁ½¸öµ÷ÓÃµÄ½á¹û¿ÉÄÜ²»Í¬
-            // Èç¹û²»Çø·Ö´óĞ¡Ğ´£¬Ôò½á¹ûÓ¦ÏàÍ¬
+            // æ³¨æ„ï¼šå®é™…åº”ä¸ºè·å– NormalizePath çš„å®ç°ï¼Œå¦‚æœä¸è¿›è¡Œå°å†™è½¬æ¢
+            // ä½†å¦‚æœ NormalizePath å®ç°äº†å°å†™è½¬æ¢ï¼Œåˆ™é¢„æœŸç»“æœå¯èƒ½ä¼šç›¸åŒ
+            // å®é™…ä¸Šä¸è¿›è¡Œå°å†™è½¬æ¢ï¼Œæ‰€ä»¥ç»“æœåº”è¯¥ä¸åŒ
             Assert.NotEqual(result1.OrderBy(x => x), result2.OrderBy(x => x));
         }
 
-        // È¥ÖØ¹¦ÄÜ£ºÈ·ÈÏ HashSet È¥ÖØ¹¦ÄÜÕı³£¹¤×÷  Duplicate-ÖØ¸´
+        // å»é‡èƒ½åŠ›ï¼šç¡®ä¿ HashSet å»é‡æœºåˆ¶æ­£å¸¸å·¥ä½œ  Duplicate-é‡å¤
         [Fact]
         public void GetDirectEntryNamesInDirectory_DuplicateEntries_RemovesDuplicates()
         {
-            // ´´½¨Ò»¸ö¾ßÓĞÖØ¸´ÌõÄ¿µÄ²âÊÔ³¡¾°
+            // åˆ›å»ºä¸€ä¸ªåŒ…å«é‡å¤æ¡ç›®çš„æµ‹è¯•å‹ç¼©åŒ…
             var duplicateZipStream = new MemoryStream();
             using (var zip = new ZipArchive(duplicateZipStream, ZipArchiveMode.Update, true))
             {
@@ -323,7 +323,7 @@ namespace OFDViewer.Tests
                     writer.Write("Duplicate file content");
                 }
 
-                // ´´½¨Ò»¸öÓëÉÏÃæÏàÍ¬µÄÂ·¾¶£¨¾¡¹ÜÕâÔÚÊµ¼ÊZIPÖĞ²»Ì«¿ÉÄÜ·¢Éú£©
+                // ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¬ï¿½ï¿½Â·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Êµï¿½ï¿½ZIPï¿½Ğ²ï¿½Ì«ï¿½ï¿½ï¿½Ü·ï¿½ï¿½ï¿½ï¿½ï¿½
                 var entry2 = zip.CreateEntry("testdir/dupfile.txt");
                 using (var writer = new StreamWriter(entry2.Open()))
                 {
@@ -337,7 +337,7 @@ namespace OFDViewer.Tests
             // Act
             var result = duplicateArchive.GetDirectEntryNamesInDirectory("testdir");
 
-            // Assert - Ó¦¸ÃÃ»ÓĞÖØ¸´Ïî
+            // Assert - Ó¦ï¿½ï¿½Ã»ï¿½ï¿½ï¿½Ø¸ï¿½ï¿½ï¿½
             var uniqueResults = new HashSet<string>(result);
             Assert.Equal(result.Count, uniqueResults.Count);
         }
@@ -357,7 +357,7 @@ namespace OFDViewer.Tests
             var expectedEntries = new List<string> { "root_file.txt", "another_root_file.xml" };
 
             // Act
-            var result = _archive.GetDirectFilePathsInDirectory(root); // ¸ùÄ¿Â¼
+            var result = _archive.GetDirectFilePathsInDirectory(root); // ï¿½ï¿½Ä¿Â¼
 
             // Assert
             Assert.Equal(expectedEntries.OrderBy(x => x), result.OrderBy(x => x));
@@ -368,7 +368,7 @@ namespace OFDViewer.Tests
         public void GetDirectFilePathsInDirectory_SubDirectory_ReturnsDirectChildrenOnly()
         {
             // Arrange
-            var expectedEntries = new List<string> { "subdir/file1.txt", "subdir/file3.txt" }; // ×¢Òâ£ºdeep ÊÇ×ÓÄ¿Â¼
+            var expectedEntries = new List<string> { "subdir/file1.txt", "subdir/file3.txt" }; // ×¢ï¿½â£ºdeep ï¿½ï¿½ï¿½ï¿½Ä¿Â¼
 
             // Act
             var result = _archive.GetDirectFilePathsInDirectory("subdir");
@@ -400,7 +400,7 @@ namespace OFDViewer.Tests
             Assert.Empty(result);
         }
 
-        // Â·¾¶¹æ·¶»¯£ºÑéÖ¤²»Í¬Â·¾¶¸ñÊ½µÄÍ³Ò»´¦Àí
+        // Â·ï¿½ï¿½ï¿½æ·¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¤ï¿½ï¿½Í¬Â·ï¿½ï¿½ï¿½ï¿½Ê½ï¿½ï¿½Í³Ò»ï¿½ï¿½ï¿½ï¿½
         [Fact]
         public void GetDirectFilePathsInDirectory_PathWithTrailingSlash_ReturnsSameResult()
         {
@@ -413,7 +413,7 @@ namespace OFDViewer.Tests
         }
 
 
-        //±ß½çÌõ¼ş£º²âÊÔ²»´æÔÚµÄÄ¿Â¼Â·¾¶
+        //è¾¹ç•Œæµ‹è¯•ï¼šä¼ å…¥ä¸å­˜åœ¨çš„ç›®å½•è·¯å¾„
         [Fact]
         public void GetDirectFilePathsInDirectory_NonExistentDirectory_ReturnsEmptyList()
         {
@@ -424,38 +424,38 @@ namespace OFDViewer.Tests
             Assert.Empty(result);
         }
 
-        // Òì³£Çé¿ö£º²âÊÔ ZIP ¹éµµÎª null µÄÇé¿ö
+        // å¼‚å¸¸æµ‹è¯•ï¼šå½“ ZIP å½’æ¡£ä¸º null æ—¶çš„æƒ…å†µ
         [Fact]
         public void GetDirectFilePathsInDirectory_ArchiveDisposed_ThrowsInvalidOperationException()
         {
             // Arrange
             var archive = OFDArchive.OpenFromStream(_zipStream, ZipArchiveMode.Read, leaveOpen: true);
-            archive.Dispose(); // ÏÔÊ½ÊÍ·Åµµ°¸
+            archive.Dispose(); // ï¿½ï¿½Ê½ï¿½Í·Åµï¿½ï¿½ï¿½
 
             // Act & Assert
             var exception = Assert.Throws<InvalidOperationException>(() => archive.GetDirectFilePathsInDirectory(""));
-            Assert.Equal("ZIP¹éµµÒÑÊÍ·Å£¬ÎŞ·¨»ñÈ¡Ä¿Â¼ÄÚÈİ", exception.Message);
+            Assert.Equal("ZIPå½’æ¡£å·²é‡Šæ”¾ï¼Œæ— æ³•è·å–ç›®å½•å†…å®¹", exception.Message);
         }
 
-        // ±ß½çÌõ¼ş£º²âÊÔÂ·¾¶¸ñÊ½£¨´óĞ¡Ğ´£©
+        // è¾¹ç•Œæµ‹è¯•ï¼šæµ‹è¯•è·¯å¾„æ ¼å¼çš„å¤§å°å†™
         [Fact]
         public void GetDirectFilePathsInDirectory_NormalizePathFormat()
         {
-            // ²âÊÔ²»Í¬µÄÂ·¾¶¸ñÊ½Ó¦¸Ã±»¹æ·¶»¯
-            var result1 = _archive.GetDirectFilePathsInDirectory("SUBDIR"); // ´óĞ´
-            var result2 = _archive.GetDirectFilePathsInDirectory("subdir"); // Ğ¡Ğ´
+            // æµ‹è¯•ä¸åŒçš„è·¯å¾„æ ¼å¼åº”è¢«æ ‡å‡†åŒ–
+            var result1 = _archive.GetDirectFilePathsInDirectory("SUBDIR"); // å¤§å†™
+            var result2 = _archive.GetDirectFilePathsInDirectory("subdir"); // å°å†™
 
-            // ×¢Òâ£ºÊµ¼ÊĞĞÎªÈ¡¾öÓÚ NormalizePath µÄÊµÏÖ£¬ÕâÀï¼ÙÉèËü»á´¦Àí´óĞ¡Ğ´
-            // Èç¹û NormalizePath Çø·Ö´óĞ¡Ğ´£¬ÔòÕâÁ½¸öµ÷ÓÃµÄ½á¹û¿ÉÄÜ²»Í¬
-            // Èç¹û²»Çø·Ö´óĞ¡Ğ´£¬Ôò½á¹ûÓ¦ÏàÍ¬
+            // æ³¨æ„ï¼šå®é™…åº”ä¸ºè·å– NormalizePath çš„å®ç°ï¼Œå¦‚æœä¸è¿›è¡Œå°å†™è½¬æ¢
+            // ä½†å¦‚æœ NormalizePath å®ç°äº†å°å†™è½¬æ¢ï¼Œåˆ™é¢„æœŸç»“æœå¯èƒ½ä¼šç›¸åŒ
+            // å®é™…ä¸Šä¸è¿›è¡Œå°å†™è½¬æ¢ï¼Œæ‰€ä»¥ç»“æœåº”è¯¥ä¸åŒ
             Assert.NotEqual(result1.OrderBy(x => x), result2.OrderBy(x => x));
         }
 
-        // È¥ÖØ¹¦ÄÜ£ºÈ·ÈÏ HashSet È¥ÖØ¹¦ÄÜÕı³£¹¤×÷  Duplicate-ÖØ¸´
+        // å»é‡èƒ½åŠ›ï¼šç¡®ä¿ HashSet å»é‡æœºåˆ¶æ­£å¸¸å·¥ä½œ  Duplicate-é‡å¤
         [Fact]
         public void GetDirectFilePathsInDirectory_DuplicateEntries_RemovesDuplicates()
         {
-            // ´´½¨Ò»¸ö¾ßÓĞÖØ¸´ÌõÄ¿µÄ²âÊÔ³¡¾°
+            // åˆ›å»ºä¸€ä¸ªåŒ…å«é‡å¤æ¡ç›®çš„æµ‹è¯•å‹ç¼©åŒ…
             var duplicateZipStream = new MemoryStream();
             using (var zip = new ZipArchive(duplicateZipStream, ZipArchiveMode.Update, true))
             {
@@ -465,7 +465,7 @@ namespace OFDViewer.Tests
                     writer.Write("Duplicate file content");
                 }
 
-                // ´´½¨Ò»¸öÓëÉÏÃæÏàÍ¬µÄÂ·¾¶£¨¾¡¹ÜÕâÔÚÊµ¼ÊZIPÖĞ²»Ì«¿ÉÄÜ·¢Éú£©
+                // ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¬ï¿½ï¿½Â·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Êµï¿½ï¿½ZIPï¿½Ğ²ï¿½Ì«ï¿½ï¿½ï¿½Ü·ï¿½ï¿½ï¿½ï¿½ï¿½
                 var entry2 = zip.CreateEntry("testdir/dupfile.txt");
                 using (var writer = new StreamWriter(entry2.Open()))
                 {
@@ -479,7 +479,7 @@ namespace OFDViewer.Tests
             // Act
             var result = duplicateArchive.GetDirectFilePathsInDirectory("testdir");
 
-            // Assert - Ó¦¸ÃÃ»ÓĞÖØ¸´Ïî
+            // Assert - Ó¦ï¿½ï¿½Ã»ï¿½ï¿½ï¿½Ø¸ï¿½ï¿½ï¿½
             var uniqueResults = new HashSet<string>(result);
             Assert.Equal(result.Count, uniqueResults.Count);
         }

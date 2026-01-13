@@ -1,4 +1,4 @@
-﻿using OFDViewer.Models.BaseStructure.DocumentRoot;
+using OFDViewer.Models.BaseStructure.DocumentRoot;
 using OFDViewer.Models.BaseStructure.Resources;
 using OFDViewer.Models.Signature;
 
@@ -56,6 +56,10 @@ namespace OFDViewer.OFD
             get => _documentResource;
             set
             {
+                if (value != null)
+                {
+                    value.BaseLocString = ResDirectory;
+                }
                 _documentResource = value;
                 // 更新Document对象中的文档资源路径
                 if (Document != null && Document.CommonData != null && value != null)

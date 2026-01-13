@@ -274,6 +274,25 @@ namespace OFDViewer.Tests
             // 初始化PublicResource
             doc.PublicResource = new OFDViewer.Models.BaseStructure.Resources.Res();
             
+            // 添加字体资源到PublicResource
+            var fonts = new OFDViewer.Models.BaseStructure.Resources.ResItems.OFDFonts();
+            fonts.ofdFonts = new List<OFDViewer.Models.BaseStructure.Resources.ResItems.OFDFont>();
+            
+            var font = new OFDViewer.Models.BaseStructure.Resources.ResItems.OFDFont();
+            font.ID = OFDViewer.Models.BaseType.ST_ID.CreateNew();
+            font.FontName = "SimSun";
+            font.FontFile = "simsun.ttf";
+            font.FamilyName = "SimSun";
+            font.Bold = false;
+            font.Italic = false;
+            font.CharsetString = "prc";
+            
+            fonts.ofdFonts.Add(font);
+            doc.PublicResource.AddResource(fonts);
+            
+            // 初始化DocumentResource
+            doc.DocumentResource = new OFDViewer.Models.BaseStructure.Resources.Res();
+            
             // 创建一个新页面
             var pageDoc = new PageDoc(0, 0);
             doc.AddPageDoc(pageDoc);
@@ -339,6 +358,23 @@ namespace OFDViewer.Tests
             // Assert
             // 验证文件是否存在
             Assert.True(File.Exists(savePath));
+            
+            // 验证DocumentResource已正确初始化
+            Assert.NotNull(doc.DocumentResource);
+            
+            // 验证DocumentResource的BaseLoc设置正确
+            var docIndex = doc.DocIndex;
+            var expectedBaseLoc = $"Doc_{docIndex}/Res";
+            Assert.Equal(expectedBaseLoc, doc.DocumentResource.BaseLocString);
+            
+            // 验证字体资源已正确添加到PublicResource
+            Assert.NotNull(doc.PublicResource.ResItems);
+            Assert.NotEmpty(doc.PublicResource.ResItems);
+            var addedFonts = doc.PublicResource.ResItems.FirstOrDefault(r => r is OFDViewer.Models.BaseStructure.Resources.ResItems.OFDFonts) as OFDViewer.Models.BaseStructure.Resources.ResItems.OFDFonts;
+            Assert.NotNull(addedFonts);
+            Assert.Single(addedFonts.ofdFonts);
+            Assert.Equal("SimSun", addedFonts.ofdFonts[0].FontName);
+            Assert.Equal($"{expectedBaseLoc}/simsun.ttf", addedFonts.ofdFonts[0].FontFile);
             
             // 打印保存路径到控制台
             Console.WriteLine($"OFD文档已成功保存到：{savePath}");
