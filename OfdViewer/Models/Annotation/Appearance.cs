@@ -6,7 +6,7 @@ using OFDViewer.Models.BaseType;
 namespace OFDViewer.Models.Annotation
 {
     /// <summary>
-    /// 注释外观
+    /// 注释的静态呈现效果,使用页面块定义来描述
     /// </summary>
     public class Appearance : CT_PageBlock
     {
