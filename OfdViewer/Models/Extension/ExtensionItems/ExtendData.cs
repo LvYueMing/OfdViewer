@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using OFDViewer.Models.BaseType;
 using System.Xml.Serialization;
 
-namespace OFDViewer.Models.Extension
+namespace OFDViewer.Models.Extension.ExtensionItems
 {
     /// <summary>
     /// 扩展数据文件路径元素

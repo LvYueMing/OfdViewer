@@ -1,6 +1,7 @@
 using System;
 using System.Xml.Serialization;
 using OFDViewer.Models.BaseType;
+using OFDViewer.Models.Extension.ExtensionItems;
 
 namespace OFDViewer.Models.Extension
 {

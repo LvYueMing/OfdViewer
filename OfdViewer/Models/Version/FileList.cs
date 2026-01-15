@@ -5,17 +5,18 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 
-namespace OFDViewer.Models.Extension.ExtensionItems
+namespace OFDViewer.Models.Version
 {
     /// <summary>
-    /// 扩展数据元素
+    /// FileList元素
     /// </summary>
-    public class Data : ExtensionItem
+    public class FileList
     {
         /// <summary>
-        /// 数据内容
+        /// 文件元素集合
+        /// 0..*
         /// </summary>
-        [XmlText(DataType = "anyType")]
-        public object Content { get; set; }
+        [XmlElement("File", IsNullable = false)]
+        public List<File> Files { get; set; } = new List<File>();
     }
 }

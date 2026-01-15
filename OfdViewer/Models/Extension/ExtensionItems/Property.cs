@@ -1,6 +1,6 @@
 using System.Xml.Serialization;
 
-namespace OFDViewer.Models.Extension
+namespace OFDViewer.Models.Extension.ExtensionItems
 {
     /// <summary>
     /// 扩展属性元素
