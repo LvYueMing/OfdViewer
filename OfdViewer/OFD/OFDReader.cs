@@ -62,7 +62,7 @@ namespace OFDViewer.OFD
         /// <returns>解析后的OFDDocument</returns>
         /// <exception cref="ObjectDisposedException">对象已释放</exception>
         /// <exception cref="InvalidOperationException">解析失败</exception>
-        public OFDDocument ReadOFDDocument()
+        public OFDRootDocument ReadOFDDocument()
         {
             EnsureNotDisposed();
 
@@ -78,7 +78,7 @@ namespace OFDViewer.OFD
                 if (docIndices.Count == 0)
                     throw new InvalidOperationException("未发现任何子文档（Doc_x 目录）");
 
-                var ofdDocs = new List<OFDDoc>();
+                var ofdDocs = new List<OFDDocument>();
                 foreach (int index in docIndices)
                 {
                     var ofdDoc = ReadOFDDoc(index);
@@ -86,7 +86,7 @@ namespace OFDViewer.OFD
                         ofdDocs.Add(ofdDoc);
                 }
 
-                return new OFDDocument
+                return new OFDRootDocument
                 {
                     RootOfd = rootOfd,
                     Docs = ofdDocs
@@ -136,11 +136,11 @@ namespace OFDViewer.OFD
         /// </summary>
         /// <param name="docIndex">子文档索引</param>
         /// <returns>OFDDoc对象</returns>
-        public OFDDoc ReadOFDDoc(int docIndex)
+        public OFDDocument ReadOFDDoc(int docIndex)
         {
             EnsureNotDisposed();
 
-            var doc = new OFDDoc(docIndex);
+            var doc = new OFDDocument(docIndex);
 
             // Doc_{0}/Document.xml
             string docFilePath = Constants.GetFilePath(Constants.Doc_DocumentFile, docIndex);
@@ -194,11 +194,11 @@ namespace OFDViewer.OFD
         /// <summary>
         /// 读取签章对象 (Doc_{0}/Signs/Sign_{1}/)
         /// </summary>
-        private SignDoc ReadSignDoc(int signDocIndex, int docIndex)
+        private SignDocument ReadSignDoc(int signDocIndex, int docIndex)
         {
             EnsureNotDisposed();
 
-            var signDoc = new SignDoc(signDocIndex, docIndex);
+            var signDoc = new SignDocument(signDocIndex, docIndex);
 
             // Doc_{0}/Signs/Sign_{1}/Signature.xml
             string sigFile = Constants.GetFilePath(Constants.Sign_SignatureFile, docIndex, signDocIndex);
@@ -259,13 +259,13 @@ namespace OFDViewer.OFD
         /// <param name="docIndex"></param>
         /// <returns></returns>
         /// <exception cref="InvalidOperationException"></exception>
-        private List<SignDoc> ReadSignDocs(int docIndex)
+        private List<SignDocument> ReadSignDocs(int docIndex)
         {
             var signDocIndices = GetSignDocIndices(docIndex);
             if (signDocIndices.Count == 0)
                 throw new InvalidOperationException("未发现任何子文档（Sign_x 目录）");
 
-            var signDocs = new List<SignDoc>();
+            var signDocs = new List<SignDocument>();
 
             foreach (int index in signDocIndices)
             {
@@ -277,10 +277,10 @@ namespace OFDViewer.OFD
         }
 
 
-        private PageDoc ReadPageDoc(int pageDocIndex, int docIndex)
+        private PageDocument ReadPageDoc(int pageDocIndex, int docIndex)
         {
             EnsureNotDisposed();
-            var pageDoc = new PageDoc(pageDocIndex, docIndex);
+            var pageDoc = new PageDocument();
 
             // Doc_{0}/Pages/Page_{1}/Content.xml
             string contentFile = Constants.GetFilePath(Constants.Page_ContentFile, docIndex, pageDocIndex);
@@ -332,13 +332,13 @@ namespace OFDViewer.OFD
 
 
 
-        private List<PageDoc> ReadPageDocs(int docIndex)
+        private List<PageDocument> ReadPageDocs(int docIndex)
         {
             var pageDocIndices = GetPageDocIndices(docIndex);
             if (pageDocIndices.Count == 0)
                 throw new InvalidOperationException("未发现任何子文档（Sign_x 目录）");
 
-            var pageDocs = new List<PageDoc>();
+            var pageDocs = new List<PageDocument>();
 
             foreach (int index in pageDocIndices)
             {

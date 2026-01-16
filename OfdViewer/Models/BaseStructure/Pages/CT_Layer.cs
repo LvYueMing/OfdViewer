@@ -23,6 +23,14 @@ namespace OFDViewer.Models.BaseStructure.Pages
         }
 
         /// <summary>
+        /// 控制 TypeString 属性是否序列化（处理可选属性+默认值）
+        /// </summary>    
+        public bool ShouldSerializeTypeString()
+        {
+            return Type != LayerType.Body;
+        }
+
+        /// <summary>
         /// 控制Type属性是否序列化（处理可选属性+默认值）
         /// 仅当Type不是默认值时才序列化，符合XSD规范
         /// </summary>
@@ -42,5 +50,13 @@ namespace OFDViewer.Models.BaseStructure.Pages
         [XmlIgnore]
         public ST_RefID DrawParam { get; set; }
 
+        /// <summary>
+        /// 控制DrawParamString 属性是否序列化（处理可选属性+默认值）
+        /// </summary>
+        public bool ShouldSerializeDrawParamString()
+        {
+            // 表示 != 0
+            return DrawParam != ST_RefID.Invalid;
+        }
     }
 }

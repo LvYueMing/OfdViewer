@@ -1,4 +1,4 @@
-﻿using System.Xml.Serialization;
+using System.Xml.Serialization;
 using OFDViewer.Models.BaseType;
 using OFDViewer.Utils;
 
@@ -47,6 +47,15 @@ namespace OFDViewer.Models.PageDesc.Colors
         /// </summary>
         [XmlAttribute("BitsPerComponent")]
         public int BitsPerComponent { get; set; } = 8;
+
+        /// <summary>
+        /// 控制BitsPerComponent属性是否序列化
+        /// </summary>
+        public bool ShouldSerializeBitsPerComponent()
+        {
+            // 当BitsPerComponent为默认值8时不序列化
+            return BitsPerComponent != 8;
+        }
 
 
         [XmlIgnore]

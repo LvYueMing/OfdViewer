@@ -11,7 +11,8 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
     {
         /// <summary>
         /// 物理区域
-        /// 页面物理区域,左上角的坐标为页面空间坐标系的原点 
+        /// 页面物理区域,左上角的坐标为页面空间坐标系的原点
+        /// 单位：毫米
         /// 必选
         /// </summary>
         [XmlElement("PhysicalBox")]
@@ -22,9 +23,12 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
             set => PhysicalBox = ST_Box.Parse(value);
         }
 
+        /// <summary>
+        /// 物理区域
+        /// 默认值：210mm*297mm A4 纸张大小
+        /// </summary>
         [XmlIgnore]
-        public ST_Box PhysicalBox { get; set; }
-
+        public ST_Box PhysicalBox { get; set; } = new ST_Box(0, 0, 210, 297);
         /// <summary>
         /// 显示区域
         /// 页面内容实际显示或打印输出的区域,位于页面物理区域内,包含页眉、页脚、版心等内容
@@ -83,8 +87,6 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
         /// </summary>
         public CT_PageArea()
         {
-            // A4纸张大小，单位：点
-            PhysicalBox = new ST_Box(0, 0, 595.32, 841.92);
         }
 
 

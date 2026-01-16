@@ -130,7 +130,7 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
         public Document()
         {
             CommonData = new CT_CommonData();
-            Pages = Array.Empty<DocumentPage>().ToList();
+            Pages = new List<DocumentPage>();
         }
 
     }

@@ -26,6 +26,15 @@ namespace OFDViewer.Models.Annotation
         public List<Parameter> ParameterList { get; set; } = new List<Parameter>();
 
         /// <summary>
+        /// 控制ParameterList属性是否序列化
+        /// </summary>
+        public bool ShouldSerializeParameterList()
+        {
+            // 当ParameterList为空时不序列化
+            return ParameterList != null && ParameterList.Count > 0;
+        }
+
+        /// <summary>
         /// 注释的静态呈现效果,使用页面块定义来描述
         /// 必选
         /// </summary>
@@ -75,11 +84,29 @@ namespace OFDViewer.Models.Annotation
         public DateTime LastModDate { get; set; }
 
         /// <summary>
+        /// 控制LastModDate属性是否序列化
+        /// </summary>
+        public bool ShouldSerializeLastModDate()
+        {
+            // 当LastModDate为默认值DateTime.MinValue时不序列化
+            return LastModDate != DateTime.MinValue;
+        }
+
+        /// <summary>
         /// 表示该注释对象是否显示
         /// 可选，默认值：true
         /// </summary>
         [XmlAttribute("Visible", DataType = "boolean")]
         public bool Visible { get; set; } = true;
+
+        /// <summary>
+        /// 控制Visible属性是否序列化
+        /// </summary>
+        public bool ShouldSerializeVisible()
+        {
+            // 当Visible为默认值true时不序列化
+            return Visible != true;
+        }
 
         /// <summary>
         /// 注释子类型
@@ -96,11 +123,29 @@ namespace OFDViewer.Models.Annotation
         public bool Print { get; set; } = true;
 
         /// <summary>
+        /// 控制Print属性是否序列化
+        /// </summary>
+        public bool ShouldSerializePrint()
+        {
+            // 当Print为默认值true时不序列化
+            return Print != true;
+        }
+
+        /// <summary>
         /// 对象的 Remark 信息是否不随页面缩放而同步缩放
         /// 可选，默认值：false
         /// </summary>
         [XmlAttribute("NoZoom", DataType = "boolean")]
         public bool NoZoom { get; set; } = false;
+
+        /// <summary>
+        /// 控制NoZoom属性是否序列化
+        /// </summary>
+        public bool ShouldSerializeNoZoom()
+        {
+            // 当NoZoom为默认值false时不序列化
+            return NoZoom != false;
+        }
 
         /// <summary>
         /// 对象的 Remark信息是否不随页面旋转而同步旋转
@@ -110,10 +155,28 @@ namespace OFDViewer.Models.Annotation
         public bool NoRotate { get; set; } = false;
 
         /// <summary>
+        /// 控制NoRotate属性是否序列化
+        /// </summary>
+        public bool ShouldSerializeNoRotate()
+        {
+            // 当NoRotate为默认值false时不序列化
+            return NoRotate != false;
+        }
+
+        /// <summary>
         /// 对象的 Remark信息是否不能被用户更改
         /// 可选，默认值：true
         /// </summary>
         [XmlAttribute("ReadOnly", DataType = "boolean")]
         public bool ReadOnly { get; set; } = true;
+
+        /// <summary>
+        /// 控制ReadOnly属性是否序列化
+        /// </summary>
+        public bool ShouldSerializeReadOnly()
+        {
+            // 当ReadOnly为默认值true时不序列化
+            return ReadOnly != true;
+        }
     }
 }

@@ -17,7 +17,7 @@ namespace OFDViewer.Tests
         public void Constructor_Default_ShouldInitializeDefaultValues()
         {
             // 执行测试
-            var ofdDocument = new OFDDocument();
+            var ofdDocument = new OFDRootDocument();
 
             // 验证RootOfd属性
             Assert.NotNull(ofdDocument.RootOfd);
@@ -48,7 +48,7 @@ namespace OFDViewer.Tests
         public void AddNewDoc_ShouldAddDocToCollection()
         {
             // 准备测试数据
-            var ofdDocument = new OFDDocument();
+            var ofdDocument = new OFDRootDocument();
             var initialDocCount = ofdDocument.DocCount;
 
             // 执行测试
@@ -74,7 +74,7 @@ namespace OFDViewer.Tests
         public void DefaultDoc_ShouldReturnFirstDocument()
         {
             // 准备测试数据
-            var ofdDocument = new OFDDocument();
+            var ofdDocument = new OFDRootDocument();
             var firstDoc = ofdDocument.Docs[0];
 
             // 执行测试
@@ -93,7 +93,7 @@ namespace OFDViewer.Tests
         public void DefaultDoc_WhenDocsEmpty_ShouldCreateNewDocument()
         {
             // 准备测试数据
-            var ofdDocument = new OFDDocument();
+            var ofdDocument = new OFDRootDocument();
             ofdDocument.Docs.Clear();
 
             // 执行测试
@@ -114,7 +114,7 @@ namespace OFDViewer.Tests
         public void SerializeToXml_ShouldGenerateCorrectXml()
         {
             // 准备测试数据
-            var ofdDocument = new OFDDocument();
+            var ofdDocument = new OFDRootDocument();
 
             // 执行测试
             var xml = XmlHelper.SerializeToString(ofdDocument.RootOfd);
@@ -165,7 +165,7 @@ namespace OFDViewer.Tests
         public void SerializeToXml_WithMultipleDocs_ShouldGenerateCorrectXml()
         {
             // 准备测试数据
-            var ofdDocument = new OFDDocument();
+            var ofdDocument = new OFDRootDocument();
             ofdDocument.AddNewDoc();
             ofdDocument.AddNewDoc();
 
@@ -199,7 +199,7 @@ namespace OFDViewer.Tests
         public void SerializeAndDeserialize_ShouldMaintainDataIntegrity()
         {
             // 准备测试数据
-            var ofdDocument = new OFDDocument();
+            var ofdDocument = new OFDRootDocument();
             ofdDocument.AddNewDoc();
             var originalRootOfd = ofdDocument.RootOfd;
             originalRootOfd.Version = "1.1";

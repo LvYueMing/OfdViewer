@@ -83,7 +83,7 @@ namespace OFDViewer.OFD
         /// <exception cref="ObjectDisposedException">对象已释放时抛出</exception>
         /// <exception cref="ArgumentNullException">OFD文档对象为空时抛出</exception>
         /// <exception cref="InvalidOperationException">写入过程中出现异常时抛出</exception>
-        public void WriteOFDDocument(OFDDocument ofdDocument)
+        public void WriteOFDRootDoc(OFDRootDocument ofdDocument)
         {
             // 资源状态校验 释放对象 ≠ 对象引用为空
             EnsureNotDisposed();
@@ -157,7 +157,7 @@ namespace OFDViewer.OFD
         /// </summary>
         /// <param name="doc">子文档对象</param>
         /// <exception cref="ArgumentNullException">子文档对象为空时抛出</exception>
-        public void WriteOFDDoc(OFDDoc doc)
+        public void WriteOFDDoc(OFDDocument doc)
         {
             // 资源状态校验
             EnsureNotDisposed();
@@ -268,7 +268,7 @@ namespace OFDViewer.OFD
         /// 写入单个签章对象
         /// </summary>
         /// <param name="signDoc">签章对象</param>
-        public void WriteSignDoc(SignDoc signDoc)
+        public void WriteSignDoc(SignDocument signDoc)
         {
             // 资源状态校验
             EnsureNotDisposed();
@@ -322,7 +322,7 @@ namespace OFDViewer.OFD
         /// <param name="pageDoc">页面对象</param>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
-        public void WritePageDoc(PageDoc pageDoc)
+        public void WritePageDoc(PageDocument pageDoc)
         {
             // 资源状态校验
             EnsureNotDisposed();
@@ -372,6 +372,24 @@ namespace OFDViewer.OFD
             catch (Exception ex)
             {
                 throw new InvalidOperationException($"写入页面对象(PageDoc)失败，请检查归档对象完整性", ex);
+            }
+        }
+
+        //从本地文件读取资源文件（例如：Res/Image_{0}.png）
+        public static byte[] ReadResFile(string resFilePath)
+        {
+            if (string.IsNullOrWhiteSpace(resFilePath))
+                return null;
+            try
+            {
+                using var resFileStream = File.OpenRead(resFilePath);
+                using var memoryStream = new MemoryStream();
+                resFileStream.CopyTo(memoryStream);
+                return memoryStream.ToArray();
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"读取页面对象资源文件({resFilePath})失败，请检查文件路径是否正确", ex);
             }
         }
 

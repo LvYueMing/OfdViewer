@@ -28,7 +28,7 @@ namespace OFDViewer.Models.PageDesc
         /// </summary>
         [XmlArray(ElementName = "Clips")]
         [XmlArrayItem(ElementName = "Clip")]
-        public List<CT_Clip> Clips { get; set; } = new List<CT_Clip>();
+        public List<CT_Clip> Clips { get; set; }
 
         /// <summary>
         /// 外接矩形,采用当前空间坐标系(页面坐标或其他容器坐标),当图
@@ -58,6 +58,12 @@ namespace OFDViewer.Models.PageDesc
         [XmlAttribute(AttributeName = "Visible")]
         public bool Visible { get; set; } = true;
 
+        //控制 Visible 属性是否序列化（处理可选属性+默认值）
+        public bool ShouldSerializeVisible()
+        {
+            return !Visible;
+        }
+
         /// <summary>
         /// 对象空间内的图元变换矩阵 可选
         /// </summary>
@@ -69,6 +75,15 @@ namespace OFDViewer.Models.PageDesc
         }
         [XmlIgnore]
         public ST_Array CTM { get; set; }
+
+        /// <summary>
+        /// 控制 CTM 属性是否序列化（处理可选属性+默认值）
+        /// </summary>
+        /// <returns></returns>
+        public bool ShouldSerializeCTMString()
+        {
+            return !CTM.IsEmpty;
+        }
 
         /// <summary>
         /// 引用资源文件中的绘制参数标识 可选
@@ -84,12 +99,30 @@ namespace OFDViewer.Models.PageDesc
         public ST_RefID DrawParam { get; set; }
 
         /// <summary>
+        /// 控制 DrawParamString 属性是否序列化（处理可选属性+默认值）
+        /// </summary>
+        /// <returns></returns>
+        public bool ShouldSerializeDrawParamString()
+        {
+            return DrawParam != ST_RefID.Invalid;
+        }
+
+        /// <summary>
         /// 绘制路径时使用的线宽
         /// 如果图元对象有 DrawParam 属性,则用此值覆盖 DrawParam 中对应的值
         ///可选
         /// </summary>
         [XmlAttribute(AttributeName = "LineWidth")]
         public double LineWidth { get; set; }
+
+        /// <summary>
+        /// 控制 LineWidth 属性是否序列化（处理可选属性+默认值）
+        /// </summary>
+        /// <returns></returns>
+        public bool ShouldSerializeLineWidth()
+        {
+            return LineWidth != 0;
+        }
 
         /// <summary>
         /// 线端点样式,枚举值,指定了一条线的端点样式
@@ -107,6 +140,15 @@ namespace OFDViewer.Models.PageDesc
         public Cap Cap { get; set; } = Cap.Butt;
 
         /// <summary>
+        /// 线端点样式控制属性是否序列化（处理可选属性+默认值）
+        /// </summary>
+        /// <returns></returns>
+        public bool ShouldSerializeCapString()
+        {
+            return Cap != Cap.Butt;
+        }
+
+        /// <summary>
         /// 线条连接样式,指定了两个线的端点结合时采用的样式
         /// 默认值为 Miter
         /// 线条连接样式的取值和显示效果之间的关系见表2
@@ -122,6 +164,16 @@ namespace OFDViewer.Models.PageDesc
         [XmlIgnore]
         public Join Join { get; set; } = Join.Miter;
 
+
+        /// <summary>
+        /// 控制 Join 样式属性是否序列化（处理可选属性+默认值）
+        /// </summary>
+        /// <returns></returns>
+        public bool ShouldSerializeJoinString()
+        {
+            return Join != Join.Miter;
+        }
+
         /// <summary>
         /// Join为 Miter时,MiterSize的截断值
         /// 如果图元对象有 DrawParam 属性,则用此值覆盖 DrawParam 中对应的值
@@ -130,6 +182,15 @@ namespace OFDViewer.Models.PageDesc
         [XmlAttribute(AttributeName = "MiterLimit")]
         public double MiterLimit { get; set; }
 
+        // <summary>
+        /// 线段连接样式控制属性是否序列化（处理可选属性+默认值）
+        /// </summary>
+        /// <returns></returns>
+        public bool ShouldSerializeMiterLimit()
+        {
+            return MiterLimit != 0;
+        }
+
         /// <summary>
         /// 见8.2绘制参数
         /// 如果图元对象有 DrawParam 属性,则用此值覆盖 DrawParam 中对应的值
@@ -137,6 +198,16 @@ namespace OFDViewer.Models.PageDesc
         /// </summary>
         [XmlAttribute(AttributeName = "DashOffset")]
         public double DashOffset { get; set; }
+
+
+        // <summary>
+        /// 线段连接样式控制属性是否序列化（处理可选属性+默认值）
+        /// </summary>
+        /// <returns></returns>
+        public bool ShouldSerializeDashOffset()
+        {
+            return DashOffset != 0;
+        }
 
         /// <summary>
         /// 见8.2绘制参数
@@ -155,6 +226,16 @@ namespace OFDViewer.Models.PageDesc
         [XmlIgnore]
         public ST_Array DashPattern { get; set; }
 
+
+        /// <summary>
+        /// 线段连接样式控制属性是否序列化（处理可选属性+默认值）
+        /// </summary>
+        /// <returns></returns>
+        public bool ShouldSerializeDashPatternString()
+        {
+            return !DashPattern.IsEmpty;
+        }
+
         /// <summary>
         /// 图元对象的透明度,取值区间为[0,255]
         /// 0表示全透明,255表示完全不透明
@@ -163,6 +244,15 @@ namespace OFDViewer.Models.PageDesc
         /// </summary>
         [XmlAttribute(AttributeName = "Alpha")]
         public int Alpha { get; set; } = 255;
+
+        /// <summary>
+        /// 透明度控制属性是否序列化（处理可选属性+默认值）
+        /// </summary>
+        /// <returns></returns>
+        public bool ShouldSerializeAlpha()
+        {
+            return Alpha != 255;
+        }
 
     }
 }

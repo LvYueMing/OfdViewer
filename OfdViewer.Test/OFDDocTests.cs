@@ -19,20 +19,20 @@ namespace OFDViewer.Tests
         public void Constructor_ShouldInitializeProperties()
         {
             // 执行测试
-            var ofdDoc = new OFDDoc(0);
+            var ofdDoc = new OFDDocument(0);
 
             // 验证属性
             Assert.Equal(0, ofdDoc.DocIndex);
             Assert.NotNull(ofdDoc.Document);
+            Assert.NotNull(ofdDoc.PageDocs);
+            Assert.NotNull(ofdDoc.ResFiles);
+            Assert.Empty(ofdDoc.PageDocs);
+            Assert.Empty(ofdDoc.ResFiles);
             Assert.Null(ofdDoc.PublicResource);
             Assert.Null(ofdDoc.DocumentResource);
             Assert.Null(ofdDoc.Signatures);
-            Assert.NotNull(ofdDoc.SignDocs);
-            Assert.NotNull(ofdDoc.PageDocs);
-            Assert.NotNull(ofdDoc.ResFiles);
-            Assert.Empty(ofdDoc.SignDocs);
-            Assert.Empty(ofdDoc.PageDocs);
-            Assert.Empty(ofdDoc.ResFiles);
+            Assert.Null(ofdDoc.SignDocs);
+
         }
 
         /// <summary>
@@ -42,8 +42,8 @@ namespace OFDViewer.Tests
         public void AddPageDoc_ShouldAddPageToCollection()
         {
             // 准备测试数据
-            var ofdDoc = new OFDDoc(0);
-            var pageDoc = new PageDoc(0);
+            var ofdDoc = new OFDDocument(0);
+            var pageDoc = new PageDocument();
 
             // 执行测试
             ofdDoc.AddPageDoc(pageDoc);
@@ -61,7 +61,7 @@ namespace OFDViewer.Tests
         public void SerializeAndDeserialize_ShouldMaintainDataIntegrity()
         {
             // 准备测试数据
-            var ofdDoc = new OFDDoc(0);
+            var ofdDoc = new OFDDocument(0);
 
             // 初始化基本属性
             ofdDoc.PublicResource = new Res() { BaseLoc = new ST_Loc(".") };
@@ -69,7 +69,7 @@ namespace OFDViewer.Tests
             ofdDoc.Signatures = new Signatures();
 
             // 添加测试数据
-            var pageDoc = new PageDoc(0);
+            var pageDoc = new PageDocument();
             ofdDoc.AddPageDoc(pageDoc);
 
             // 添加资源文件
@@ -107,8 +107,8 @@ namespace OFDViewer.Tests
             Assert.NotNull(deserializedSignatures);
 
             // 验证集合属性的完整性
+            Assert.Null(ofdDoc.SignDocs);
             Assert.Equal(1, ofdDoc.PageDocs.Count);
-            Assert.Equal(0, ofdDoc.SignDocs.Count);
             Assert.Equal(1, ofdDoc.ResFiles.Count);
             Assert.Equal("test content", System.Text.Encoding.UTF8.GetString(ofdDoc.ResFiles["test.txt"]));
         }
@@ -120,7 +120,7 @@ namespace OFDViewer.Tests
         public void SerializeAndDeserialize_Document_ShouldMaintainDataIntegrity()
         {
             // 准备测试数据
-            var ofdDoc = new OFDDoc(0);
+            var ofdDoc = new OFDDocument(0);
             ofdDoc.Document = new Document
             {
                 CommonData = new CT_CommonData(),
@@ -149,11 +149,15 @@ namespace OFDViewer.Tests
         public void SerializeAndDeserialize_Resource_ShouldMaintainDataIntegrity()
         {
             // 准备测试数据
-            var ofdDoc = new OFDDoc(0);
+            var ofdDoc = new OFDDocument(0);
             ofdDoc.PublicResource = new Res
             {
                 BaseLoc = new ST_Loc(".")
             };
+
+            Assert.Equal("Doc_0/Res", ofdDoc.PublicResource.BaseLoc.ToString());
+
+
 
             // 序列化到XML字符串
             string xml = XmlHelper.SerializeToString(ofdDoc.PublicResource);
@@ -163,7 +167,8 @@ namespace OFDViewer.Tests
             // 反序列化回对象
             var deserializedRes = XmlHelper.DeserializeFromString<Res>(xml);
             Assert.NotNull(deserializedRes);
-            Assert.Equal(".", deserializedRes.BaseLoc.ToString());
+
+            Assert.Equal("Doc_0/Res", deserializedRes.BaseLoc.ToString());
         }
 
         /// <summary>
@@ -173,7 +178,7 @@ namespace OFDViewer.Tests
         public void SerializeAndDeserialize_Signatures_ShouldMaintainDataIntegrity()
         {
             // 准备测试数据
-            var ofdDoc = new OFDDoc(0);
+            var ofdDoc = new OFDDocument(0);
             ofdDoc.Signatures = new Signatures();
 
             // 序列化到XML字符串

@@ -17,5 +17,14 @@ namespace OFDViewer.Models.Annotation
         /// </summary>
         [XmlElement("Page", IsNullable = false)]
         public List<Page> Pages { get; set; } = new List<Page>();
+
+        /// <summary>
+        /// 控制Pages属性是否序列化
+        /// </summary>
+        public bool ShouldSerializePages()
+        {
+            // 当Pages为空时不序列化
+            return Pages != null && Pages.Count > 0;
+        }
     }
 }

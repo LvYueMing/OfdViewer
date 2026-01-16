@@ -21,6 +21,15 @@ namespace OFDViewer.Models.Extension
         public List<ExtensionItem> ExtensionItems { get; set; } = new List<ExtensionItem>();
 
         /// <summary>
+        /// 控制ExtensionItems属性是否序列化
+        /// </summary>
+        public bool ShouldSerializeExtensionItems()
+        {
+            // 当ExtensionItems为空时不序列化
+            return ExtensionItems != null && ExtensionItems.Count > 0;
+        }
+
+        /// <summary>
         /// 用于生成或解释该自定义对象数据的扩展应用程序名称
         /// 必选
         /// </summary>
@@ -47,6 +56,15 @@ namespace OFDViewer.Models.Extension
         /// </summary>
         [XmlAttribute("Date", DataType = "dateTime", AttributeName = "Date")]
         public DateTime Date { get; set; }
+
+        /// <summary>
+        /// 控制Date属性是否序列化
+        /// </summary>
+        public bool ShouldSerializeDate()
+        {
+            // 当Date为默认值DateTime.MinValue时不序列化
+            return Date != DateTime.MinValue;
+        }
 
         /// <summary>
         /// 引用扩展项针对的文档项目的标识

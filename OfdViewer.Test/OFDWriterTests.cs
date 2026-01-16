@@ -18,7 +18,7 @@ namespace OFDViewer.Tests
         private readonly string _tempFilePath;
 
         // 测试用的基础元数据对象（复用）
-        private readonly OFDDocument _testOfdDocument;
+        private readonly OFDRootDocument _testOfdDocument;
 
         public OFDWriterTests()
         {
@@ -26,7 +26,7 @@ namespace OFDViewer.Tests
             _tempFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"OFD");
 
             // 创建默认OFD文档对象
-            _testOfdDocument = new OFDDocument();
+            _testOfdDocument = new OFDRootDocument();
 
         }
 
@@ -118,7 +118,7 @@ namespace OFDViewer.Tests
             using var writer = new OFDWriter(ms, leaveOpen: true);
 
             // Act & Assert
-            var exception = Assert.Throws<ArgumentNullException>(() => writer.WriteOFDDocument(null));
+            var exception = Assert.Throws<ArgumentNullException>(() => writer.WriteOFDRootDoc(null));
             Assert.Equal("ofdDocument", exception.ParamName);
         }
 
@@ -129,13 +129,13 @@ namespace OFDViewer.Tests
         public void WriteEntireDocument_RootOfdNull_ThrowsArgumentNullException()
         {
             // Arrange
-            var invalidDoc = new OFDDocument();
+            var invalidDoc = new OFDRootDocument();
             invalidDoc.RootOfd = null;
             using var ms = new MemoryStream();
             using var writer = new OFDWriter(ms, leaveOpen: true);
 
             // Act & Assert
-            var exception = Assert.Throws<ArgumentNullException>(() => writer.WriteOFDDocument(invalidDoc));
+            var exception = Assert.Throws<ArgumentNullException>(() => writer.WriteOFDRootDoc(invalidDoc));
             Assert.Equal("RootOfd", exception.ParamName);
         }
 
@@ -146,13 +146,13 @@ namespace OFDViewer.Tests
         public void WriteEntireDocument_NoDocs_ThrowsInvalidOperationException()
         {
             // Arrange
-            var invalidDoc = new OFDDocument();
+            var invalidDoc = new OFDRootDocument();
             invalidDoc.Docs.Clear();
             using var ms = new MemoryStream();
             using var writer = new OFDWriter(ms, leaveOpen: true);
 
             // Act & Assert
-            var exception = Assert.Throws<InvalidOperationException>(() => writer.WriteOFDDocument(invalidDoc));
+            var exception = Assert.Throws<InvalidOperationException>(() => writer.WriteOFDRootDoc(invalidDoc));
             Assert.Contains("无可用子文档", exception.Message);
         }
 
@@ -230,7 +230,7 @@ namespace OFDViewer.Tests
             Assert.False(File.Exists(filePath)); // 保存前文件不存在
             // Act
             using var writer = new OFDWriter(filePath);
-            writer.WriteOFDDocument(_testOfdDocument);
+            writer.WriteOFDRootDoc(_testOfdDocument);
             writer.Save();
             // Assert
             Assert.True(File.Exists(filePath)); // 保存后文件存在
@@ -245,7 +245,7 @@ namespace OFDViewer.Tests
             // Arrange
             using var ms = new MemoryStream();
             using var writer = new OFDWriter(ms, leaveOpen: true);
-            writer.WriteOFDDocument(_testOfdDocument);
+            writer.WriteOFDRootDoc(_testOfdDocument);
 
             // Act
             writer.Save();
@@ -256,132 +256,6 @@ namespace OFDViewer.Tests
         }
 
         /// <summary>
-        /// 测试：生成完整的OFD文档，包含文字内容并保存到本地文件系统
-        /// </summary>
-        [Fact]
-        public void Generate_FullOFDWithTextContent_SavesSuccessfully()
-        {
-            // 创建保存路径
-            var savePath = Path.Combine(_tempFilePath, $"TestFullOFD_{DateTime.Now:yyyyMMddHHmmss}.ofd");
-
-            // Arrange
-            // 创建OFD文档对象
-            var ofdDocument = new OFDDocument();
-            
-            // 获取默认子文档
-            var doc = ofdDocument.DefaultOFDDoc;
-            
-            // 初始化PublicResource
-            doc.PublicResource = new OFDViewer.Models.BaseStructure.Resources.Res();
-            
-            // 添加字体资源到PublicResource
-            var fonts = new OFDViewer.Models.BaseStructure.Resources.ResItems.OFDFonts();
-            fonts.ofdFonts = new List<OFDViewer.Models.BaseStructure.Resources.ResItems.OFDFont>();
-            
-            var font = new OFDViewer.Models.BaseStructure.Resources.ResItems.OFDFont();
-            font.ID = OFDViewer.Models.BaseType.ST_ID.CreateNew();
-            font.FontName = "SimSun";
-            font.FontFile = "simsun.ttf";
-            font.FamilyName = "SimSun";
-            font.Bold = false;
-            font.Italic = false;
-            font.CharsetString = "prc";
-            
-            fonts.ofdFonts.Add(font);
-            doc.PublicResource.AddResource(fonts);
-            
-            // 初始化DocumentResource
-            doc.DocumentResource = new OFDViewer.Models.BaseStructure.Resources.Res();
-            
-            // 创建一个新页面
-            var pageDoc = new PageDoc(0, 0);
-            doc.AddPageDoc(pageDoc);
-            
-            // 设置页面区域（A4纸张大小）
-            pageDoc.Content.Area = new OFDViewer.Models.BaseStructure.DocumentRoot.CT_PageArea
-            {
-                PhysicalBox = new OFDViewer.Models.BaseType.ST_Box(0, 0, 210, 297),
-                ApplicationBox = new OFDViewer.Models.BaseType.ST_Box(0, 0, 210, 297),
-                ContentBox = new OFDViewer.Models.BaseType.ST_Box(20, 20, 170, 257)
-            };
-            
-            // 创建内容图层
-            var layer = new OFDViewer.Models.BaseStructure.Pages.Layer
-            {
-                ID = OFDViewer.Models.BaseType.ST_ID.CreateNew()
-            };
-            
-            // 创建文本对象
-            var textObject = new OFDViewer.Models.BaseStructure.Pages.PageBlockItems.TextObject
-            {
-                // 设置文本边界
-                Boundary = new OFDViewer.Models.BaseType.ST_Box(30, 50, 150, 50),
-                // 设置文本样式
-                Size = 12,
-                Fill = true,
-                // 设置黑色填充颜色
-                FillColor = new OFDViewer.Models.PageDesc.Colors.CT_Color
-                {
-                    Value = new OFDViewer.Models.BaseType.ST_Array(0, 0, 0, 1)
-                },
-                // 暂时不设置字体，使用默认字体
-                // 注意：在实际应用中需要正确设置字体资源
-                Weight = 400,
-                Italic = false
-            };
-            
-            // 添加文本内容
-            var textCode = new OFDViewer.Models.Font.TextCode
-            {
-                Value = "这是一个测试OFD文档，包含文字内容。\n这是第二行文字。"
-            };
-            textObject.TextCodes.Add(textCode);
-            
-            // 将文本对象添加到图层
-            layer.PageBlockItems.Add(textObject);
-            
-            // 将图层添加到页面内容
-            if (pageDoc.Content.Content == null)
-            {
-                pageDoc.Content.Content = new List<OFDViewer.Models.BaseStructure.Pages.Layer>();
-            }
-            pageDoc.Content.Content.Add(layer);
-            
-            // Act
-            // 保存OFD文档
-            using (var writer = new OFDWriter(savePath))
-            {
-                writer.WriteOFDDocument(ofdDocument);
-                writer.Save();
-            }
-            
-            // Assert
-            // 验证文件是否存在
-            Assert.True(File.Exists(savePath));
-            
-            // 验证DocumentResource已正确初始化
-            Assert.NotNull(doc.DocumentResource);
-            
-            // 验证DocumentResource的BaseLoc设置正确
-            var docIndex = doc.DocIndex;
-            var expectedBaseLoc = $"Doc_{docIndex}/Res";
-            Assert.Equal(expectedBaseLoc, doc.DocumentResource.BaseLocString);
-            
-            // 验证字体资源已正确添加到PublicResource
-            Assert.NotNull(doc.PublicResource.ResItems);
-            Assert.NotEmpty(doc.PublicResource.ResItems);
-            var addedFonts = doc.PublicResource.ResItems.FirstOrDefault(r => r is OFDViewer.Models.BaseStructure.Resources.ResItems.OFDFonts) as OFDViewer.Models.BaseStructure.Resources.ResItems.OFDFonts;
-            Assert.NotNull(addedFonts);
-            Assert.Single(addedFonts.ofdFonts);
-            Assert.Equal("SimSun", addedFonts.ofdFonts[0].FontName);
-            Assert.Equal($"{expectedBaseLoc}/simsun.ttf", addedFonts.ofdFonts[0].FontFile);
-            
-            // 打印保存路径到控制台
-            Console.WriteLine($"OFD文档已成功保存到：{savePath}");
-        }
-
-
-        /// <summary>
         /// 测试：资源文件的BaseLoc设置和资源路径解析
         /// </summary>
         [Fact]
@@ -389,7 +263,7 @@ namespace OFDViewer.Tests
         {
             // Arrange
             // 创建OFD文档对象
-            var ofdDocument = new OFDDocument();
+            var ofdDocument = new OFDRootDocument();
             
             // 获取默认子文档
             var doc = ofdDocument.DefaultOFDDoc;
@@ -461,7 +335,7 @@ namespace OFDViewer.Tests
         {
             // Arrange
             // 创建OFD文档对象
-            var ofdDocument = new OFDDocument();
+            var ofdDocument = new OFDRootDocument();
             
             // Act
             // 添加第二个文档
@@ -489,6 +363,129 @@ namespace OFDViewer.Tests
         }
         #endregion
 
+        #region 生成完整的OFD文档
+        /// <summary>
+        /// 测试：生成完整的OFD文档，包含文字内容并保存到本地文件系统
+        /// </summary>
+        [Fact]
+        public void Generate_FullOFDWithTextContent_SavesSuccessfully()
+        {
+            // 创建保存路径
+            var savePath = Path.Combine(_tempFilePath, $"TestFullOFD_{DateTime.Now:yyyyMMddHHmmss}.ofd");
+
+            // Arrange
+            // 创建OFD文档对象
+            var ofdDocument = new OFDRootDocument();
+
+            // 获取默认子文档
+            var doc = ofdDocument.DefaultOFDDoc;
+
+            doc.ResFiles.Add("font1_10.ttf", OFDWriter.ReadResFile(@"D:\MySoft\GitHub\OfdViewer\OFD-File\Res\font1_10.ttf"));
+
+            // 初始化PublicResource
+            doc.PublicResource = new OFDViewer.Models.BaseStructure.Resources.Res();
+
+            //"Doc_0/Res"
+            doc.PublicResource.BaseLocString = doc.ResDirectory;
+
+            // 添加字体资源到PublicResource
+            var fonts = new OFDViewer.Models.BaseStructure.Resources.ResItems.OFDFonts();
+            fonts.ofdFonts = new List<OFDViewer.Models.BaseStructure.Resources.ResItems.OFDFont>();
+
+            var font = new OFDViewer.Models.BaseStructure.Resources.ResItems.OFDFont();
+            font.ID = OFDViewer.Models.BaseType.ST_ID.CreateNew();
+            font.FontName = "宋体";
+            font.FontFile = "font1_10.ttf";
+            font.Bold = false;
+            font.Italic = false;
+
+            fonts.ofdFonts.Add(font);
+            doc.PublicResource.AddResource(fonts);
+
+
+            // 初始化DocumentResource
+            doc.DocumentResource = new OFDViewer.Models.BaseStructure.Resources.Res();
+
+            // 创建一个新页面
+            var pageDoc = new PageDocument();
+            doc.AddPageDoc(pageDoc);
+
+            // 设置页面区域（A4纸张大小）
+            pageDoc.Content.Area = new OFDViewer.Models.BaseStructure.DocumentRoot.CT_PageArea
+            {
+                PhysicalBox = new OFDViewer.Models.BaseType.ST_Box(0, 0, 210, 297),
+                ApplicationBox = new OFDViewer.Models.BaseType.ST_Box(0, 0, 210, 297),
+                ContentBox = new OFDViewer.Models.BaseType.ST_Box(20, 20, 170, 257)
+            };
+
+            // 创建内容图层
+            var layer = new OFDViewer.Models.BaseStructure.Pages.Layer
+            {
+                ID = OFDViewer.Models.BaseType.ST_ID.CreateNew()
+            };
+
+            // 创建文本对象
+            var textObject = new OFDViewer.Models.BaseStructure.Pages.PageBlockItems.TextObject
+            {
+                // 设置文本边界
+                Boundary = new OFDViewer.Models.BaseType.ST_Box(30, 50, 100, 50),
+                // 设置文本样式
+                Size = 12,
+                // 设置字体，使用默认字体
+                FontString = font.IDString,
+            };
+
+            // 添加文本内容
+            var textCode = new OFDViewer.Models.Font.TextCode
+            {
+                Value = "这是一个测试OFD文档，包含文字内容。\n这是第二行文字。"
+            };
+            textObject.TextCodes.Add(textCode);
+
+            // 将文本对象添加到图层
+            layer.PageBlockItems.Add(textObject);
+
+            // 将图层添加到页面内容
+            if (pageDoc.Content.Content == null)
+            {
+                pageDoc.Content.Content = new List<OFDViewer.Models.BaseStructure.Pages.Layer>();
+            }
+            pageDoc.Content.Content.Add(layer);
+
+            // Act
+            // 保存OFD文档
+            using (var writer = new OFDWriter(savePath))
+            {
+                writer.WriteOFDRootDoc(ofdDocument);
+                writer.Save();
+            }
+
+            // Assert
+            // 验证文件是否存在
+            Assert.True(File.Exists(savePath));
+
+            // 验证DocumentResource已正确初始化
+            Assert.NotNull(doc.DocumentResource);
+
+            // 验证DocumentResource的BaseLoc设置正确
+            var docIndex = doc.DocIndex;
+            var expectedBaseLoc = $"Doc_{docIndex}/Res";
+            Assert.Equal(expectedBaseLoc, doc.DocumentResource.BaseLocString);
+
+            // 验证字体资源已正确添加到PublicResource
+            Assert.NotNull(doc.PublicResource.ResItems);
+            Assert.NotEmpty(doc.PublicResource.ResItems);
+            var addedFonts = doc.PublicResource.ResItems.FirstOrDefault(r => r is OFDViewer.Models.BaseStructure.Resources.ResItems.OFDFonts) as OFDViewer.Models.BaseStructure.Resources.ResItems.OFDFonts;
+            Assert.NotNull(addedFonts);
+            Assert.Single(addedFonts.ofdFonts);
+            Assert.Equal("宋体", addedFonts.ofdFonts[0].FontName);
+            Assert.Equal($"{expectedBaseLoc}/font1_10.ttf", addedFonts.ofdFonts[0].FontFile);
+
+            // 打印保存路径到控制台
+            Console.WriteLine($"OFD文档已成功保存到：{savePath}");
+        }
+        #endregion
+
         #region 资源释放测试
         /// <summary>
         /// 测试：Dispose后调用写入方法抛出ObjectDisposedException
@@ -502,7 +499,7 @@ namespace OFDViewer.Tests
             writer.Dispose();
 
             // Act & Assert
-            Assert.Throws<ObjectDisposedException>(() => writer.WriteOFDDocument(_testOfdDocument));
+            Assert.Throws<ObjectDisposedException>(() => writer.WriteOFDRootDoc(_testOfdDocument));
             Assert.Throws<ObjectDisposedException>(() => writer.WriteRootOFD(_testOfdDocument.RootOfd));
             Assert.Throws<ObjectDisposedException>(() => writer.Save());
         }

@@ -15,7 +15,7 @@ namespace OFDViewer.Models.BaseType
         // C# 10+ 支持 struct 的无参数构造函数
         public ST_Loc()
         {
-            _path = ".";
+            _path = "";
         }
 
         public ST_Loc(string path)
@@ -192,7 +192,7 @@ namespace OFDViewer.Models.BaseType
         }
 
 
-        public override string ToString() => _path ?? ".";
+        public override string ToString() => _path ?? "";
 
         // 其余接口和运算符重载可按需保留
         public bool Equals(ST_Loc other) => string.Equals(_path, other._path, StringComparison.Ordinal);

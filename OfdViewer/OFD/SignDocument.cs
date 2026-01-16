@@ -6,7 +6,7 @@ namespace OFDViewer.OFD
     /// OFD签章对象，对应 Sign_N 单个签章目录（N从0开始）
     /// 包含电子印章本体、签章属性、数字签名密文等核心信息
     /// </summary>
-    public class SignDoc
+    public class SignDocument
     {
         /// <summary>
         /// 签章序号（从0开始，只读，构造时赋值）
@@ -46,7 +46,7 @@ namespace OFDViewer.OFD
         /// </summary>
         /// <param name="signIndex">签章序号（从0开始）</param>
         /// <param name="belongDocIndex">所属文档序号（从0开始）</param>
-        public SignDoc(int signIndex, int belongDocIndex)
+        public SignDocument(int signIndex, int belongDocIndex)
         {
             // 校验签章序号合法性
             if (signIndex < 0)

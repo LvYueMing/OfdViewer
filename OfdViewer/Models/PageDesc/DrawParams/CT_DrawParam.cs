@@ -1,4 +1,4 @@
-﻿using System.Xml.Serialization;
+using System.Xml.Serialization;
 using OFDViewer.Models.BaseType;
 using OFDViewer.Models.PageDesc.Colors;
 using OFDViewer.Utils;
@@ -51,6 +51,15 @@ namespace OFDViewer.Models.PageDesc.DrawParams
         public double LineWidth { get; set; } = 0.353;
 
         /// <summary>
+        /// 控制LineWidth属性是否序列化
+        /// </summary>
+        public bool ShouldSerializeLineWidth()
+        {
+            // 当LineWidth为默认值0.353时不序列化
+            return LineWidth != 0.353;
+        }
+
+        /// <summary>
         /// 线条连接样式,指定了两个线的端点结合时采用的样式 可取值为:
         ///  Miter
         ///  Round
@@ -67,6 +76,15 @@ namespace OFDViewer.Models.PageDesc.DrawParams
         }
         [XmlIgnore]
         public DrawParamJoinType Join { get; set; } = DrawParamJoinType.Miter;
+
+        /// <summary>
+        /// 控制Join属性是否序列化
+        /// </summary>
+        public bool ShouldSerializeJoinString()
+        {
+            // 当Join为默认值DrawParamJoinType.Miter时不序列化
+            return Join != DrawParamJoinType.Miter;
+        }
 
         /// <summary>
         /// 线端点样式,枚举值,指定了一条线的端点样式。 可取值为:
@@ -87,11 +105,29 @@ namespace OFDViewer.Models.PageDesc.DrawParams
         public DrawParamCapType Cap { get; set; }
 
         /// <summary>
+        /// 控制Cap属性是否序列化
+        /// </summary>
+        public bool ShouldSerializeCapString()
+        {
+            // 当Cap为默认值DrawParamCapType.Butt时不序列化
+            return Cap != DrawParamCapType.Butt;
+        }
+
+        /// <summary>
         /// 线条虚线样式开始的位置,默认值为0。当 DashPattern不出现时,该参数无效
         /// 可选
         /// </summary>
         [XmlAttribute("DashOffset")]
         public double DashOffset { get; set; } = 0;
+
+        /// <summary>
+        /// 控制DashOffset属性是否序列化
+        /// </summary>
+        public bool ShouldSerializeDashOffset()
+        {
+            // 当DashOffset为默认值0时不序列化
+            return DashOffset != 0;
+        }
 
         /// <summary>
         /// 线条虚线的重复样式,数组中共含两个值,第一个值代表虚线线段
@@ -114,5 +150,14 @@ namespace OFDViewer.Models.PageDesc.DrawParams
         /// </summary>
         [XmlAttribute("MiterLimit")]
         public double MiterLimit { get; set; } = 4.234;
+
+        /// <summary>
+        /// 控制MiterLimit属性是否序列化
+        /// </summary>
+        public bool ShouldSerializeMiterLimit()
+        {
+            // 当MiterLimit为默认值4.234时不序列化
+            return MiterLimit != 4.234;
+        }
     }
 }

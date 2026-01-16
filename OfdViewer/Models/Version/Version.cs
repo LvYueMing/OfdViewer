@@ -1,4 +1,4 @@
-﻿using System.Xml.Serialization;
+using System.Xml.Serialization;
 using OFDViewer.Models.BaseType;
 
 namespace OFDViewer.Models.Versions
@@ -27,6 +27,15 @@ namespace OFDViewer.Models.Versions
         /// </summary>
         [XmlAttribute("Current")]
         public bool Current { get; set; } = false; // 初始化默认值匹配XSD
+
+        /// <summary>
+        /// 控制Current属性是否序列化
+        /// </summary>
+        public bool ShouldSerializeCurrent()
+        {
+            // 当Current为默认值false时不序列化
+            return Current != false;
+        }
 
         [XmlIgnore]
         public ST_Loc BaseLoc { get; set; }

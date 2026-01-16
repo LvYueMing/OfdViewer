@@ -29,7 +29,7 @@ namespace OFDViewer.Models.BaseType
         /// <summary>
         /// 是否为空的数组
         /// </summary>
-        public bool IsEmpty => _values?.Count == 0;
+        public bool IsEmpty => (_values?.Count ?? 0) == 0;
 
         /// <summary>
         /// 索引器
@@ -45,11 +45,6 @@ namespace OFDViewer.Models.BaseType
                 return _values[index];
             }
         }
-
-        /// <summary>
-        /// 获取原始列表的只读副本
-        /// </summary>
-        public IReadOnlyList<object> Values => _values?.AsReadOnly() ?? (IReadOnlyList<object>)Array.Empty<object>();
 
         /// <summary>
         /// 空数组实例

@@ -1,4 +1,4 @@
-﻿using System.Xml.Serialization;
+using System.Xml.Serialization;
 using OFDViewer.Models.BaseStructure.Resources.ResItems;
 using OFDViewer.Models.BaseType;
 using OFDViewer.Utils;
@@ -24,6 +24,15 @@ namespace OFDViewer.Models.BaseStructure.Resources
         {
             get { return _resItems; }
             set { _resItems = value; }
+        }
+
+        /// <summary>
+        /// 控制ResItems属性是否序列化
+        /// </summary>
+        public bool ShouldSerializeResItems()
+        {
+            // 当ResItems为空时不序列化
+            return _resItems != null && _resItems.Count > 0;
         }
 
         /// <summary>

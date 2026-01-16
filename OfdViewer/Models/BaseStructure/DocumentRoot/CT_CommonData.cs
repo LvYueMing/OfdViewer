@@ -37,7 +37,7 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
 
 
         [XmlIgnore]
-        public List<ST_Loc> PublicRes { get; set; } = Array.Empty<ST_Loc>().ToList();
+        public List<ST_Loc> PublicRes { get; set; } 
 
         /// <summary>
         /// 公共资源序列,每个节点指向 OFD 包内的一个资源描述文档,资源
@@ -52,7 +52,7 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
         }
 
         [XmlIgnore]
-        public List<ST_Loc> DocumentRes { get; set; } = Array.Empty<ST_Loc>().ToList();
+        public List<ST_Loc> DocumentRes { get; set; } 
 
         /// <summary>
         /// 文档资源序列,每个节点指向 OFD包内的一个资源描述文档,资源

@@ -224,7 +224,7 @@ namespace OFDViewer.Tests
 
             //XmlHelper.SerializeToString 序列化时，特性校验list数量，会异常，断言异常
             var exception = Assert.Throws<XmlRequiredValidationException>(() => XmlHelper.SerializeToString<RootOFD>(ofd));
-            Assert.Equal("DocBodies", exception.PropertyName);
+            Assert.Equal("OFDViewer.Models.BaseStructure.MainEntry.RootOFD.DocBodies", exception.PropertyName);
             Assert.Contains("元素个数无效", exception.Message);
         }
 
@@ -449,7 +449,7 @@ namespace OFDViewer.Tests
         {
             var ofd = new RootOFD();
             var docBody = new DocBody();
-            docBody.DocRoot = Constants.GetFilePath(Constants.Doc_DocumentFile);
+            docBody.DocRoot = Constants.GetFilePath(Constants.Doc_DocumentFile, 0);
             ofd.AddDocBody(docBody);
 
             var xml = XmlHelper.SerializeToString(ofd);
@@ -471,7 +471,7 @@ namespace OFDViewer.Tests
             var rootPath = docRootNode?.InnerText;
 
             // 验证 DocRoot 属性是否正确设置
-            Assert.Equal("./Doc_0/Document.xml", rootPath);
+            Assert.Equal("Doc_0/Document.xml", rootPath);
         }
     }
 }

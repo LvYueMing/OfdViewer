@@ -1,86 +1,225 @@
-﻿using OFDViewer.Models.BaseStructure.MainEntry;
+using OFDViewer.Models.BaseStructure.DocumentRoot;
+using OFDViewer.Models.BaseStructure.Resources;
+using OFDViewer.Models.Signature;
 
 namespace OFDViewer.OFD
 {
     /// <summary>
-    /// OFD根文档对象，对应整个OFD压缩包（ZIP容器）
+    /// OFD子文档对象，对应 Doc_N 目录
     /// </summary>
     public class OFDDocument
     {
         /// <summary>
-        /// OFD.xml 对应的全局元数据对象（文档根节点、版本、文档数量等核心信息）
+        /// 文档主描述文件（Document.xml），定义页面尺寸、页面总数、文档结构等属性
         /// </summary>
-        public RootOFD RootOfd { get; set; }
+        public Document Document { get; set; }
 
         /// <summary>
-        /// 全局元数据文件路径（相对根目录，固定路径）
+        /// 文档序号（从0开始，只读，构造时赋值）
         /// </summary>
-        public string RootOfdFile => Constants.Root_OfdFile;
+        public int DocIndex { get; set; }
 
+        private Res _publicResource;
         /// <summary>
-        /// 当前OFD根目录路径
-        /// "." 表示当前路径, ".." 表示父路径
-        /// 约定:
-        /// 1. "/"代表根节点;
-        /// 2. 未显式指定时代表当前路径;
-        /// 3. 路径区分大小写
+        /// 全文档公共资源描述文件（PublicRes.xml）
         /// </summary>
-        public string OFDRootDirectory => "/";
-
-        /// <summary>
-        /// 文档集合（对应 Doc_0、Doc_1... 子文档目录，有序存储）
-        /// </summary>
-        public List<OFDDoc> Docs { get; set; } = new List<OFDDoc>();
-
-        //文档数量属性
-        public int DocCount => Docs.Count;
-
-        /// <summary>
-        /// 单文档快捷访问属性（默认获取第一个文档 DocIndex=0，适配绝大多数单文档场景）
-        /// 简化操作：无需通过 Docs[0] 遍历，直接访问 DefaultDoc
-        /// </summary>
-        public OFDDoc DefaultOFDDoc
+        public Res PublicResource
         {
-            get
+            get => _publicResource;
+            set
             {
-                // 若文档集合为空，自动创建第一个文档（DocIndex=0，容错处理）
-                if (Docs == null || Docs.Count == 0)
+                if (value != null)
                 {
-                    AddNewDoc();
+                    value.BaseLocString = ResDirectory;
                 }
-                // 返回第一个文档（DocIndex=0，默认单文档）
-                return Docs[0];
+                _publicResource = value;
+                // 更新Document对象中的公共资源路径
+                if (Document != null && Document.CommonData != null && value != null)
+                {
+                    // 移除旧的路径
+                    Document.CommonData.PublicResString = Document.CommonData.PublicResString
+                        ?.Where(path => !path.EndsWith(PublicResourceFile))
+                        ?.ToList() ?? new List<string>();
+                    
+                    // 添加新的路径
+                    Document.CommonData.PublicResString.Add(PublicResourceFile);
+                }
+            }
+        }
+
+        private Res _documentResource;
+
+        /// <summary>
+        /// 当前文档的资源描述文件（DocumentRes.xml）
+        /// </summary>
+        public Res DocumentResource
+        {
+            get => _documentResource;
+            set
+            {
+                if (value != null)
+                {
+                    value.BaseLocString = ResDirectory;
+                }
+                _documentResource = value;
+                // 更新Document对象中的文档资源路径
+                if (Document != null && Document.CommonData != null && value != null)
+                {
+                    // 移除旧的路径
+                    Document.CommonData.DocumentResString = Document.CommonData.DocumentResString
+                        ?.Where(path => !path.EndsWith(DocumentResourceFile))
+                        ?.ToList() ?? new List<string>();
+                    
+                    // 添加新的路径
+                    Document.CommonData.DocumentResString.Add(DocumentResourceFile);
+                }
             }
         }
 
         /// <summary>
-        /// 无参构造函数，初始化全局元数据对象，并自动创建第一个默认文档（DocIndex=0）
+        /// 签章列表索引对象（对应Signatures.xml，记录所有签章信息）
         /// </summary>
-        public OFDDocument()
+        public Signatures Signatures { get; set; }
+
+        /// <summary>
+        /// 签章对象集合（对应Sign_N目录，一个文档可包含多个签章）
+        /// </summary>
+        public List<SignDocument> SignDocs { get; set; }
+
+        /// <summary>
+        /// 页面对象集合（对应Page_N目录，存储文档所有页面）
+        /// </summary>
+        public List<PageDocument> PageDocs { get; set; }
+
+        /// <summary>
+        /// 文档级资源文件集合（存储Res目录下的字体、图片等资源）
+        /// </summary>
+        public Dictionary<string, byte[]> ResFiles { get; set; }
+
+
+        /// <summary>
+        /// 当前文档路径 (Doc_{0})
+        /// </summary>
+        public string DocBaseDirectory => Constants.GetFilePath(Constants.Doc_BaseDirectory, DocIndex);
+
+        /// <summary>
+        /// 文档主描述文件路径（Doc_{0}/Document.xml）
+        /// </summary>
+        public string DocumentFile => Constants.GetFilePath(Constants.Doc_DocumentFile, DocIndex);
+
+        /// <summary>
+        /// 文档公共资源描述文件路径（Doc_{0}/PublicRes.xml）
+        /// </summary>
+        public string PublicResourceFile => Constants.GetFilePath(Constants.Doc_PublicResFile, DocIndex);
+
+        /// <summary>
+        /// 文档私有资源描述文件路径（Doc_{0}/DocumentRes.xml）
+        /// </summary>
+        public string DocumentResourceFile => Constants.GetFilePath(Constants.Doc_DocumentResFile, DocIndex);
+
+        /// <summary>
+        /// 文档级资源目录路径（Doc_{0}/Res）
+        /// </summary>
+        public string ResDirectory => Constants.GetFilePath(Constants.Doc_ResDirectory, DocIndex);
+
+        /// <summary>
+        /// 页面对象集合目录（Doc_{0}/Pages）
+        /// </summary>
+        public string PagesDirectory => Constants.GetFilePath(Constants.Pages_BaseDirectory, DocIndex);
+
+        /// <summary>
+        /// 签章对象集合目录(Doc_{0}/Signs)
+        /// </summary>
+        public string SignsDirectory => Constants.GetFilePath(Constants.Signs_BaseDirectory, DocIndex);
+
+        //无参构造函数
+        public OFDDocument() : this(0)
         {
-            RootOfd = new RootOFD();
-            // 自动初始化第一个文档（DocIndex=0），适配单文档默认场景
-            AddNewDoc();
+
+        }
+
+
+        /// <summary>
+        /// 构造函数，初始化文档序号及默认对象（DocIndex从0开始）
+        /// </summary>
+        /// <param name="docIndex">文档序号（从0开始）</param>
+        public OFDDocument(int docIndex)
+        {
+            // 校验文档序号合法性：从0开始，不允许负数
+            if (docIndex < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(docIndex), "文档序号必须从0开始，不允许为负数");
+            }
+            DocIndex = docIndex;
+            Document = new Document();
+            PageDocs = new List<PageDocument>();
+            ResFiles = new Dictionary<string, byte[]>();
         }
 
         /// <summary>
-        /// 添加新文档到OFD根文档，并自动同步文档序号
+        /// 添加页面对象
         /// </summary>
-        /// <returns>新增的子文档对象</returns>
-        public OFDDoc AddNewDoc()
+        public void AddPageDoc()
         {
-            // 自动生成文档序号（从0开始，基于现有文档数量自增）
-            int newDocIndex = this.Docs.Count + 1 - 1;
-            var newDoc = new OFDDoc(newDocIndex);
-            this.Docs.Add(newDoc);
+            PageDocs = PageDocs ?? new List<PageDocument>();
 
-            // 在OFD.xml中记录 文档根节点、版本、文档数量等核心信息
-            var docBody = new DocBody();
+            // 计算新的页面序号（当前页面数量，从0开始）
+            int newPageIndex = PageDocs.Count;
 
-            docBody.DocRootPath = Constants.GetFilePath(Constants.Doc_DocumentFile, newDocIndex);
-            this.RootOfd.DocBodies.Add(docBody);
+            var pageDoc = new PageDocument();
 
-            return newDoc;
+            // 设置页面序号
+            pageDoc.BelongDocIndex = DocIndex;
+
+
+            // 创建并添加对应的DocumentPage对象到Document.Pages集合中
+            if (Document != null && Document.Pages != null)
+            {
+                // 创建DocumentPage对象
+                var documentPage = new DocumentPage();
+
+                // 设置BaseLocString为页面对象描述文件的路径
+                documentPage.BaseLocString = $"Doc_{DocIndex}/Pages/Page_{newPageIndex}/Content.xml";
+
+                // 添加到Document.Pages集合
+                Document.Pages.Add(documentPage);
+            }
+
+            // 添加页面对象
+            PageDocs.Add(pageDoc);
         }
+
+        /// <summary>
+        /// 添加页面对象
+        /// </summary>
+        /// <param name="pageDoc"></param>
+        public void AddPageDoc(PageDocument pageDoc)
+        {
+            // 计算新的页面序号（当前页面数量，从0开始）
+            int newPageIndex = PageDocs.Count;
+
+            // 设置页面序号
+            pageDoc.BelongDocIndex = DocIndex;
+            pageDoc.PageIndex = newPageIndex;
+
+
+            // 创建并添加对应的DocumentPage对象到Document.Pages集合中
+            if (Document != null && Document.Pages != null)
+            {
+                // 创建DocumentPage对象
+                var documentPage = new DocumentPage();
+                
+                // 设置BaseLocString为页面对象描述文件的路径
+                documentPage.BaseLocString = $"Doc_{DocIndex}/Pages/Page_{newPageIndex}/Content.xml";
+                
+                // 添加到Document.Pages集合
+                Document.Pages.Add(documentPage);
+            }
+            
+            // 添加页面对象
+            PageDocs.Add(pageDoc);
+        }
+
+
     }
 }

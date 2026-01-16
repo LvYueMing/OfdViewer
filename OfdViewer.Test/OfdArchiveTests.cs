@@ -172,7 +172,7 @@ namespace OFDViewer.Tests
         [Fact]
         public void ExtractAndReadOFD_LoadLocalFile()
         {
-            string ofdPath = @"C:\Users\Administrator\Desktop\test.ofd"; // 替换为实际 OFD 文件路径
+            var ofdPath = Path.Combine(@"..\..\..\..\OFD-File", "test.ofd");
             using var archive = OFDArchive.OpenFromFile(ofdPath);
 
             // 解压

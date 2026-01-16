@@ -6,7 +6,7 @@ namespace OFDViewer.OFD
     /// <summary>
     /// OFD页面对象，对应 Page_N 目录（N可从0开始）
     /// </summary>
-    public class PageDoc
+    public class PageDocument
     {
         /// <summary>
         /// 页面序号（从0开始，自动计算）
@@ -16,19 +16,19 @@ namespace OFDViewer.OFD
         /// <summary>
         /// 所属文档序号（从0开始）
         /// </summary>
-        public int BelongDocIndex { get; }
+        public int BelongDocIndex { get; internal set; }
 
         /// <summary>
         /// 页面内容描述文件（Doc_{0}/Pages/Page_{1}/Content.xml）
         /// 记录文字、图形、图片的坐标、样式、层级等
         /// </summary>
-        public Page Content { get; set; } = new Page();
+        public Page Content { get; set; } 
 
         /// <summary>
         /// 页面资源映射文件（Doc_{0}/Pages/Page_{1}/PageRes.xml）
         /// 定义当前页面专属资源的引用关系
         /// </summary>
-        public Res PageRes { get; set; } = new Res();
+        public Res PageRes { get; set; }
 
         /// <summary>
         /// 页面私有资源路径集合（Doc_{0}/Pages/Page_{1}/Res）
@@ -41,28 +41,15 @@ namespace OFDViewer.OFD
         /// </summary>
         public string PageDirectoryPath => $"Doc_{BelongDocIndex}/Pages/Page_{PageIndex}";
 
+
         /// <summary>
         /// 构造函数
         /// </summary>
-        /// <param name="pageIndex">页面序号（从0开始）</param>
-        /// <param name="belongDocIndex">所属文档序号（从0开始）</param>
-        public PageDoc(int pageIndex, int belongDocIndex)
+        public PageDocument()
         {
-            if (pageIndex < 0)
-                throw new ArgumentOutOfRangeException(nameof(pageIndex), "页面序号必须从0开始，不允许为负数");
-            if (belongDocIndex < 0)
-                throw new ArgumentOutOfRangeException(nameof(belongDocIndex), "所属文档序号必须从0开始，不允许为负数");
-
-            PageIndex = pageIndex;
-            BelongDocIndex = belongDocIndex;
-        }
-
-        /// <summary>
-        /// 构造函数（默认belongDocIndex为0）
-        /// </summary>
-        /// <param name="pageIndex">页面序号（从0开始）</param>
-        public PageDoc(int pageIndex) : this(pageIndex, 0)
-        {
+            PageIndex = 0;
+            BelongDocIndex = 0;
+            Content = new Page();
         }
     }
 }

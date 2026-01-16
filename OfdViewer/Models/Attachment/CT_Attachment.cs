@@ -64,6 +64,15 @@ namespace OFDViewer.Models.Attachment
         public DateTime CreationDate { get; set; }
 
         /// <summary>
+        /// 控制CreationDate属性是否序列化
+        /// </summary>
+        public bool ShouldSerializeCreationDate()
+        {
+            // 当CreationDate为默认值DateTime.MinValue时不序列化
+            return CreationDate != DateTime.MinValue;
+        }
+
+        /// <summary>
         /// 修改日期
         /// 可选
         /// </summary>
@@ -71,11 +80,29 @@ namespace OFDViewer.Models.Attachment
         public DateTime ModDate { get; set; }
 
         /// <summary>
+        /// 控制ModDate属性是否序列化
+        /// </summary>
+        public bool ShouldSerializeModDate()
+        {
+            // 当ModDate为默认值DateTime.MinValue时不序列化
+            return ModDate != DateTime.MinValue;
+        }
+
+        /// <summary>
         /// 附件大小, 以 KB 为单位
         /// 可选
         /// </summary>
         [XmlAttribute("Size", DataType = "double", AttributeName = "Size")]
         public double Size { get; set; }
+
+        /// <summary>
+        /// 控制Size属性是否序列化
+        /// </summary>
+        public bool ShouldSerializeSize()
+        {
+            // 当Size为默认值0时不序列化
+            return Size != 0;
+        }
 
         /// <summary>
         /// 附件是否可见
@@ -90,6 +117,15 @@ namespace OFDViewer.Models.Attachment
         private bool _visible = true;
 
         /// <summary>
+        /// 控制Visible属性是否序列化
+        /// </summary>
+        public bool ShouldSerializeVisible()
+        {
+            // 当Visible为默认值true时不序列化
+            return Visible != true;
+        }
+
+        /// <summary>
         /// 附件用途
         /// 可选，默认值为none
         /// </summary>
@@ -100,6 +136,15 @@ namespace OFDViewer.Models.Attachment
             set { _usage = value; }
         }
         private string _usage = "none";
+
+        /// <summary>
+        /// 控制Usage属性是否序列化
+        /// </summary>
+        public bool ShouldSerializeUsage()
+        {
+            // 当Usage为默认值"none"时不序列化
+            return Usage != "none";
+        }
 
         // 无参构造函数，初始化必选属性
         public CT_Attachment()

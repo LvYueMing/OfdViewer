@@ -16,5 +16,14 @@ namespace OFDViewer.Models.Annotation
         [XmlElement("Annot", IsNullable = false)]
         [XmlRequired(MinItemCount = 1)]
         public List<Annot> Annotations { get; set; } = new List<Annot>();
+
+        /// <summary>
+        /// 控制Annotations属性是否序列化
+        /// </summary>
+        public bool ShouldSerializeAnnotations()
+        {
+            // 当Annotations为空时不序列化
+            return Annotations != null && Annotations.Count > 0;
+        }
     }
 }

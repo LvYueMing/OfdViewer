@@ -41,11 +41,6 @@ namespace OFDViewer.Models.PageDesc.Colors
         [XmlAttribute("Index")]
         public int Index { get; set; }
 
-        /// <summary>
-        /// 控制Index属性是否序列化（未赋值时不输出）
-        /// </summary>
-        [XmlIgnore]
-        public bool IndexSpecified { get; set; }
 
         /// <summary>
         /// 引用资源文件中颜色空间的标识
@@ -67,11 +62,7 @@ namespace OFDViewer.Models.PageDesc.Colors
         [XmlAttribute("Alpha")]
         public int Alpha { get; set; } = 255;
 
-        /// <summary>
-        /// 控制Alpha属性是否序列化（默认值255时也输出）
-        /// </summary>
-        [XmlIgnore]
-        public bool AlphaSpecified { get; set; } = true;
+
 
 
     }
