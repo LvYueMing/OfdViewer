@@ -62,7 +62,7 @@ namespace OFDViewer.Tests
             // 验证RootOfd.DocBodies同步更新
             Assert.Equal(ofdDocument.DocCount, ofdDocument.RootOfd.DocBodies.Count);
             var docBody = ofdDocument.RootOfd.DocBodies.Last();
-            Assert.Equal(Constants.GetFilePath(Constants.Doc_DocumentFile, 1), docBody.DocRootPath);
+            Assert.Equal(Constants.GetFilePath(Constants.Doc_DocumentFile, 1), docBody.DocRoot.Path);
         }
 
         /// <summary>
@@ -219,7 +219,7 @@ namespace OFDViewer.Tests
             // 验证DocBody路径
             for (int i = 0; i < originalRootOfd.DocBodies.Count; i++)
             {
-                Assert.Equal(originalRootOfd.DocBodies[i].DocRootPath, deserializedRootOfd.DocBodies[i].DocRootPath);
+                Assert.Equal(originalRootOfd.DocBodies[i].DocRoot.Path, deserializedRootOfd.DocBodies[i].DocRoot.Path);
             }
         }
     }

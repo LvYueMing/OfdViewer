@@ -14,13 +14,6 @@ namespace OFDViewer.Models.Annotation
         /// 必选
         /// </summary>
         [XmlElement("FileLoc", IsNullable = false)]
-        public string FileLocString
-        {
-            get => FileLoc.ToString();
-            set => FileLoc = value;
-        }
-
-        [XmlIgnore]
         public ST_Loc FileLoc { get; set; }
 
         /// <summary>
@@ -28,13 +21,6 @@ namespace OFDViewer.Models.Annotation
         /// 必选
         /// </summary>
         [XmlAttribute("PageID", AttributeName = "PageID", DataType = "string", Form = XmlSchemaForm.Unqualified)]
-        public string PageIDString
-        {
-            get => PageID.ToString();
-            set => PageID = ST_RefID.Parse(value);
-        }
-
-        [XmlIgnore]
         public ST_RefID PageID { get; set; }
     }
 }

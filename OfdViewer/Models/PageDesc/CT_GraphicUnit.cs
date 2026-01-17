@@ -1,4 +1,4 @@
-﻿using System.Xml.Serialization;
+using System.Xml.Serialization;
 using OFDViewer.Models.Action;
 using OFDViewer.Models.BaseStructure.Pages.PageBlockItems;
 using OFDViewer.Models.BaseType;

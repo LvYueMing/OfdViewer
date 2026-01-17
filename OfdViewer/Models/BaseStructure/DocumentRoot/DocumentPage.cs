@@ -1,4 +1,4 @@
-﻿using System.Xml.Serialization;
+using System.Xml.Serialization;
 using OFDViewer.Models.BaseType;
 using OFDViewer.Utils;
 
@@ -17,12 +17,15 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
         /// 必选
         /// </summary>
         [XmlAttribute("ID")]
-        [XmlRequired(ErrorMsg = "页标识为必选属性，不能为空")]
         public string IDString
         {
             get => ID.ToString();
             set => ID = ST_ID.Parse(value);
         }
+
+        /// <summary>
+        /// 页标识（内部使用）
+        /// </summary>
         [XmlIgnore]
         public ST_ID ID { get; private set; }
 
@@ -36,12 +39,18 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
         public string BaseLocString
         {
             get => BaseLoc.ToString();
-            set => BaseLoc = value;
+            set => BaseLoc = new ST_Loc(value);
         }
+
+        /// <summary>
+        /// 页对象描述文件路径（内部使用）
+        /// </summary>
         [XmlIgnore]
         public ST_Loc BaseLoc { get; set; }
 
-        //无参构造函数 必选属性初始化
+        /// <summary>
+        /// 无参构造函数 必选属性初始化
+        /// </summary>
         public DocumentPage()
         {
             ID = ST_ID.CreateNew();

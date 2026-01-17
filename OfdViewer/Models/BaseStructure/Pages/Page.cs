@@ -1,4 +1,4 @@
-﻿using System.Xml.Serialization;
+using System.Xml.Serialization;
 using OFDViewer.Models.Action;
 using OFDViewer.Models.BaseStructure.DocumentRoot;
 using OFDViewer.Models.BaseType;
@@ -25,12 +25,6 @@ namespace OFDViewer.Models.BaseStructure.Pages
         /// 可选 0..∞ 
         /// </summary>
         [XmlElement("PageRes")]
-        public List<string> PageResPath
-        {
-            get => PageRes?.Select(item => item.ToString()).ToList();
-            set => PageRes = value?.Select(item => (ST_Loc)item).ToList() ?? new List<ST_Loc>();
-        }
-        [XmlIgnore]
         public List<ST_Loc> PageRes { get; set; }
 
         /// <summary>

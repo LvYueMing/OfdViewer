@@ -208,8 +208,8 @@ namespace OFDViewer.OFD
                 // 创建DocumentPage对象
                 var documentPage = new DocumentPage();
 
-                // 设置BaseLocString为页面对象描述文件的路径（使用相对当前文档目录的路径）
-                documentPage.BaseLocString = $"Pages/Page_{newPageIndex}/Content.xml";
+                // 设置BaseLoc为页面对象描述文件的路径（使用相对当前文档目录的路径）
+                documentPage.BaseLoc = new ST_Loc($"Pages/Page_{newPageIndex}/Content.xml");
 
                 // 添加到Document.Pages集合
                 Document.Pages.Add(documentPage);
@@ -239,8 +239,8 @@ namespace OFDViewer.OFD
                 // 创建DocumentPage对象
                 var documentPage = new DocumentPage();
                 
-                // 设置BaseLocString为页面对象描述文件的路径（使用相对当前文档目录的路径）
-                documentPage.BaseLocString = $"Pages/Page_{newPageIndex}/Content.xml";
+                // 设置BaseLoc为页面对象描述文件的路径（使用相对当前文档目录的路径）
+                documentPage.BaseLoc = new ST_Loc($"Pages/Page_{newPageIndex}/Content.xml");
                 
                 // 添加到Document.Pages集合
                 Document.Pages.Add(documentPage);

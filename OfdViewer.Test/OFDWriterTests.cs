@@ -1,4 +1,4 @@
-﻿using OFDViewer.OFD;
+using OFDViewer.OFD;
 using Xunit;
 using System;
 using System.IO;
@@ -55,11 +55,16 @@ namespace OFDViewer.Tests
             var nonExistDir = Path.Combine(_tempFilePath, Guid.NewGuid().ToString());
             var filePath = Path.Combine(nonExistDir, "test.ofd");
 
-            // Act
-            using var writer = new OFDWriter(filePath);
+            // 保证释放writer
+            {
+                // Act
+                using var writer = new OFDWriter(filePath);
 
-            // Assert
-            Assert.True(Directory.Exists(nonExistDir));
+                // Assert
+                Assert.True(Directory.Exists(nonExistDir));
+            }
+
+            Directory.Delete(nonExistDir,true);
         }
 
         /// <summary>
@@ -366,8 +371,8 @@ namespace OFDViewer.Tests
             Assert.Equal(2, ofdDocument.RootOfd.DocBodies.Count);
             
             // 验证DocBodies中的文档路径
-            Assert.Equal("Doc_0/Document.xml", ofdDocument.RootOfd.DocBodies[0].DocRootPath);
-            Assert.Equal("Doc_1/Document.xml", ofdDocument.RootOfd.DocBodies[1].DocRootPath);
+            Assert.Equal("Doc_0/Document.xml", ofdDocument.RootOfd.DocBodies[0].DocRoot.Path);
+            Assert.Equal("Doc_1/Document.xml", ofdDocument.RootOfd.DocBodies[1].DocRoot.Path);
         }
         #endregion
 

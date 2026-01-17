@@ -1,4 +1,4 @@
-﻿using System.Xml.Serialization;
+using System.Xml.Serialization;
 using OFDViewer.Models.Action;
 using OFDViewer.Models.BaseStructure.Outlines;
 using OFDViewer.Models.BaseType;
@@ -72,13 +72,6 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
         /// 可选
         /// </summary>
         [XmlElement("Annotations")]
-        public string AnnotationsPath
-        {
-            get => Annotations.ToString();
-            set => Annotations = value;
-        }
-
-        [XmlIgnore]
         public ST_Loc Annotations { get; set; }
 
         /// <summary>
@@ -86,13 +79,6 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
         /// 可选
         /// </summary>
         [XmlElement("CustomTags")]
-        public string CustomTagsPath
-        {
-            get => CustomTags.ToString();
-            set => CustomTags = value;
-        }
-
-        [XmlIgnore]
         public ST_Loc CustomTags { get; set; }
 
         /// <summary>
@@ -100,13 +86,6 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
         /// 可选
         /// </summary>
         [XmlElement("Attachments")]
-        public string AttachmentsPath
-        {
-            get => Attachments.ToString();
-            set => Attachments = value;
-        }
-
-        [XmlIgnore]
         public ST_Loc Attachments { get; set; }
 
         /// <summary>
@@ -114,13 +93,6 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
         /// 可选
         /// </summary>
         [XmlElement("Extensions")]
-        public string ExtensionsPath
-        {
-            get => Extensions.ToString();
-            set => Extensions = value;
-        }
-
-        [XmlIgnore]
         public ST_Loc Extensions { get; set; }
 
 

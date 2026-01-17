@@ -1,4 +1,5 @@
-﻿using OFDViewer.Models.BaseStructure.MainEntry;
+using OFDViewer.Models.BaseStructure.MainEntry;
+using OFDViewer.Models.BaseType;
 
 namespace OFDViewer.OFD
 {
@@ -77,7 +78,7 @@ namespace OFDViewer.OFD
             // 在OFD.xml中记录 文档根节点、版本、文档数量等核心信息
             var docBody = new DocBody();
 
-            docBody.DocRootPath = Constants.GetFilePath(Constants.Doc_DocumentFile, newDocIndex);
+            docBody.DocRoot = new ST_Loc(Constants.GetFilePath(Constants.Doc_DocumentFile, newDocIndex));
             this.RootOfd.DocBodies.Add(docBody);
 
             return newDoc;

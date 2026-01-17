@@ -1,5 +1,6 @@
 using System.Threading;
 using System.Xml;
+using System.Xml.Schema;
 using System.Xml.Serialization;
 
 namespace OFDViewer.Models.BaseType
@@ -49,11 +50,15 @@ namespace OFDViewer.Models.BaseType
             {
                 if (!string.IsNullOrWhiteSpace(value))
                 {
-                    ST_ID parsedId = Parse(value);
-                    _value = parsedId._value;
+                    _value = Parse(value)._value;
                 }
             }
         }
+
+        /// <summary>
+        /// 隐式转换为字符串
+        /// </summary>
+        public static implicit operator string(ST_ID id) => id.ToString();
 
         /// <summary>
         /// 初始化ST_ID

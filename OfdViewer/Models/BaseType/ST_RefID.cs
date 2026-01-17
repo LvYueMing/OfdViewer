@@ -5,7 +5,7 @@ namespace OFDViewer.Models.BaseType
     /// <summary>
     /// ST_RefID 标识引用，此标识应为文档内已定义的标识
     /// </summary>
-    public struct ST_RefID : IEquatable<ST_RefID>
+    public struct ST_RefID : IEquatable<ST_RefID>, IComparable<ST_RefID>
     {
         private ST_ID _referencedId;
 
@@ -44,11 +44,15 @@ namespace OFDViewer.Models.BaseType
             {
                 if (!string.IsNullOrWhiteSpace(value))
                 {
-                    ST_RefID parsedRefId = Parse(value);
-                    _referencedId = parsedRefId._referencedId;
+                    _referencedId = Parse(value)._referencedId;
                 }
             }
         }
+
+        /// <summary>
+        /// 隐式转换为字符串
+        /// </summary>
+        public static implicit operator string(ST_RefID refId) => refId.ToString();
 
         /// <summary>
         /// 从字符串解析ST_RefID
@@ -56,19 +60,26 @@ namespace OFDViewer.Models.BaseType
         /// <param name="str">字符串格式的引用标识</param>
         public static ST_RefID Parse(string str)
         {
+            if (string.IsNullOrWhiteSpace(str))
+                return Invalid;
+
             var id = ST_ID.Parse(str);
             return new ST_RefID(id);
         }
 
         public static bool TryParse(string str, out ST_RefID result)
         {
+            result = Invalid;
+
+            if (string.IsNullOrWhiteSpace(str))
+                return false;
+
             if (ST_ID.TryParse(str, out ST_ID id))
             {
                 result = new ST_RefID(id);
                 return true;
             }
 
-            result = Invalid;
             return false;
         }
 
@@ -78,13 +89,15 @@ namespace OFDViewer.Models.BaseType
         public bool Equals(ST_RefID other) => _referencedId.Equals(other._referencedId);
         public override bool Equals(object obj) => obj is ST_RefID other && Equals(other);
         public override int GetHashCode() => _referencedId.GetHashCode();
+        public int CompareTo(ST_RefID other) => _referencedId.CompareTo(other._referencedId);
 
         public static bool operator ==(ST_RefID left, ST_RefID right) => left.Equals(right);
         public static bool operator !=(ST_RefID left, ST_RefID right) => !left.Equals(right);
+        public static bool operator <(ST_RefID left, ST_RefID right) => left.CompareTo(right) < 0;
+        public static bool operator >(ST_RefID left, ST_RefID right) => left.CompareTo(right) > 0;
 
         public static implicit operator ST_ID(ST_RefID refId) => refId._referencedId;
         public static explicit operator ST_RefID(ST_ID id) => new ST_RefID(id);
-        //显示转换string 到 ST_RefID
         public static explicit operator ST_RefID(string str) => Parse(str);
         #endregion
     }

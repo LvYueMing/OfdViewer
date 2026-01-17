@@ -1,4 +1,4 @@
-﻿using System.Xml.Serialization;
+using System.Xml.Serialization;
 using OFDViewer.Models.BaseType;
 using OFDViewer.Utils;
 
@@ -19,19 +19,12 @@ namespace OFDViewer.Models.BaseStructure.MainEntry
         [XmlRequired(ErrorMsg = "DocInfo 必选属性为必选项，且不能为空")]
         public CT_DocInfo DocInfo { get; set; }
 
-        [XmlIgnore]
-        public ST_Loc DocRoot { get; set; }
-
         /// <summary>
         /// 指向文档根节点文档,有关文档根节点描述见7.5 文档根节点 
         /// 可选
         /// </summary>
         [XmlElement("DocRoot")]
-        public string DocRootPath
-        {
-            get => DocRoot.ToString();
-            set => DocRoot = value;
-        }
+        public ST_Loc DocRoot { get; set; }
 
         /// <summary>
         /// 包含多个版本描述节点,用于定义文件因注释和其他改动产生的版本信息,见第19章
@@ -41,19 +34,12 @@ namespace OFDViewer.Models.BaseStructure.MainEntry
         [XmlArrayItem("Version")]
         public List<Versions.Version> Versions { get; set; }
 
-        [XmlIgnore]
-        public ST_Loc Signatures { get; set; }
-
         /// <summary>
         /// 指向该文档中签名和签章结构,见第18章 
         /// 可选
         /// </summary>
         [XmlElement("Signatures")]
-        public string SignaturesPath
-        {
-            get => Signatures.ToString();
-            set => Signatures = value;
-        }
+        public ST_Loc Signatures { get; set; }
 
         /// <summary>
         /// 无参构造函数，初始化必选属性

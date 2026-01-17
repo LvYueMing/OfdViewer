@@ -1,4 +1,4 @@
-﻿using System.Xml.Serialization;
+using System.Xml.Serialization;
 using OFDViewer.Models.BaseType;
 using OFDViewer.Models.Enums;
 using OFDViewer.Utils;
@@ -20,6 +20,10 @@ namespace OFDViewer.Models.BaseStructure.Pages
             get => ID.ToString();
             set => ID = ST_ID.Parse(value);
         }
+
+        /// <summary>
+        /// 模板页标识（内部使用）
+        /// </summary>
         [XmlIgnore]
         public ST_ID ID { get; set; }
 
@@ -48,12 +52,15 @@ namespace OFDViewer.Models.BaseStructure.Pages
         /// 必选 IsNullable=false 体现required约束
         /// </summary>
         [XmlAttribute("BaseLoc")]
-        public string BaseLocPath
+        public string BaseLocString
         {
             get => BaseLoc.ToString();
-            set => BaseLoc = value;
+            set => BaseLoc = new ST_Loc(value);
         }
 
+        /// <summary>
+        /// 模板页内容描述文件路径（内部使用）
+        /// </summary>
         [XmlIgnore]
         public ST_Loc BaseLoc { get; set; }
     }

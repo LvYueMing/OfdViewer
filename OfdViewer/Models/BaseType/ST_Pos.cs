@@ -1,4 +1,6 @@
 ﻿using System.Globalization;
+using System.Xml;
+using System.Xml.Schema;
 using System.Xml.Serialization;
 
 namespace OFDViewer.Models.BaseType
@@ -7,7 +9,7 @@ namespace OFDViewer.Models.BaseType
     /// ST_Pos 点坐标，以空格分割，前者为x值，后者为y值
     /// 可以是整数或者浮点数 “0 0”
     /// </summary>
-    public struct ST_Pos : IEquatable<ST_Pos>
+    public struct ST_Pos : IEquatable<ST_Pos>, IXmlSerializable
     {
         // 坐标判断容差，可按需调整
         private const double PositionTolerance = 1e-6;
@@ -31,21 +33,37 @@ namespace OFDViewer.Models.BaseType
         public bool IsValid => !Equals(InvalidValue);
 
         /// <summary>
-        /// XML文本序列化属性
+        /// 获取XML架构（未实现）
         /// </summary>
-        [XmlText]
-        public string Value
+        /// <returns>XML架构</returns>
+        public XmlSchema GetSchema()
         {
-            get => ToString();
-            set
+            return null;
+        }
+
+        /// <summary>
+        /// 从XML读取对象
+        /// </summary>
+        /// <param name="reader">XML读取器</param>
+        public void ReadXml(XmlReader reader)
+        {
+            string value = reader.ReadString();
+            if (!string.IsNullOrWhiteSpace(value))
             {
-                if (!string.IsNullOrWhiteSpace(value))
-                {
-                    ST_Pos parsedPos = Parse(value);
-                    _x = parsedPos._x;
-                    _y = parsedPos._y;
-                }
+                ST_Pos parsedPos = Parse(value);
+                _x = parsedPos._x;
+                _y = parsedPos._y;
             }
+            reader.ReadEndElement();
+        }
+
+        /// <summary>
+        /// 将对象写入XML
+        /// </summary>
+        /// <param name="writer">XML写入器</param>
+        public void WriteXml(XmlWriter writer)
+        {
+            writer.WriteString(ToString());
         }
 
         /// <summary>

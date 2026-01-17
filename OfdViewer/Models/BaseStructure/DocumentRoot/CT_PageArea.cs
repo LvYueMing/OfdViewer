@@ -47,7 +47,7 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
         /// 可选
         /// </summary>
         [XmlElement("BleedBox")]
-        public ST_Box BleedBox { get; set; } = ST_Box.InvalidValue;
+        public ST_Box BleedBox { get; set; }
 
 
         /// <summary>
