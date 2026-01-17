@@ -78,7 +78,7 @@ namespace OFDViewer.Tests
             var firstDoc = ofdDocument.Docs[0];
 
             // 执行测试
-            var defaultDoc = ofdDocument.DefaultOFDDoc;
+            var defaultDoc = ofdDocument.DefaultOFDDocument;
 
             // 验证结果
             Assert.Same(firstDoc, defaultDoc);
@@ -97,7 +97,7 @@ namespace OFDViewer.Tests
             ofdDocument.Docs.Clear();
 
             // 执行测试
-            var defaultDoc = ofdDocument.DefaultOFDDoc;
+            var defaultDoc = ofdDocument.DefaultOFDDocument;
 
             // 验证结果
             Assert.Single(ofdDocument.Docs);

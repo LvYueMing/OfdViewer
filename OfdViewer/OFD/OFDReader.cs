@@ -1,4 +1,4 @@
-﻿using OFDViewer.Models.BaseStructure.MainEntry;
+using OFDViewer.Models.BaseStructure.MainEntry;
 using OFDViewer.Models.BaseStructure.Pages;
 using OFDViewer.Models.BaseStructure.Resources;
 using OFDViewer.Models.Signature;
@@ -155,7 +155,7 @@ namespace OFDViewer.OFD
             if (_archive.FileExists(pubResPath))
             {
                 using var stream = _archive.OpenFileStream(pubResPath);
-                doc.PublicResource = XmlHelper.DeserializeFromStream<Res>(stream);
+                doc.SetPublicResource(XmlHelper.DeserializeFromStream<Res>(stream));
             }
 
             // Doc_{0}/DocumentRes.xml
@@ -163,7 +163,7 @@ namespace OFDViewer.OFD
             if (_archive.FileExists(docResPath))
             {
                 using var stream = _archive.OpenFileStream(docResPath);
-                doc.DocumentResource = XmlHelper.DeserializeFromStream<Res>(stream);
+                doc.SetDocumentResource(XmlHelper.DeserializeFromStream<Res>(stream));
             }
 
             // Doc_{0}/Signs/Signatures.xml
@@ -287,7 +287,7 @@ namespace OFDViewer.OFD
             if (_archive.FileExists(contentFile))
             {
                 using var stream = _archive.OpenFileStream(contentFile);
-                pageDoc.Content = XmlHelper.DeserializeFromStream<Page>(stream);
+                pageDoc.Page = XmlHelper.DeserializeFromStream<Page>(stream);
             }
 
             // Doc_{0}/Pages/Page_{1}/PageRes.xml

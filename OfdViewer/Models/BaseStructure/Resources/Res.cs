@@ -8,6 +8,7 @@ namespace OFDViewer.Models.BaseStructure.Resources
     /// <summary>
     /// 资源是绘制图元时所需数据(如绘制参数、颜色空间、字型、图像、音视频等)的集合
     /// </summary>
+    [XmlRoot("Res", Namespace = Constants.OFD_NAMESPACE_URI)]
     public class Res
     {
         private List<BaseRes> _resItems;
@@ -40,7 +41,7 @@ namespace OFDViewer.Models.BaseStructure.Resources
         /// 为“./Res”, 表明该资源文件中所有数据文件的默认存储位置在当前路径的 Res 目录下
         /// 必选
         /// </summary>
-        [XmlAttribute("BaseLoc")]
+        [XmlAttribute("BaseLoc", Namespace = Constants.OFD_NAMESPACE_URI)]
         [XmlRequired(ErrorMsg = "BaseLoc 属性为必选项，且不能为空")]
         public string BaseLocString
         {
@@ -65,10 +66,7 @@ namespace OFDViewer.Models.BaseStructure.Resources
         public void AddResource(BaseRes resource)
         {
             if (resource == null)
-                throw new ArgumentNullException(nameof(resource));
-            
-            // 根据资源类型设置资源文件路径
-            SetResourceFilePaths(resource);
+                throw new ArgumentNullException(nameof(resource));       
             
             // 添加到集合
             _resItems.Add(resource);
@@ -88,61 +86,7 @@ namespace OFDViewer.Models.BaseStructure.Resources
                 AddResource(resource);
             }
         }
-        
-        /// <summary>
-        /// 根据资源类型设置资源文件路径
-        /// </summary>
-        /// <param name="resource">要设置路径的资源对象</param>
-        private void SetResourceFilePaths(BaseRes resource)
-        {
-            // 检查资源类型并设置相应的资源文件路径
-            if (resource is OFDFonts fonts)
-            {
-                SetFontFilePaths(fonts);
-            }
-            else if (resource is MultiMedias medias)
-            {
-                SetMediaFilePaths(medias);
-            }
-            // 可以添加更多资源类型的处理
-        }
-        
-        /// <summary>
-        /// 设置字体资源的文件路径
-        /// </summary>
-        /// <param name="fonts">字体资源</param>
-        private void SetFontFilePaths(OFDFonts fonts)
-        {
-            if (fonts?.ofdFonts == null || BaseLoc == null) return;
             
-            foreach (var font in fonts.ofdFonts)
-            {
-                // 设置字体文件路径
-                if (font.FontFile != null)
-                {
-                    // 将font.FontFile与BaseLoc拼接
-                    font.FontFile = ST_Loc.Resolve(font.FontFile, BaseLoc);
-                }
-            }
-        }
         
-        /// <summary>
-        /// 设置多媒体资源的文件路径
-        /// </summary>
-        /// <param name="medias">多媒体资源</param>
-        private void SetMediaFilePaths(MultiMedias medias)
-        {
-            if (medias?.multiMedias == null || BaseLoc == null) return;
-            
-            foreach (var media in medias.multiMedias)
-            {
-                // 设置多媒体文件路径
-                if (media.MediaFile != null)
-                {
-                    // 将media.MediaFile与BaseLoc拼接
-                    media.MediaFile = ST_Loc.Resolve(media.MediaFile, BaseLoc);
-                }
-            }
-        }
     }
 }

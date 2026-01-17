@@ -22,7 +22,7 @@ namespace OFDViewer.OFD
         /// 页面内容描述文件（Doc_{0}/Pages/Page_{1}/Content.xml）
         /// 记录文字、图形、图片的坐标、样式、层级等
         /// </summary>
-        public Page Content { get; set; } 
+        public Page Page { get; set; } 
 
         /// <summary>
         /// 页面资源映射文件（Doc_{0}/Pages/Page_{1}/PageRes.xml）
@@ -49,7 +49,7 @@ namespace OFDViewer.OFD
         {
             PageIndex = 0;
             BelongDocIndex = 0;
-            Content = new Page();
+            Page = new Page();
         }
     }
 }

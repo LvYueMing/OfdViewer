@@ -1,4 +1,6 @@
-﻿using System.Xml.Serialization;
+﻿﻿using System;
+using System.Collections.Generic;
+using System.Xml.Serialization;
 using OFDViewer.Models.BaseStructure.Pages;
 using OFDViewer.Models.BaseType;
 using OFDViewer.Utils;
@@ -35,9 +37,8 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
         [XmlRequired(ErrorMsg = "页面区域为必选属性，不能为空")]
         public CT_PageArea PageArea { get; set; }
 
-
         [XmlIgnore]
-        public List<ST_Loc> PublicRes { get; set; } 
+        public List<ST_Loc> PublicRes { get; set; } = new List<ST_Loc>();
 
         /// <summary>
         /// 公共资源序列,每个节点指向 OFD 包内的一个资源描述文档,资源
@@ -47,12 +48,17 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
         [XmlElement("PublicRes")]
         public List<string> PublicResString
         {
-            get => PublicRes?.Select(item => item.ToString()).ToList() ?? new List<string>();
-            set => PublicRes = value?.Select(item => new ST_Loc(item)).ToList() ?? new List<ST_Loc>();
+            get
+            {
+                // 使用CollectionHelper创建同步字符串列表
+                // 当用户操作PublicResString时，会同步更新PublicRes集合
+                return CollectionHelper.CreateSynchronizedStringList(publicRes => PublicRes = publicRes, PublicRes?.Select(item => item.ToString()).ToList() ?? new List<string>());
+            }
+            set => PublicRes = value?.Select(item => new ST_Loc(item)).ToList<ST_Loc>() ?? new List<ST_Loc>();
         }
 
         [XmlIgnore]
-        public List<ST_Loc> DocumentRes { get; set; } 
+        public List<ST_Loc> DocumentRes { get; set; } = new List<ST_Loc>();
 
         /// <summary>
         /// 文档资源序列,每个节点指向 OFD包内的一个资源描述文档,资源
@@ -62,10 +68,14 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
         [XmlElement("DocumentRes")]
         public List<string> DocumentResString
         {
-            get => DocumentRes?.Select(item => item.ToString()).ToList() ?? new List<string>();
+            get
+            {
+                // 使用CollectionHelper创建同步字符串列表
+                // 当用户操作DocumentResString时，会同步更新DocumentRes集合
+                return CollectionHelper.CreateSynchronizedStringList(documentRes => DocumentRes = documentRes, DocumentRes?.Select(item => item.ToString()).ToList() ?? new List<string>());
+            }
             set => DocumentRes = value?.Select(item => new ST_Loc(item)).ToList() ?? new List<ST_Loc>();
         }
-
 
         /// <summary>
         /// 模板页序列,为一系列模板页的集合,模板页内容结构和普通页相同,描述见7.7
@@ -89,8 +99,6 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
             get => DefaultCS.IsValid ? DefaultCS.ToString() : null;
             set => DefaultCS = ST_RefID.Parse(value);
         }
-
-
 
         //无参构造函数，必选属性初始化
         public CT_CommonData()

@@ -39,7 +39,7 @@ namespace OFDViewer.OFD
         /// 单文档快捷访问属性（默认获取第一个文档 DocIndex=0，适配绝大多数单文档场景）
         /// 简化操作：无需通过 Docs[0] 遍历，直接访问 DefaultDoc
         /// </summary>
-        public OFDDocument DefaultOFDDoc
+        public OFDDocument DefaultOFDDocument
         {
             get
             {

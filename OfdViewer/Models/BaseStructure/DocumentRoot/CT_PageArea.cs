@@ -1,4 +1,4 @@
-﻿using System.Xml.Serialization;
+using System.Xml.Serialization;
 using OFDViewer.Models.BaseType;
 using OFDViewer.Utils;
 
@@ -39,13 +39,13 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
         [XmlElement("ApplicationBox")]
         public string ApplicationBoxString
         {
-            get => ApplicationBox.IsValid ? ApplicationBox.ToString() : null;
+            get => ApplicationBox.ToString();
             set => ApplicationBox = ST_Box.Parse(value);
         }
 
 
         [XmlIgnore]
-        public ST_Box ApplicationBox { get; set; } = ST_Box.InvalidValue;
+        public ST_Box ApplicationBox { get; set; }
 
         /// <summary>
         /// 版心区域
@@ -57,12 +57,12 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
         [XmlElement("ContentBox")]
         public string ContentBoxString
         {
-            get => ContentBox.IsValid ? ContentBox.ToString() : null;
+            get => ContentBox.ToString();
             set => ContentBox = ST_Box.Parse(value);
         }
 
         [XmlIgnore]
-        public ST_Box ContentBox { get; set; } = ST_Box.InvalidValue;
+        public ST_Box ContentBox { get; set; } 
 
         /// <summary>
         /// 出血区域

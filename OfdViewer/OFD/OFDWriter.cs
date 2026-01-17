@@ -331,13 +331,13 @@ namespace OFDViewer.OFD
             try
             {
                 //页面内容描述文件（Content.xml）
-                if (pageDoc.Content != null)
+                if (pageDoc.Page != null)
                 {
                     // 构建页面属性描述文件路径(Doc_{0}/Pages/Page_{1}/Content.xml)
                     using var pageDocStream = _archive.CreateFileStream(
                         Constants.GetFilePath(Constants.Page_ContentFile, pageDoc.BelongDocIndex, pageDoc.PageIndex));
                     // 序列化页面内容描述文件（Content.xml）
-                    XmlHelper.SerializeToStream(pageDoc.Content, pageDocStream);
+                    XmlHelper.SerializeToStream(pageDoc.Page, pageDocStream);
                 }
                 //页面资源映射文件（PageRes.xml）
                 if (pageDoc.PageRes != null)
