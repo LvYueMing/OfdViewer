@@ -17,18 +17,8 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
         /// </summary>
         [XmlElement("PhysicalBox")]
         [XmlRequired(ErrorMsg = "物理区域为必选属性，不能为空")]
-        public string PhysicalBoxString
-        {
-            get => PhysicalBox.ToString();
-            set => PhysicalBox = ST_Box.Parse(value);
-        }
-
-        /// <summary>
-        /// 物理区域
-        /// 默认值：210mm*297mm A4 纸张大小
-        /// </summary>
-        [XmlIgnore]
         public ST_Box PhysicalBox { get; set; } = new ST_Box(0, 0, 210, 297);
+
         /// <summary>
         /// 显示区域
         /// 页面内容实际显示或打印输出的区域,位于页面物理区域内,包含页眉、页脚、版心等内容
@@ -37,14 +27,6 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
         /// 可选
         /// </summary>
         [XmlElement("ApplicationBox")]
-        public string ApplicationBoxString
-        {
-            get => ApplicationBox.ToString();
-            set => ApplicationBox = ST_Box.Parse(value);
-        }
-
-
-        [XmlIgnore]
         public ST_Box ApplicationBox { get; set; }
 
         /// <summary>
@@ -55,14 +37,7 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
         /// 可选
         /// </summary>
         [XmlElement("ContentBox")]
-        public string ContentBoxString
-        {
-            get => ContentBox.ToString();
-            set => ContentBox = ST_Box.Parse(value);
-        }
-
-        [XmlIgnore]
-        public ST_Box ContentBox { get; set; } 
+        public ST_Box ContentBox { get; set; }
 
         /// <summary>
         /// 出血区域
@@ -72,13 +47,6 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
         /// 可选
         /// </summary>
         [XmlElement("BleedBox")]
-        public string BleedBoxString
-        {
-            get => BleedBox.IsValid ? BleedBox.ToString() : null;
-            set => BleedBox = ST_Box.Parse(value);
-        }
-
-        [XmlIgnore]
         public ST_Box BleedBox { get; set; } = ST_Box.InvalidValue;
 
 

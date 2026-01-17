@@ -85,8 +85,7 @@ namespace OFDViewer.Models.BaseStructure.Resources
             {
                 AddResource(resource);
             }
-        }
-            
+        }           
         
     }
 }

@@ -1,4 +1,7 @@
-﻿using System.Globalization;
+using System.Globalization;
+using System.Xml;
+using System.Xml.Schema;
+using System.Xml.Serialization;
 
 namespace OFDViewer.Models.BaseType
 {
@@ -10,8 +13,8 @@ namespace OFDViewer.Models.BaseType
         // 坐标判断容差，可按需调整
         private const double PositionTolerance = 1e-6;
         private ST_Pos _position;
-        private readonly double _width;
-        private readonly double _height;
+        private double _width;
+        private double _height;
 
         /// <summary>
         /// 无效坐标实例
@@ -59,6 +62,25 @@ namespace OFDViewer.Models.BaseType
         public bool IsValid => !Equals(InvalidValue);
 
         /// <summary>
+        /// XML文本序列化属性
+        /// </summary>
+        [XmlText]
+        public string Value
+        {
+            get => ToString();
+            set
+            {
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    ST_Box parsedBox = Parse(value);
+                    _position = parsedBox._position;
+                    _width = parsedBox._width;
+                    _height = parsedBox._height;
+                }
+            }
+        }
+
+        /// <summary>
         /// 初始化矩形区域,创建无效矩形区域(-1,-1,0,0)
         /// </summary>
         public ST_Box()
@@ -96,75 +118,60 @@ namespace OFDViewer.Models.BaseType
         /// <param name="width">宽度（必须大于0）</param>
         /// <param name="height">高度（必须大于0）</param>
         public ST_Box(ST_Pos position, double width, double height)
-            : this(position.X, position.Y, width, height)
         {
+            if (width <= 0)
+                throw new ArgumentOutOfRangeException(nameof(width), "宽度必须大于0");
+
+            if (height <= 0)
+                throw new ArgumentOutOfRangeException(nameof(height), "高度必须大于0");
+
+            _position = position;
+            _width = width;
+            _height = height;
         }
 
         /// <summary>
-        /// 从字符串解析矩形区域
+        /// 解析字符串为ST_Box对象
         /// </summary>
-        /// <param name="str">格式："x y width height"</param>
-        public static ST_Box Parse(string str)
+        public static ST_Box Parse(string value)
         {
-            if (string.IsNullOrWhiteSpace(str))
-                throw new ArgumentException("矩形字符串不能为空", nameof(str));
+            if (string.IsNullOrWhiteSpace(value))
+                throw new ArgumentException("输入字符串不能为空或只包含空格", nameof(value));
 
-            var parts = str.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
+            string[] parts = value.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length != 4)
-                throw new FormatException($"无效的ST_Box格式，应为四个数值用空格分隔: '{str}'");
+                throw new FormatException($"输入格式错误：{value}。正确格式应为：x y width height");
 
-            if (!double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out double x))
-                throw new FormatException($"无效的X坐标: '{parts[0]}'");
+            double x = double.Parse(parts[0], CultureInfo.InvariantCulture);
+            double y = double.Parse(parts[1], CultureInfo.InvariantCulture);
+            double width = double.Parse(parts[2], CultureInfo.InvariantCulture);
+            double height = double.Parse(parts[3], CultureInfo.InvariantCulture);
 
-            if (!double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double y))
-                throw new FormatException($"无效的Y坐标: '{parts[1]}'");
-
-            if (!double.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out double width))
-                throw new FormatException($"无效的宽度: '{parts[2]}'");
-
-            if (!double.TryParse(parts[3], NumberStyles.Float, CultureInfo.InvariantCulture, out double height))
-                throw new FormatException($"无效的高度: '{parts[3]}'");
+            // 如果宽度或高度为0，则返回无效的ST_Box值
+            if (width <= 0 || height <= 0)
+            {
+                return InvalidValue;
+            }
 
             return new ST_Box(x, y, width, height);
         }
 
-        public static bool TryParse(string str, out ST_Box result)
-        {
-            result = default;
-
-            if (string.IsNullOrWhiteSpace(str))
-                return false;
-
-            var parts = str.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length != 4)
-                return false;
-
-            if (!double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out double x))
-                return false;
-
-            if (!double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double y))
-                return false;
-
-            if (!double.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out double width))
-                return false;
-
-            if (!double.TryParse(parts[3], NumberStyles.Float, CultureInfo.InvariantCulture, out double height))
-                return false;
-
-            if (width <= 0 || height <= 0)
-                return false;
-
-            result = new ST_Box(x, y, width, height);
-            return true;
-        }
-
         /// <summary>
-        /// 检查点是否在矩形内
+        /// 尝试解析字符串为ST_Box对象
         /// </summary>
-        public bool Contains(ST_Pos point) =>
-            point.X >= X && point.X <= Right &&
-            point.Y >= Y && point.Y <= Bottom;
+        public static bool TryParse(string value, out ST_Box result)
+        {
+            try
+            {
+                result = Parse(value);
+                return true;
+            }
+            catch
+            {
+                result = InvalidValue;
+                return false;
+            }
+        }
 
         /// <summary>
         /// 转换为字符串格式

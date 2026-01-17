@@ -1,11 +1,13 @@
-﻿namespace OFDViewer.Models.BaseType
+using System.Xml.Serialization;
+
+namespace OFDViewer.Models.BaseType
 {
     /// <summary>
     /// ST_RefID 标识引用，此标识应为文档内已定义的标识
     /// </summary>
     public struct ST_RefID : IEquatable<ST_RefID>
     {
-        private readonly ST_ID _referencedId;
+        private ST_ID _referencedId;
 
         /// <summary>
         /// 无效引用实例
@@ -30,6 +32,23 @@
         /// 是否为有效引用
         /// </summary>
         public bool IsValid => _referencedId.IsValid;
+
+        /// <summary>
+        /// XML文本序列化属性
+        /// </summary>
+        [XmlText]
+        public string Value
+        {
+            get => ToString();
+            set
+            {
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    ST_RefID parsedRefId = Parse(value);
+                    _referencedId = parsedRefId._referencedId;
+                }
+            }
+        }
 
         /// <summary>
         /// 从字符串解析ST_RefID
@@ -69,6 +88,4 @@
         public static explicit operator ST_RefID(string str) => Parse(str);
         #endregion
     }
-
-
 }

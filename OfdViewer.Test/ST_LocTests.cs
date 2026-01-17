@@ -1,3 +1,6 @@
+using System.IO;
+using System.Xml.Serialization;
+using System.Collections.Generic;
 using OFDViewer.Models.BaseType;
 using Xunit;
 
@@ -5,6 +8,101 @@ namespace OFDViewer.Tests
 {
     public class ST_LocTests
     {
+        [Fact]
+        public void Equals_Works()
+        {
+            var loc1 = new ST_Loc("a/b/c");
+            var loc2 = new ST_Loc("a/b/c");
+            var loc3 = new ST_Loc("a/b/d");
+            Assert.True(loc1.Equals(loc2));
+            Assert.False(loc1.Equals(loc3));
+            Assert.True(loc1.Equals((object)loc2));
+            Assert.False(loc1.Equals((object)loc3));
+            Assert.False(loc1.Equals(null));
+        }
+
+        [Fact]
+        public void GetHashCode_Works()
+        {
+            var loc1 = new ST_Loc("a/b/c");
+            var loc2 = new ST_Loc("a/b/c");
+            var loc3 = new ST_Loc("a/b/d");
+            Assert.Equal(loc1.GetHashCode(), loc2.GetHashCode());
+            Assert.NotEqual(loc1.GetHashCode(), loc3.GetHashCode());
+        }
+
+        [Fact]
+        public void OperatorEquals_Works()
+        {
+            var loc1 = new ST_Loc("a/b/c");
+            var loc2 = new ST_Loc("a/b/c");
+            var loc3 = new ST_Loc("a/b/d");
+            Assert.True(loc1 == loc2);
+            Assert.False(loc1 == loc3);
+            Assert.True(loc1 != loc3);
+            Assert.False(loc1 != loc2);
+        }
+
+        // 测试ST_Loc对象的XML序列化和反序列化
+        [Fact]
+        public void ST_Loc_XmlSerialization_Works()
+        {
+            // 准备测试数据
+            var originalLoc = new ST_Loc("a/b/c/d.xml");
+
+            // 序列化
+            using (var memoryStream = new MemoryStream())
+            {
+                var serializer = new XmlSerializer(typeof(ST_Loc));
+                serializer.Serialize(memoryStream, originalLoc);
+
+                // 反序列化
+                memoryStream.Position = 0;
+                var deserializedLoc = (ST_Loc)serializer.Deserialize(memoryStream);
+
+                // 验证
+                Assert.Equal(originalLoc.Path, deserializedLoc.Path);
+                Assert.Equal(originalLoc.ToString(), deserializedLoc.ToString());
+                Assert.True(originalLoc.Equals(deserializedLoc));
+                Assert.True(originalLoc == deserializedLoc);
+            }
+        }
+
+        // 测试List<ST_Loc>集合的XML序列化和反序列化
+        [Fact]
+        public void List_ST_Loc_XmlSerialization_Works()
+        {
+            // 准备测试数据
+            var originalList = new List<ST_Loc>
+            {
+                new ST_Loc("a/b/c.xml"),
+                new ST_Loc("d/e/f.xml"),
+                new ST_Loc("g/h/i.xml"),
+                new ST_Loc("j/k/l.xml")
+            };
+
+            // 序列化
+            using (var memoryStream = new MemoryStream())
+            {
+                var serializer = new XmlSerializer(typeof(List<ST_Loc>));
+                serializer.Serialize(memoryStream, originalList);
+
+                // 反序列化
+                memoryStream.Position = 0;
+                var deserializedList = (List<ST_Loc>)serializer.Deserialize(memoryStream);
+
+                // 验证
+                Assert.Equal(originalList.Count, deserializedList.Count);
+                for (int i = 0; i < originalList.Count; i++)
+                {
+                    Assert.Equal(originalList[i].Path, deserializedList[i].Path);
+                    Assert.Equal(originalList[i].ToString(), deserializedList[i].ToString());
+                    Assert.True(originalList[i].Equals(deserializedList[i]));
+                    Assert.True(originalList[i] == deserializedList[i]);
+                }
+            }
+        }
+
         // Theory
         [Theory]
         [InlineData(null, ".")]
@@ -95,40 +193,6 @@ namespace OFDViewer.Tests
             Assert.Equal(expectedPath, resolved.Path);
         }
 
-        [Fact]
-        public void Equals_Works()
-        {
-            var loc1 = new ST_Loc("a/b/c");
-            var loc2 = new ST_Loc("a/b/c");
-            var loc3 = new ST_Loc("a/b/d");
-            Assert.True(loc1.Equals(loc2));
-            Assert.False(loc1.Equals(loc3));
-            Assert.True(loc1.Equals((object)loc2));
-            Assert.False(loc1.Equals((object)loc3));
-            Assert.False(loc1.Equals(null));
-        }
-
-        [Fact]
-        public void GetHashCode_Works()
-        {
-            var loc1 = new ST_Loc("a/b/c");
-            var loc2 = new ST_Loc("a/b/c");
-            var loc3 = new ST_Loc("a/b/d");
-            Assert.Equal(loc1.GetHashCode(), loc2.GetHashCode());
-            Assert.NotEqual(loc1.GetHashCode(), loc3.GetHashCode());
-        }
-
-        [Fact]
-        public void OperatorEquals_Works()
-        {
-            var loc1 = new ST_Loc("a/b/c");
-            var loc2 = new ST_Loc("a/b/c");
-            var loc3 = new ST_Loc("a/b/d");
-            Assert.True(loc1 == loc2);
-            Assert.False(loc1 == loc3);
-            Assert.True(loc1 != loc3);
-            Assert.False(loc1 != loc2);
-        }
 
         // 测试GetRelativePath方法
         [Theory]

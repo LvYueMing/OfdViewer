@@ -1,3 +1,5 @@
+using System.Xml.Serialization;
+
 namespace OFDViewer.Models.BaseType
 {
     /// <summary>
@@ -8,41 +10,51 @@ namespace OFDViewer.Models.BaseType
     /// 2. 未显式指定时代表当前路径;
     /// 3. 路径区分大小写
     /// </summary>
-    [Serializable]
     public struct ST_Loc : IEquatable<ST_Loc>
     {
-        private readonly string _path;
+        private string _path;
 
-        public string Path => _path;
+        /// <summary>
+        /// XML文本序列化属性
+        /// </summary>
+        [XmlText]
+        public string Path
+        {
+            get => _path;
+            set
+            {
+                if (string.IsNullOrEmpty(value) || value == ".")
+                {
+                    _path = ".";
+                }
+                else
+                {
+                    // 先将所有 \ 替换为 /
+                    value = value.Replace('\\', '/');
+
+                    // OFD文件内部路径没有绝对路径概念，将所有路径统一处理为相对路径
+                    // 以/开头的路径视为从根目录开始的相对路径
+                    if (value.StartsWith("/"))
+                    {
+                        // 移除开头的/，并规范化路径
+                        value = value.Substring(1);
+                    }
+
+                    _path = NormalizePath(value);
+                }
+            }
+        }
 
 
         // C# 10+ 支持 struct 的无参数构造函数
         public ST_Loc()
         {
-            _path = "";
+            Path = "";
         }
 
         public ST_Loc(string path)
         {
-            if (string.IsNullOrEmpty(path) || path == ".")
-            {
-                _path = ".";
-            }
-            else
-            {
-                // 先将所有 \ 替换为 /
-                path = path.Replace('\\', '/');
-
-                // OFD文件内部路径没有绝对路径概念，将所有路径统一处理为相对路径
-                // 以/开头的路径视为从根目录开始的相对路径
-                if (path.StartsWith("/"))
-                {
-                    // 移除开头的/，并规范化路径
-                    path = path.Substring(1);
-                }
-
-                _path = NormalizePath(path);
-            }
+            Path = path;
         }
 
 

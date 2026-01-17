@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using System.Xml.Serialization;
 
 namespace OFDViewer.Models.BaseType
 {
@@ -28,6 +29,24 @@ namespace OFDViewer.Models.BaseType
         /// 是否为有效标识
         /// </summary>
         public bool IsValid => !Equals(InvalidValue);
+
+        /// <summary>
+        /// XML文本序列化属性
+        /// </summary>
+        [XmlText]
+        public string Value
+        {
+            get => ToString();
+            set
+            {
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    ST_Pos parsedPos = Parse(value);
+                    _x = parsedPos._x;
+                    _y = parsedPos._y;
+                }
+            }
+        }
 
         /// <summary>
         /// X坐标

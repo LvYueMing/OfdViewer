@@ -1,6 +1,9 @@
 ﻿using System.Collections;
 using System.Globalization;
 using System.Text;
+using System.Xml;
+using System.Xml.Schema;
+using System.Xml.Serialization;
 
 namespace OFDViewer.Models.BaseType
 {
@@ -9,12 +12,32 @@ namespace OFDViewer.Models.BaseType
     /// 元素可以是除 ST_Loc、ST_Array 外的数据类型，不可嵌套
     /// 使用 List<object> 存储，便于动态添加和操作
     /// </summary>
-    public struct ST_Array : IEquatable<ST_Array>, IEnumerable<object>
+    public struct ST_Array : IEquatable<ST_Array>
     {
-        private readonly List<object> _values;
-
-        // 确保_values始终被初始化，即使使用默认构造函数
         private static readonly CultureInfo InvariantCulture = CultureInfo.InvariantCulture;
+
+        private List<object> _values = new List<object>();
+
+        /// <summary>
+        /// 用于XML序列化的文本表示
+        /// </summary>
+        [XmlText]
+        public string Value
+        {
+            get => ToString();
+            set
+            {
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    ST_Array parsedArray = Parse(value);
+                    _values = parsedArray._values;
+                }
+                else
+                {
+                    _values = new List<object>();
+                }
+            }
+        }
 
         /// <summary>
         /// 数组长度
@@ -30,6 +53,7 @@ namespace OFDViewer.Models.BaseType
         /// 是否为空的数组
         /// </summary>
         public bool IsEmpty => (_values?.Count ?? 0) == 0;
+
 
         /// <summary>
         /// 索引器
@@ -586,12 +610,15 @@ namespace OFDViewer.Models.BaseType
             return hash.ToHashCode();
         }
 
+        /// <summary>
+        /// 获取枚举器，支持foreach循环
+        /// </summary>
+        /// <returns>枚举器</returns>
         public IEnumerator<object> GetEnumerator() => (_values ?? new List<object>()).GetEnumerator();
-
-        IEnumerator IEnumerable.GetEnumerator() => (_values ?? new List<object>()).GetEnumerator();
 
         public static bool operator ==(ST_Array left, ST_Array right) => left.Equals(right);
         public static bool operator !=(ST_Array left, ST_Array right) => !left.Equals(right);
         #endregion
+        
     }
 }

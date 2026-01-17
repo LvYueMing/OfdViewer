@@ -1,4 +1,8 @@
-﻿namespace OFDViewer.Models.BaseType
+using System.Threading;
+using System.Xml;
+using System.Xml.Serialization;
+
+namespace OFDViewer.Models.BaseType
 {
     /// <summary>
     /// ST_ID 标识，无符号整数，应在文档内唯一。0 表示无效标识
@@ -6,7 +10,7 @@
     /// </summary>
     public struct ST_ID : IEquatable<ST_ID>, IComparable<ST_ID>
     {
-        private readonly uint _value;
+        private uint _value;
 
         // 用于生成唯一标识的原子计数器
         private static long _idCounter = 0;
@@ -24,14 +28,32 @@
         /// </summary>
         public static readonly ST_ID Invalid = new ST_ID(InvalidValue);
 
+        /// <summary>
         /// 获取原始值
         /// </summary>
-        public uint Value => _value;
+        public uint RawValue => _value;
 
         /// <summary>
         /// 是否为有效标识（不等于0）
         /// </summary>
         public bool IsValid => _value != InvalidValue;
+
+        /// <summary>
+        /// XML文本序列化属性
+        /// </summary>
+        [XmlText]
+        public string Value
+        {
+            get => ToString();
+            set
+            {
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    ST_ID parsedId = Parse(value);
+                    _value = parsedId._value;
+                }
+            }
+        }
 
         /// <summary>
         /// 初始化ST_ID
@@ -41,8 +63,6 @@
         {
             _value = value;
         }
-
-        /// <summary>
 
         /// <summary>
         /// 从字符串解析ST_ID
