@@ -16,8 +16,8 @@ namespace OFDViewer.Models.PageDesc
     {
         /// <summary>
         /// 图元对象的动作序列
-        ///当存在多个 Action对象时, 所有动作依次执行
-        ///可选
+        /// 当存在多个 Action对象时, 所有动作依次执行
+        /// 可选
         /// </summary>
         [XmlArray(ElementName = "Actions")]
         [XmlArrayItem(ElementName = "Action")]

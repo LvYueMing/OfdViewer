@@ -12,8 +12,14 @@ namespace OFDViewer.OFD
     /// </summary>
     public class OFDReader : IDisposable
     {
-        // OFD归档对象（只读）
+        /// <summary>
+        /// OFD归档对象（只读），负责底层文件访问
+        /// </summary>
         private readonly OFDArchive _archive;
+        
+        /// <summary>
+        /// 资源释放标记
+        /// </summary>
         private bool _disposed = false;
 
         #region 构造函数
@@ -256,14 +262,14 @@ namespace OFDViewer.OFD
         /// <summary>
         /// 读取所有签章对象列表 (Doc_{0}/Signs/)
         /// </summary>
-        /// <param name="docIndex"></param>
-        /// <returns></returns>
-        /// <exception cref="InvalidOperationException"></exception>
+        /// <param name="docIndex">文档索引</param>
+        /// <returns>签章对象列表</returns>
+        /// <exception cref="InvalidOperationException">未发现任何签章文档时抛出</exception>
         private List<SignDocument> ReadSignDocs(int docIndex)
         {
             var signDocIndices = GetSignDocIndices(docIndex);
             if (signDocIndices.Count == 0)
-                throw new InvalidOperationException("未发现任何子文档（Sign_x 目录）");
+                throw new InvalidOperationException("未发现任何签章文档（Sign_x 目录）");
 
             var signDocs = new List<SignDocument>();
 
@@ -277,6 +283,12 @@ namespace OFDViewer.OFD
         }
 
 
+        /// <summary>
+        /// 读取指定索引的页面对象 (Doc_{0}/Pages/Page_{1}/)
+        /// </summary>
+        /// <param name="pageDocIndex">页面索引</param>
+        /// <param name="docIndex">所属文档索引</param>
+        /// <returns>页面对象</returns>
         private PageDocument ReadPageDoc(int pageDocIndex, int docIndex)
         {
             EnsureNotDisposed();
@@ -332,11 +344,16 @@ namespace OFDViewer.OFD
 
 
 
+        /// <summary>
+        /// 读取所有页面对象列表 (Doc_{0}/Pages/)
+        /// </summary>
+        /// <param name="docIndex">文档索引</param>
+        /// <returns>页面对象列表</returns>
         private List<PageDocument> ReadPageDocs(int docIndex)
         {
             var pageDocIndices = GetPageDocIndices(docIndex);
             if (pageDocIndices.Count == 0)
-                throw new InvalidOperationException("未发现任何子文档（Sign_x 目录）");
+                throw new InvalidOperationException("未发现任何页面（Page_x 目录）");
 
             var pageDocs = new List<PageDocument>();
 
@@ -349,6 +366,11 @@ namespace OFDViewer.OFD
             return pageDocs;
         }
 
+        /// <summary>
+        /// 读取指定目录下的文件资源
+        /// </summary>
+        /// <param name="path">目录路径</param>
+        /// <returns>文件资源字典，键为文件名，值为文件内容</returns>
         private Dictionary<string, byte[]> ReadFileResInDirectory(string path)
         {
             var res = new Dictionary<string, byte[]>();

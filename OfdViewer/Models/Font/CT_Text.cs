@@ -45,16 +45,11 @@ namespace OFDViewer.Models.Font
         /// 引用资源文件中定义的字型的标识 必选
         /// </summary>
         [XmlAttribute(AttributeName = "Font")]
-        public string FontString
-        {
-            get => Font.ToString();
-            set => Font = ST_RefID.Parse(value);
-        }
-        [XmlIgnore]
         public ST_RefID Font { get; set; }
 
         /// <summary>
-        /// 字号, 单位为毫米 必选
+        /// 字号, 单位为毫米 
+        /// 必选
         /// </summary>
         [XmlAttribute(AttributeName = "Size")]
         public double Size { get; set; }

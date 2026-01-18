@@ -15,12 +15,6 @@ namespace OFDViewer.Models.Font
         /// 可选
         /// </summary>
         [XmlElement("FontFile")]
-        public string FontFileString
-        {
-            get => FontFile.ToString();
-            set => FontFile = value;
-        }
-        [XmlIgnore]
         public ST_Loc FontFile { get; set; }
 
         /// <summary>
@@ -46,7 +40,7 @@ namespace OFDViewer.Models.Font
         /// 字型适用的字符分类,用于匹配替代字型
         /// 可取值为symbol、prc、big5、unicode等
         /// 默认值为unicode
-        ///可选
+        /// 可选
         /// </summary>
         [XmlAttribute("Charset")]
         public string CharsetString
@@ -57,12 +51,23 @@ namespace OFDViewer.Models.Font
         }
 
         /// <summary>
+        /// 控制是否序列化Charset属性
+        /// </summary>
+        /// <returns></returns>
+        public bool ShouldSerializeCharsetString() => Charset != FontCharset.unicode;
+
+        /// <summary>
         /// 是否是斜体字型,用于匹配替代字型
         /// 默认值是false
         /// 可选
         /// </summary>
         [XmlAttribute("Italic")]
         public bool Italic { get; set; } = false;
+
+        /// <summary>
+        /// 是否序列化Italic属性
+        /// </summary>
+        public bool ShouldSerializeItalic() => Italic != false;
 
         /// <summary>
         /// 是否是粗体字型,用于匹配替代字型
@@ -73,6 +78,11 @@ namespace OFDViewer.Models.Font
         public bool Bold { get; set; } = false;
 
         /// <summary>
+        /// 是否序列化Bold属性
+        /// </summary>        
+        public bool ShouldSerializeBold() => Bold != false;
+
+        /// <summary>
         /// 是否是带衬线字型,用于匹配替代字型
         /// 默认值是false
         /// 可选
@@ -81,11 +91,21 @@ namespace OFDViewer.Models.Font
         public bool Serif { get; set; } = false;
 
         /// <summary>
+        /// 是否序列化Serif属性
+        /// </summary>
+        public bool ShouldSerializeSerif() => Serif != false;
+
+        /// <summary>
         /// 是否是等宽字型,用于匹配替代字型
         /// 默认值是false
         /// 可选
         /// </summary>
         [XmlAttribute("FixedWidth")]
         public bool FixedWidth { get; set; } = false;
+
+        /// <summary>
+        /// 是否序列化FixedWidth属性
+        /// </summary>
+        public bool ShouldSerializeFixedWidth() => FixedWidth != false;
     }
 }

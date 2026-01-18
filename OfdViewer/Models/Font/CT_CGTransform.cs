@@ -13,13 +13,7 @@ namespace OFDViewer.Models.Font
         /// <summary>
         /// 变换后的字形索引列表 必选
         /// </summary>
-        [XmlElement(ElementName = "Glyphs", IsNullable = false)]
-        public string GlyphsString
-        {
-            get => Glyphs.ToString();
-            set => Glyphs = ST_Array.Parse(value);
-        }
-        [XmlIgnore]
+        [XmlElement(ElementName = "Glyphs")]
         public ST_Array Glyphs { get; set; }
 
         /// <summary>
@@ -34,27 +28,29 @@ namespace OFDViewer.Models.Font
         /// 可选
         /// </summary>
         [XmlAttribute(AttributeName = "CodeCount")]
-        public int CodeCount { get; set; }
+        public int CodeCount { get; set; }=1;
+
+
+        //控制 CodeCount 属性是否序列化
+        public bool ShouldSerializeCodeCount()
+        {
+            return CodeCount != 1;
+        }
 
         /// <summary>
         /// 变换关系中字形索引的个数, 该数值应大于或等于1, 否则属于错误描述, 默认为1
         /// 可选
         /// </summary>
         [XmlAttribute(AttributeName = "GlyphCount")]
-        public int GlyphCount { get; set; }
+
+        public int GlyphCount { get; set; }=1;
+        //控制 GlyphCount 属性是否序列化
+        public bool ShouldSerializeGlyphCount()
+        {
+            return GlyphCount != 1;
+        }
 
 
-        /// <summary>
-        /// 标识 CodeCount 属性是否应该被序列化（处理默认值）
-        /// </summary>
-        [XmlIgnore]
-        public bool CodeCountSpecified { get; set; }
-
-        /// <summary>
-        /// 标识 GlyphCount 属性是否应该被序列化（处理默认值）
-        /// </summary>
-        [XmlIgnore]
-        public bool GlyphCountSpecified { get; set; }
 
         /// <summary>
         /// 构造函数，初始化默认值

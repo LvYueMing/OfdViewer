@@ -1,4 +1,4 @@
-﻿using OFDViewer.Models.BaseStructure.MainEntry;
+using OFDViewer.Models.BaseStructure.MainEntry;
 using OFDViewer.Utils;
 
 namespace OFDViewer.OFD
@@ -9,13 +9,19 @@ namespace OFDViewer.OFD
     /// </summary>
     public class OFDWriter : IDisposable
     {
-        // OFD归档对象（只读，确保初始化后不可修改）
+        /// <summary>
+        /// OFD归档对象（只读，确保初始化后不可修改）
+        /// </summary>
         private readonly OFDArchive _archive;
 
-        // 资源释放标记（线程安全的布尔标识）
+        /// <summary>
+        /// 资源释放标记（线程安全的布尔标识）
+        /// </summary>
         private bool _disposed = false;
 
-        // 归档是否已保存的标记，避免重复保存
+        /// <summary>
+        /// 归档是否已保存的标记，避免重复保存
+        /// </summary>
         private bool _saved = false;
 
 
@@ -375,7 +381,12 @@ namespace OFDViewer.OFD
             }
         }
 
-        //从本地文件读取资源文件（例如：Res/Image_{0}.png）
+        /// <summary>
+        /// 从本地文件读取资源文件（例如：Res/Image_{0}.png）
+        /// </summary>
+        /// <param name="resFilePath">资源文件路径</param>
+        /// <returns>资源文件内容的字节数组，读取失败返回null</returns>
+        /// <exception cref="InvalidOperationException">读取资源文件失败时抛出</exception>
         public static byte[] ReadResFile(string resFilePath)
         {
             if (string.IsNullOrWhiteSpace(resFilePath))

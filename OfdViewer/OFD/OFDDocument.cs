@@ -6,8 +6,16 @@ using OFDViewer.Models.Signature;
 namespace OFDViewer.OFD
 {
     /// <summary>
-    /// OFD子文档对象，对应 Doc_N 目录
+    /// OFD 文档核心类，对应 OFD 标准中的 Doc_N 目录
     /// </summary>
+    /// <remarks>
+    /// 负责管理单个 OFD 文档的所有内容，包括：
+    /// 1. 文档主描述信息（Document.xml）
+    /// 2. 公共资源和文档资源
+    /// 3. 页面集合
+    /// 4. 签章集合
+    /// 5. 文档级资源文件
+    /// </remarks>
     public class OFDDocument
     {
         /// <summary>
@@ -187,8 +195,12 @@ namespace OFDViewer.OFD
         }
 
         /// <summary>
-        /// 添加页面对象
+        /// 添加空白页面对象
         /// </summary>
+        /// <remarks>
+        /// 自动创建新的PageDocument对象并添加到页面集合中
+        /// 同时更新Document.Pages集合，建立页面与文档的关联
+        /// </remarks>
         public void AddPageDoc()
         {
             PageDocs = PageDocs ?? new List<PageDocument>();
@@ -220,9 +232,14 @@ namespace OFDViewer.OFD
         }
 
         /// <summary>
-        /// 添加页面对象
+        /// 添加指定的页面对象
         /// </summary>
-        /// <param name="pageDoc"></param>
+        /// <param name="pageDoc">要添加的页面对象</param>
+        /// <remarks>
+        /// 将指定的PageDocument对象添加到页面集合中
+        /// 同时更新Document.Pages集合，建立页面与文档的关联
+        /// 自动设置页面对象的所属文档序号和页面序号
+        /// </remarks>
         public void AddPageDoc(PageDocument pageDoc)
         {
             // 计算新的页面序号（当前页面数量，从0开始）

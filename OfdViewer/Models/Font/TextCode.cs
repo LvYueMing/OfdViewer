@@ -40,8 +40,16 @@ namespace OFDViewer.Models.Font
         public ST_Array DeltaX { get; set; }
 
         /// <summary>
+        /// 控制 DeltaX 属性是否序列化
+        /// </summary>
+        public bool ShouldSerializeDeltaYString()
+        {
+            return DeltaY != null && DeltaY.Count > 0;
+        }
+
+        /// <summary>
         /// double 型数值队列, 队列中的每个值代表后一个文字与前一个文字之间在Y 方向的偏移值
-        /// DeltaY 不出现时, 表示文字的绘制点在Y 方向不做偏移
+        /// DeltaY 不出现时, 表示文字的绘制点在 Y 方向不做偏移
         /// 可选
         /// </summary>
         [XmlAttribute(AttributeName = "DeltaY")]
@@ -52,6 +60,15 @@ namespace OFDViewer.Models.Font
         }
         [XmlIgnore]
         public ST_Array DeltaY { get; set; }
+
+        /// <summary>
+        /// 控制 DeltaY 属性是否序列化
+        /// </summary>
+        /// <returns></returns>
+        public bool ShouldSerializeDeltaXString()
+        {
+            return DeltaX != null && DeltaX.Count > 0;
+        }
 
 
         // TextCode 的文本内容（xs:string 基类型）

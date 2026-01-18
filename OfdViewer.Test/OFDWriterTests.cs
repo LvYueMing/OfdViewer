@@ -464,7 +464,7 @@ namespace OFDViewer.Tests
                 // 设置文本样式
                 Size = 12,
                 // 设置字体，使用创建的字体
-                FontString = font.IDString,
+                IDString = font.IDString,
             };
 
             // 添加文本内容

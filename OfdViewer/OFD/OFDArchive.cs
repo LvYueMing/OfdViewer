@@ -1,26 +1,64 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.IO.Compression;
 using System.Text;
 using System.Xml;
 
 namespace OFDViewer.OFD
 {
+    /// <summary>
+    /// OFD 归档处理类，负责 OFD 文档的 ZIP 压缩、解压、文件管理等底层操作
+    /// </summary>
+    /// <remarks>
+    /// 支持两种模式：
+    /// 1. 文件模式：通过文件路径打开或创建 OFD 文档
+    /// 2. 流模式：通过 Stream 对象打开或创建 OFD 文档
+    /// 提供 XML 文档缓存机制，提高处理效率
+    /// </remarks>
     public class OFDArchive : IDisposable
     {
+        /// <summary>
+        /// ZIP 归档对象
+        /// </summary>
         private ZipArchive _zipArchive;
-        // 归档对应的文件流（文件路径模式下使用）
+        
+        /// <summary>
+        /// 归档对应的文件流（文件路径模式下使用）
+        /// </summary>
         private Stream _fileStream;
-        // 归档对应的自定义流（流模式下使用）
+        
+        /// <summary>
+        /// 归档对应的自定义流（流模式下使用）
+        /// </summary>
         private Stream _customStream;
+        
+        /// <summary>
+        /// ZIP 条目缓存，提高文件查找效率
+        /// </summary>
         private readonly ConcurrentDictionary<string, ZipArchiveEntry> _entryCache;
+        
+        /// <summary>
+        /// XML 文档缓存，避免重复解析 XML 文件
+        /// </summary>
         private readonly ConcurrentDictionary<string, XmlDocument> _xmlCache;
+        
+        /// <summary>
+        /// 临时解压路径
+        /// </summary>
         private readonly string _tempExtractPath;
 
-        // 归档是否已保存（避免重复保存）
+        /// <summary>
+        /// 归档是否已保存（避免重复保存）
+        /// </summary>
         private bool _saved;
-        // 资源释放标记
+        
+        /// <summary>
+        /// 资源释放标记
+        /// </summary>
         private bool _disposed;
-        // 是否保持自定义流打开（流模式专用）
+        
+        /// <summary>
+        /// 是否保持自定义流打开（流模式专用）
+        /// </summary>
         private bool _leaveOpen;
 
 
@@ -257,9 +295,11 @@ namespace OFDViewer.OFD
         }
 
 
-        // <summary>
+        /// <summary>
         /// 获取指定目录下的【直接子文件,包含路径】（不递归）
         /// </summary>
+        /// <param name="path">ZIP 内的目标目录路径</param>
+        /// <returns>直接子文件的完整路径列表</returns>
         public List<string> GetDirectFilePathsInDirectory(string path)
         {
             // 校验 ZIP 归档是否有效

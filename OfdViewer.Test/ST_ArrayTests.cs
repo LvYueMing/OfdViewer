@@ -3,7 +3,7 @@ using System.Xml.Serialization;
 using OFDViewer.Models.BaseType;
 using Xunit;
 
-namespace OFDViewer.Test
+namespace OFDViewer.Tests
 {
     /// <summary>
     /// ST_Array XML序列化测试类
