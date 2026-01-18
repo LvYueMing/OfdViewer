@@ -35,7 +35,7 @@ namespace OFDViewer.Render.Abstractions
         /// 设置背景色
         /// </summary>
         /// <param name="color">背景色（ARGB格式）</param>
-        void SetBackgroundColor(int color);
+        void SetBackgroundColor(uint color);
 
         /// <summary>
         /// 平移画布

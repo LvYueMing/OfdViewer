@@ -19,6 +19,60 @@ namespace OFDViewer.Render.Implementation
         private SKPaint _paint;
         private bool _disposed;
         private RenderConfig _config;
+        private SKPath _currentPath;
+
+        #endregion
+
+        #region 单位转换与坐标适配
+
+        /// <summary>
+        /// 将OFD毫米单位转换为SkiaSharp像素单位
+        /// </summary>
+        /// <param name="millimeters">OFD毫米值</param>
+        /// <returns>像素值</returns>
+        public float MillimetersToPixels(float millimeters)
+        {
+            return millimeters * _config.Dpi / 25.4f;
+        }
+
+        /// <summary>
+        /// 将SkiaSharp像素单位转换为OFD毫米单位
+        /// </summary>
+        /// <param name="pixels">像素值</param>
+        /// <returns>OFD毫米值</returns>
+        public float PixelsToMillimeters(float pixels)
+        {
+            return pixels * 25.4f / _config.Dpi;
+        }
+
+        /// <summary>
+        /// 转换OFD坐标到SkiaSharp坐标
+        /// OFD和SkiaSharp都以左上角为原点，因此只需要进行单位转换
+        /// </summary>
+        /// <param name="x">OFD X坐标（毫米）</param>
+        /// <param name="y">OFD Y坐标（毫米）</param>
+        /// <returns>转换后的SkiaSharp坐标（像素）</returns>
+        public SKPoint ConvertOfdToSkiaCoordinates(float x, float y)
+        {
+            return new SKPoint(MillimetersToPixels(x), MillimetersToPixels(y));
+        }
+
+        /// <summary>
+        /// 转换OFD矩形到SkiaSharp矩形
+        /// </summary>
+        /// <param name="x">OFD X坐标（毫米）</param>
+        /// <param name="y">OFD Y坐标（毫米）</param>
+        /// <param name="width">OFD宽度（毫米）</param>
+        /// <param name="height">OFD高度（毫米）</param>
+        /// <returns>转换后的SkiaSharp矩形（像素）</returns>
+        public SKRect ConvertOfdToSkiaRect(float x, float y, float width, float height)
+        {
+            float skX = MillimetersToPixels(x);
+            float skY = MillimetersToPixels(y);
+            float skWidth = MillimetersToPixels(width);
+            float skHeight = MillimetersToPixels(height);
+            return new SKRect(skX, skY, skX + skWidth, skY + skHeight);
+        }
 
         #endregion
 
@@ -127,7 +181,7 @@ namespace OFDViewer.Render.Implementation
         /// 设置背景色
         /// </summary>
         /// <param name="color">背景色（ARGB格式）</param>
-        public void SetBackgroundColor(int color)
+        public void SetBackgroundColor(uint color)
         {
             if (_canvas == null) return;
 
@@ -525,8 +579,6 @@ namespace OFDViewer.Render.Implementation
 
         #region IPathRenderer实现
 
-        private SKPath _currentPath;
-
         /// <summary>
         /// 开始绘制路径
         /// </summary>
@@ -654,6 +706,10 @@ namespace OFDViewer.Render.Implementation
             paint.IsAntialias = _config.AntiAlias;
             paint.Style = SKPaintStyle.Fill;
             paint.Color = ConvertToSKColor(style.Color, style.Alpha);
+            
+            // 设置渐变样式（如果有）
+            // paint.Shader = CreateGradientShader(style);
+            
             return paint;
         }
 
@@ -700,9 +756,6 @@ namespace OFDViewer.Render.Implementation
             var font = new SKFont(typeface, style.FontSize);
             font.ScaleX = style.HScale;
             
-            // 设置下划线和删除线
-            paint.PathEffect = SKPathEffect.CreateDash(null, 0);
-            
             return paint;
         }
 
@@ -722,6 +775,54 @@ namespace OFDViewer.Render.Implementation
             // 使用style.Alpha覆盖颜色中的alpha通道
             return new SKColor(r, g, b, alpha);
         }
+
+        #endregion
+
+        #region 样式映射
+
+        /// <summary>
+        /// 创建渐变着色器
+        /// </summary>
+        /// <param name="style">图形样式</param>
+        /// <returns>渐变着色器</returns>
+        // private SKShader CreateGradientShader(GraphicStyle style)
+        // {
+        //     // 实现渐变样式转换逻辑
+        //     // 这里可以根据GraphicStyle中的渐变配置创建SKGradientShader
+        //     return null;
+        // }
+
+        /// <summary>
+        /// 创建虚线效果
+        /// </summary>
+        /// <param name="dashPattern">虚线模式</param>
+        /// <returns>虚线效果</returns>
+        private SKPathEffect CreateDashEffect(float[] dashPattern)
+        {
+            if (dashPattern == null || dashPattern.Length == 0)
+            {
+                return null;
+            }
+            return SKPathEffect.CreateDash(dashPattern, 0);
+        }
+
+        #endregion
+
+        #region 文档模型映射
+
+        /// <summary>
+        /// 将OFD页面元素转换为SkiaSharp绘制指令
+        /// </summary>
+        /// <param name="pageElement">OFD页面元素</param>
+        /// <remarks>
+        /// 这里可以添加将OFD页面元素转换为SkiaSharp绘制指令的逻辑
+        /// 例如：遍历PageBlockItems，根据元素类型调用不同的绘制方法
+        /// </remarks>
+        // public void RenderOfdPageElement(object pageElement)
+        // {
+        //     // 实现OFD页面元素到SkiaSharp绘制指令的转换逻辑
+        //     // 这需要根据OFD文档模型的具体结构来实现
+        // }
 
         #endregion
     }

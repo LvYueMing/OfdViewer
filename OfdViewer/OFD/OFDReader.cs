@@ -152,46 +152,97 @@ namespace OFDViewer.OFD
             string docFilePath = Constants.GetFilePath(Constants.Doc_DocumentFile, docIndex);
             if (_archive.FileExists(docFilePath))
             {
-                using var stream = _archive.OpenFileStream(docFilePath);
-                doc.Document = XmlHelper.DeserializeFromStream<Models.BaseStructure.DocumentRoot.Document>(stream);
+                try
+                {
+                    using var stream = _archive.OpenFileStream(docFilePath);
+                    doc.Document = XmlHelper.DeserializeFromStream<Models.BaseStructure.DocumentRoot.Document>(stream);
+                }
+                catch (Exception ex)
+                {
+                    // 忽略Document.xml读取错误，继续执行
+                }
             }
 
             // Doc_{0}/PublicRes.xml
             string pubResPath = Constants.GetFilePath(Constants.Doc_PublicResFile, docIndex);
             if (_archive.FileExists(pubResPath))
             {
-                using var stream = _archive.OpenFileStream(pubResPath);
-                doc.SetPublicResource(XmlHelper.DeserializeFromStream<Res>(stream));
+                try
+                {
+                    using var stream = _archive.OpenFileStream(pubResPath);
+                    doc.SetPublicResource(XmlHelper.DeserializeFromStream<Res>(stream));
+                }
+                catch (Exception ex)
+                {
+                    // 忽略PublicRes.xml读取错误，继续执行
+                }
             }
 
             // Doc_{0}/DocumentRes.xml
             string docResPath = Constants.GetFilePath(Constants.Doc_DocumentResFile, docIndex);
             if (_archive.FileExists(docResPath))
             {
-                using var stream = _archive.OpenFileStream(docResPath);
-                doc.SetDocumentResource(XmlHelper.DeserializeFromStream<Res>(stream));
+                try
+                {
+                    using var stream = _archive.OpenFileStream(docResPath);
+                    doc.SetDocumentResource(XmlHelper.DeserializeFromStream<Res>(stream));
+                }
+                catch (Exception ex)
+                {
+                    // 忽略DocumentRes.xml读取错误，继续执行
+                }
             }
 
             // Doc_{0}/Signs/Signatures.xml
             string sigIndexPath = Constants.GetFilePath(Constants.Signs_SignaturesFile, docIndex);
             if (_archive.FileExists(sigIndexPath))
             {
-                using var stream = _archive.OpenFileStream(sigIndexPath);
-                doc.Signatures = XmlHelper.DeserializeFromStream<Signatures>(stream);
+                try
+                {
+                    using var stream = _archive.OpenFileStream(sigIndexPath);
+                    doc.Signatures = XmlHelper.DeserializeFromStream<Signatures>(stream);
+                }
+                catch (Exception ex)
+                {
+                    // 忽略Signatures.xml读取错误，继续执行
+                }
             }
 
             // 读取签章对象（Doc_{0}/Signs）
-            doc.SignDocs = ReadSignDocs(docIndex);
-
+            try
+            {
+                doc.SignDocs = ReadSignDocs(docIndex);
+            }
+            catch (Exception ex)
+            {
+                // 忽略签章读取错误，继续执行
+                doc.SignDocs = new List<SignDocument>();
+            }
 
             // 读取页面对象 (Doc_{0}/Pages/Page_{1})
-            doc.PageDocs = ReadPageDocs(docIndex);
+            try
+            {
+                doc.PageDocs = ReadPageDocs(docIndex);
+            }
+            catch (Exception ex)
+            {
+                // 忽略页面读取错误，继续执行
+                doc.PageDocs = new List<PageDocument>();
+            }
 
             // 读取文档级资源 (Doc_{0}/Res)
             string resDirectoryPath = Constants.GetFilePath(Constants.Doc_ResDirectory, docIndex);
             if (_archive.DirectoryExists(resDirectoryPath))
             {
-                doc.ResFiles = ReadFileResInDirectory(resDirectoryPath);
+                try
+                {
+                    doc.ResFiles = ReadFileResInDirectory(resDirectoryPath);
+                }
+                catch (Exception ex)
+                {
+                    // 忽略资源文件读取错误，继续执行
+                    doc.ResFiles = new Dictionary<string, byte[]>();
+                }
             }
 
             return doc;
@@ -263,14 +314,10 @@ namespace OFDViewer.OFD
         /// 读取所有签章对象列表 (Doc_{0}/Signs/)
         /// </summary>
         /// <param name="docIndex">文档索引</param>
-        /// <returns>签章对象列表</returns>
-        /// <exception cref="InvalidOperationException">未发现任何签章文档时抛出</exception>
+        /// <returns>签章对象列表，如果没有签章文档则返回空列表</returns>
         private List<SignDocument> ReadSignDocs(int docIndex)
         {
             var signDocIndices = GetSignDocIndices(docIndex);
-            if (signDocIndices.Count == 0)
-                throw new InvalidOperationException("未发现任何签章文档（Sign_x 目录）");
-
             var signDocs = new List<SignDocument>();
 
             foreach (int index in signDocIndices)
@@ -348,13 +395,10 @@ namespace OFDViewer.OFD
         /// 读取所有页面对象列表 (Doc_{0}/Pages/)
         /// </summary>
         /// <param name="docIndex">文档索引</param>
-        /// <returns>页面对象列表</returns>
+        /// <returns>页面对象列表，如果没有页面则返回空列表</returns>
         private List<PageDocument> ReadPageDocs(int docIndex)
         {
             var pageDocIndices = GetPageDocIndices(docIndex);
-            if (pageDocIndices.Count == 0)
-                throw new InvalidOperationException("未发现任何页面（Page_x 目录）");
-
             var pageDocs = new List<PageDocument>();
 
             foreach (int index in pageDocIndices)
