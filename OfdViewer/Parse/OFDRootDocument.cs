@@ -1,7 +1,7 @@
 using OFDViewer.Models.BaseStructure.MainEntry;
 using OFDViewer.Models.BaseType;
 
-namespace OFDViewer.OFD
+namespace OFDViewer.Parse
 {
     /// <summary>
     /// OFD根文档对象，对应整个OFD压缩包（ZIP容器）

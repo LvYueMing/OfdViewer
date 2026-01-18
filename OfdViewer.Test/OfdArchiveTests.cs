@@ -1,6 +1,6 @@
 using System.IO.Compression;
 using System.Text;
-using OFDViewer.OFD;
+using OFDViewer.Parse;
 using Xunit;
 
 namespace OFDViewer.Tests

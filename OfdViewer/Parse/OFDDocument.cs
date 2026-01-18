@@ -3,7 +3,7 @@ using OFDViewer.Models.BaseStructure.Resources;
 using OFDViewer.Models.BaseType;
 using OFDViewer.Models.Signature;
 
-namespace OFDViewer.OFD
+namespace OFDViewer.Parse
 {
     /// <summary>
     /// OFD 文档核心类，对应 OFD 标准中的 Doc_N 目录

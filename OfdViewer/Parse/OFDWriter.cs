@@ -1,7 +1,7 @@
 using OFDViewer.Models.BaseStructure.MainEntry;
 using OFDViewer.Utils;
 
-namespace OFDViewer.OFD
+namespace OFDViewer.Parse
 {
     /// <summary>
     /// OFD文件写入/创建类,仅负责将实体对象转换为.ofd物理文件

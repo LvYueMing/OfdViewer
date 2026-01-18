@@ -1,6 +1,6 @@
 ﻿using OFDViewer.Models.Signature;
 
-namespace OFDViewer.OFD
+namespace OFDViewer.Parse
 {
     /// <summary>
     /// OFD签章对象，对应 Sign_N 单个签章目录（N从0开始）

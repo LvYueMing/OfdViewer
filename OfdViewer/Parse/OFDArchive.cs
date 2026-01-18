@@ -3,7 +3,7 @@ using System.IO.Compression;
 using System.Text;
 using System.Xml;
 
-namespace OFDViewer.OFD
+namespace OFDViewer.Parse
 {
     /// <summary>
     /// OFD 归档处理类，负责 OFD 文档的 ZIP 压缩、解压、文件管理等底层操作

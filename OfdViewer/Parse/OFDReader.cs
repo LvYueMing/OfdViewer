@@ -4,7 +4,7 @@ using OFDViewer.Models.BaseStructure.Resources;
 using OFDViewer.Models.Signature;
 using OFDViewer.Utils;
 
-namespace OFDViewer.OFD
+namespace OFDViewer.Parse
 {
     /// <summary>
     /// OFD文件读取/解析类，负责将.ofd物理文件解析为OFDDocument对象

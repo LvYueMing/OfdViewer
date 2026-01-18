@@ -1,7 +1,7 @@
 ﻿using OFDViewer.Models.BaseStructure.Pages;
 using OFDViewer.Models.BaseStructure.Resources;
 
-namespace OFDViewer.OFD
+namespace OFDViewer.Parse
 {
     /// <summary>
     /// OFD页面对象，对应 Page_N 目录（N可从0开始）
