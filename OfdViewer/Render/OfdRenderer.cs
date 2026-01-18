@@ -111,7 +111,7 @@ namespace OFDViewer.Render
         /// </summary>
         private void LoadDocument()
         {
-            CurrentDocument = _ofdReader.ReadOFDDocument();
+            CurrentDocument = _ofdReader.ParseOFDDocument();
             PageCount = CalculatePageCount();
         }
         

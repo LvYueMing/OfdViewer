@@ -63,12 +63,12 @@ namespace OFDViewer.Parse
         #region 核心读取方法
 
         /// <summary>
-        /// 一键读取完整的OFD文档为OFDDocument对象
+        /// 解析完整的OFD文档为OFDDocument对象
         /// </summary>
         /// <returns>解析后的OFDDocument</returns>
         /// <exception cref="ObjectDisposedException">对象已释放</exception>
         /// <exception cref="InvalidOperationException">解析失败</exception>
-        public OFDRootDocument ReadOFDDocument()
+        public OFDRootDocument ParseOFDDocument()
         {
             EnsureNotDisposed();
 
