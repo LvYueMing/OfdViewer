@@ -74,29 +74,35 @@ namespace OFDViewer.Parse
 
             try
             {
+                var ofdRootDocument = new OFDRootDocument();
+
                 // 第一步：读取OFD.xml → RootOFD
                 var rootOfd = ReadRootOFD();
                 if (rootOfd == null)
                     throw new InvalidOperationException("无法读取OFD核心元数据（OFD.xml）");
 
-                // 第二步：推断子文档数量（通过Doc_0, Doc_1...目录）
-                var docIndices = GetOFDDocIndices();
-                if (docIndices.Count == 0)
-                    throw new InvalidOperationException("未发现任何子文档（Doc_x 目录）");
-
                 var ofdDocs = new List<OFDDocument>();
-                foreach (int index in docIndices)
+
+                // 第二步：从RootOFD的DocBody中获取DocRoot路径 （即 Doc_0, Doc_1...目录）
+                if (rootOfd.DocBodies != null && rootOfd.DocBodies.Count > 0)
                 {
-                    var ofdDoc = ReadOFDDoc(index);
-                    if (ofdDoc != null)
-                        ofdDocs.Add(ofdDoc);
+                    foreach (var docBody in rootOfd.DocBodies)
+                    {
+                        if (docBody.DocRoot != null)
+                        {
+                            // Document.xml 的路径
+                            var documentFilePath = docBody.DocRoot.Path;
+                            var ofdDoc = ReadOFDDocument(documentFilePath);
+                            if (ofdDoc != null)
+                                ofdDocs.Add(ofdDoc);
+                        }
+                    }
                 }
 
-                return new OFDRootDocument
-                {
-                    RootOfd = rootOfd,
-                    Docs = ofdDocs
-                };
+                ofdRootDocument.RootOfd = rootOfd;
+                ofdRootDocument.Docs = ofdDocs;
+
+                return ofdRootDocument;
             }
             catch (Exception ex)
             {
@@ -119,30 +125,218 @@ namespace OFDViewer.Parse
         }
 
         /// <summary>
-        /// 获取所有存在的子文档索引（如 [0, 1, 2] 对应 Doc_0, Doc_1, Doc_2）
+        /// 读取指定路径的子文档
         /// </summary>
-        private List<int> GetOFDDocIndices()
+        /// <param name="docFilePath"> document.xml 的路径</param>
+        /// <returns>OFDDocument对象</returns>
+        public OFDDocument ReadOFDDocument(string docFilePath)
         {
-            var indices = new List<int>();
-            var docEntrie = _archive.GetDirectEntryNamesInDirectory("/");
-            foreach (var entry in docEntrie)
+            EnsureNotDisposed();
+
+            if (string.IsNullOrEmpty(docFilePath))
+                return null;
+
+            var doc = new OFDDocument(docFilePath);
+
+            // 读取 Document.xml
+            if (_archive.FileExists(docFilePath))
             {
-                if (entry.StartsWith("Doc_"))
+                // docFilePath 和 OFD.xml 的同目录路径，所有不能获取绝对路径
+                using var stream = _archive.OpenFileStream(docFilePath);
+                doc.Document = XmlHelper.DeserializeFromStream<Models.BaseStructure.DocumentRoot.Document>(stream);
+            }
+
+            if (doc.Document != null && doc.Document.CommonData != null)
+            {
+                // 读取 PublicRes.xml 等
+                var pubResPaths = doc.Document.CommonData.PublicRes;
+
+                foreach (var res in pubResPaths)
                 {
-                    var index = int.Parse(entry.Substring(4));
-                    indices.Add(index);
+                    //  获取PublicRes.xml绝对路径
+                    var pubResFilePath = res.GetAbsolutePath(doc.DocPath).Path;
+                    if (_archive.FileExists(pubResFilePath))
+                    {
+                        using var stream = _archive.OpenFileStream(pubResFilePath);
+                        doc.PublicResource = XmlHelper.DeserializeFromStream<Res>(stream);
+                        doc.PublicResourceFilePath = pubResFilePath;
+
+                        //todo: 读取PublicRes.xml 中的资源文件
+                    }
+                }
+
+                // 读取 DocumentRes.xml 等
+                var docResPaths = doc.Document.CommonData.DocumentRes;
+
+                foreach (var res in docResPaths)
+                {
+                    // 获取 DocumentRes.xml 绝对路径
+                    var docResFilePath = res.GetAbsolutePath(doc.DocPath).Path;
+                    if (_archive.FileExists(docResFilePath))
+                    {
+                        using var stream = _archive.OpenFileStream(docResFilePath);
+                        doc.DocumentResource = XmlHelper.DeserializeFromStream<Res>(stream);
+                        doc.DocumentResourceFilePath = docResFilePath;
+
+                        //todo: 读取PublicRes.xml 中的资源文件
+                    }
                 }
             }
-            // 从小到大排序
-            return indices.OrderBy(x => x).ToList();
+
+            // 读取页面对象
+            if (doc.Document != null && doc.Document.Pages != null)
+            {
+                foreach (var page in doc.Document.Pages)
+                {
+                    // 获取页面对象文件 Pages/Page_0/Content.xml 绝对路径 
+                    var pageFilePath = page.BaseLoc.GetAbsolutePath(doc.DocPath).Path;
+                    var pageDoc = ReadPageDoc(pageFilePath);
+
+                    doc.AddPageDoc(pageDoc);
+                }
+            }
+
+
+            //// 读取Signatures.xml
+            //string sigIndexPath = Path.Combine(Path.GetDirectoryName(docFilePath), "Signs", "Signatures.xml");
+            //if (_archive.FileExists(sigIndexPath))
+            //{
+            //    try
+            //    {
+            //        using var stream = _archive.OpenFileStream(sigIndexPath);
+            //        doc.Signatures = XmlHelper.DeserializeFromStream<Signatures>(stream);
+            //    }
+            //    catch (Exception ex)
+            //    {
+            //        // 忽略Signatures.xml读取错误，继续执行
+            //    }
+            //}
+
+            //// 读取签章对象
+            //try
+            //{
+            //    doc.SignDocs = ReadSignDocs(Path.GetDirectoryName(docFilePath));
+            //}
+            //catch (Exception ex)
+            //{
+            //    // 忽略签章读取错误，继续执行
+            //    doc.SignDocs = new List<SignDocument>();
+            //}
+
+
+            //// 读取文档级资源
+            //string resDirectoryPath = Path.Combine(Path.GetDirectoryName(docFilePath), "Res");
+            //if (_archive.DirectoryExists(resDirectoryPath))
+            //{
+            //    try
+            //    {
+            //        doc.ResFiles = ReadFileResInDirectory(resDirectoryPath);
+            //    }
+            //    catch (Exception ex)
+            //    {
+            //        // 忽略资源文件读取错误，继续执行
+            //        doc.ResFiles = new Dictionary<string, byte[]>();
+            //    }
+            //}
+
+            return doc;
         }
+
+        /// <summary>
+        /// 读取指定索引的页面对象（根据路径）
+        /// </summary>
+        /// <param name="pageDocFilePath">文档路径</param>
+        /// <returns>页面对象</returns>
+        private PageDocument ReadPageDoc(string pageDocFilePath)
+        {
+            EnsureNotDisposed();
+            var pageDoc = new PageDocument();
+
+            // Doc_{0}/Pages/Page_{1}/Content.xml
+            if (_archive.FileExists(pageDocFilePath))
+            {
+                using var stream = _archive.OpenFileStream(pageDocFilePath);
+                pageDoc.Page = XmlHelper.DeserializeFromStream<Page>(stream);
+                pageDoc.PageFilePath = pageDocFilePath;
+            }
+
+            if (pageDoc.Page != null && pageDoc.Page.PageRes != null)
+            {
+                // 读取 PageRes.xml 等
+                var pageResPaths = pageDoc.Page.PageRes;
+
+                foreach (var res in pageResPaths)
+                {
+                    //  获取 PageRes.xml 绝对路径
+                    var pubResFilePath = res.GetAbsolutePath(pageDoc.PageDirectoryPath).Path;
+                    if (_archive.FileExists(pubResFilePath))
+                    {
+                        using var stream = _archive.OpenFileStream(pubResFilePath);
+                        pageDoc.PageRes = XmlHelper.DeserializeFromStream<Res>(stream);
+                        pageDoc.PageResFilePath = pubResFilePath;
+
+                        //todo: 读取 PageRes.xml 中的资源文件
+                    }
+                }
+            }
+
+            return pageDoc;
+        }
+
+
+
+
+
+        /// <summary>
+        /// 读取指定索引的签章对象（根据路径）
+        /// </summary>
+        /// <param name="signDocIndex">签章索引</param>
+        /// <param name="docPath">文档路径</param>
+        /// <returns>签章对象</returns>
+        private SignDocument ReadSignDoc(int signDocIndex, string docPath)
+        {
+            EnsureNotDisposed();
+
+            var signDoc = new SignDocument(signDocIndex, docPath);
+
+            // Doc_{0}/Signs/Sign_{1}/Signature.xml
+            string sigFile = System.IO.Path.Combine(docPath, "Signs", $"Sign_{signDocIndex}", "Signature.xml");
+            if (_archive.FileExists(sigFile))
+            {
+                using var stream = _archive.OpenFileStream(sigFile);
+                signDoc.Signature = XmlHelper.DeserializeFromStream<Signature>(stream);
+            }
+
+            // Doc_{0}/Signs/Sign_{1}/Seal.esl
+            string sealFile = System.IO.Path.Combine(docPath, "Signs", $"Sign_{signDocIndex}", "Seal.esl");
+            if (_archive.FileExists(sealFile))
+            {
+                using var stream = _archive.OpenFileStream(sealFile);
+                using var ms = new MemoryStream();
+                stream.CopyTo(ms);
+                signDoc.Seal = ms.ToArray();
+            }
+
+            // Doc_{0}/Signs/Sign_{1}/SignedValue.dat
+            string svFile = System.IO.Path.Combine(docPath, "Signs", $"Sign_{signDocIndex}", "SignedValue.dat");
+            if (_archive.FileExists(svFile))
+            {
+                using var stream = _archive.OpenFileStream(svFile);
+                using var ms = new MemoryStream();
+                stream.CopyTo(ms);
+                signDoc.SignedValue = ms.ToArray();
+            }
+
+            return signDoc;
+        }
+
 
         /// <summary>
         /// 读取指定索引的子文档
         /// </summary>
         /// <param name="docIndex">子文档索引</param>
-        /// <returns>OFDDoc对象</returns>
-        public OFDDocument ReadOFDDoc(int docIndex)
+        /// <returns>OFDDocument对象</returns>
+        public OFDDocument ReadOFDDocument(int docIndex)
         {
             EnsureNotDisposed();
 
@@ -248,6 +442,7 @@ namespace OFDViewer.Parse
             return doc;
         }
 
+
         /// <summary>
         /// 读取签章对象 (Doc_{0}/Signs/Sign_{1}/)
         /// </summary>
@@ -329,6 +524,46 @@ namespace OFDViewer.Parse
             return signDocs;
         }
 
+        /// <summary>
+        /// 读取所有签章对象列表（根据路径）
+        /// </summary>
+        /// <param name="docPath">文档路径</param>
+        /// <returns>签章对象列表，如果没有签章文档则返回空列表</returns>
+        private List<SignDocument> ReadSignDocs(string docPath)
+        {
+            var signDocIndices = GetSignDocIndices(docPath);
+            var signDocs = new List<SignDocument>();
+
+            foreach (int index in signDocIndices)
+            {
+                var signDoc = ReadSignDoc(index, docPath);
+                if (signDoc != null)
+                    signDocs.Add(signDoc);
+            }
+            return signDocs;
+        }
+
+        /// <summary>
+        /// 获取所有存在的签章对象索引（根据路径）
+        /// </summary>
+        /// <param name="docPath">文档路径</param>
+        /// <returns>签章对象索引列表</returns>
+        private List<int> GetSignDocIndices(string docPath)
+        {
+            var indices = new List<int>();
+            var signBaseDir = System.IO.Path.Combine(docPath, "Signs");
+            var docEntrie = _archive.GetDirectEntryNamesInDirectory(signBaseDir);
+            foreach (var entry in docEntrie)
+            {
+                if (entry.StartsWith("Sign_"))
+                {
+                    var index = int.Parse(entry.Substring(5));
+                    indices.Add(index);
+                }
+            }
+            // 从小到大排序
+            return indices.OrderBy(x => x).ToList();
+        }
 
         /// <summary>
         /// 读取指定索引的页面对象 (Doc_{0}/Pages/Page_{1}/)
@@ -361,7 +596,7 @@ namespace OFDViewer.Parse
             string pageResDirectory = Constants.GetFilePath(Constants.Page_ResDirectory, docIndex, pageDocIndex);
             if (_archive.DirectoryExists(pageResDirectory))
             {
-                pageDoc.PageResFiles = ReadFileResInDirectory(pageResDirectory);
+                pageDoc.PageResFileContents = ReadFileResInDirectory(pageResDirectory);
             }
 
             return pageDoc;
@@ -408,6 +643,29 @@ namespace OFDViewer.Parse
                     pageDocs.Add(pageDoc);
             }
             return pageDocs;
+        }
+
+
+        /// <summary>
+        /// 获取所有存在的页面索引（根据路径）
+        /// </summary>
+        /// <param name="docPath">文档路径</param>
+        /// <returns>页面索引列表</returns>
+        private List<int> GetPageDocIndices(string docPath)
+        {
+            var indices = new List<int>();
+            var pageBaseDir = System.IO.Path.Combine(docPath, "Pages");
+            var docEntrie = _archive.GetDirectEntryNamesInDirectory(pageBaseDir);
+            foreach (var entry in docEntrie)
+            {
+                if (entry.StartsWith("Page_"))
+                {
+                    var index = int.Parse(entry.Substring(5));
+                    indices.Add(index);
+                }
+            }
+            // 从小到大排序
+            return indices.OrderBy(x => x).ToList();
         }
 
         /// <summary>

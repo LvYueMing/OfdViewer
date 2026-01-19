@@ -52,7 +52,7 @@ namespace OFDViewer.Tests
             var initialDocCount = ofdDocument.DocCount;
 
             // 执行测试
-            var newDoc = ofdDocument.AddNewDoc();
+            var newDoc = ofdDocument.NewDoc();
 
             // 验证Docs集合
             Assert.Equal(initialDocCount + 1, ofdDocument.DocCount);
@@ -166,8 +166,8 @@ namespace OFDViewer.Tests
         {
             // 准备测试数据
             var ofdDocument = new OFDRootDocument();
-            ofdDocument.AddNewDoc();
-            ofdDocument.AddNewDoc();
+            ofdDocument.NewDoc();
+            ofdDocument.NewDoc();
 
             // 执行测试
             var xml = XmlHelper.SerializeToString(ofdDocument.RootOfd);
@@ -200,7 +200,7 @@ namespace OFDViewer.Tests
         {
             // 准备测试数据
             var ofdDocument = new OFDRootDocument();
-            ofdDocument.AddNewDoc();
+            ofdDocument.NewDoc();
             var originalRootOfd = ofdDocument.RootOfd;
             originalRootOfd.Version = "1.1";
 

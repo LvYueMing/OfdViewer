@@ -143,7 +143,7 @@ namespace OFDViewer.Tests
         }
 
         /// <summary>
-        /// 测试Resource对象的序列化和反序列化
+        /// 测试 Resource 对象的序列化和反序列化
         /// </summary>
         [Fact]
         public void SerializeAndDeserialize_Resource_ShouldMaintainDataIntegrity()
@@ -156,7 +156,7 @@ namespace OFDViewer.Tests
             });
 
             // 根据SetPublicResource方法的实现，BaseLoc应该被设置为相对路径"Res"
-            Assert.Equal("Res", ofdDoc.PublicResource.BaseLoc.ToString());
+            Assert.Equal(".", ofdDoc.PublicResource.BaseLoc.ToString());
 
             // 序列化到XML字符串
             string xml = XmlHelper.SerializeToString(ofdDoc.PublicResource);
@@ -167,8 +167,8 @@ namespace OFDViewer.Tests
             var deserializedRes = XmlHelper.DeserializeFromString<Res>(xml);
             Assert.NotNull(deserializedRes);
 
-            // 根据当前实现，BaseLoc应该是"Res"
-            Assert.Equal("Res", deserializedRes.BaseLoc.ToString());
+            // 根据当前实现
+            Assert.Equal(".", deserializedRes.BaseLoc.ToString());
         }
 
         /// <summary>

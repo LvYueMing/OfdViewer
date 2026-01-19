@@ -1,4 +1,4 @@
-﻿using OFDViewer.Models.Signature;
+using OFDViewer.Models.Signature;
 
 namespace OFDViewer.Parse
 {
@@ -17,6 +17,11 @@ namespace OFDViewer.Parse
         /// 所属文档序号（从0开始，关联对应的 Doc_N 目录）
         /// </summary>
         public int BelongDocIndex { get; }
+
+        /// <summary>
+        /// 所属文档路径（当使用路径构造函数时赋值）
+        /// </summary>
+        public string BelongDocPath { get; }
 
         /// <summary>
         /// 签章属性描述文件（Signature.xml）
@@ -39,7 +44,7 @@ namespace OFDViewer.Parse
         /// <summary>
         /// 签章目录路径（相对根目录，格式：Doc_{BelongDocIndex}/Signs/Sign_{SignIndex}）
         /// </summary>
-        public string SignDirectoryPath =>$"Doc_{BelongDocIndex}/Signs/Sign_{SignIndex}";
+        public string SignDirectoryPath => string.IsNullOrEmpty(BelongDocPath) ? $"Doc_{BelongDocIndex}/Signs/Sign_{SignIndex}" : System.IO.Path.Combine(BelongDocPath, "Signs", $"Sign_{SignIndex}");
 
         /// <summary>
         /// 构造函数，初始化签章序号和所属文档序号，校验合法性
@@ -61,6 +66,28 @@ namespace OFDViewer.Parse
 
             SignIndex = signIndex;
             BelongDocIndex = belongDocIndex;
+        }
+
+        /// <summary>
+        /// 构造函数，初始化签章序号和所属文档路径，校验合法性
+        /// </summary>
+        /// <param name="signIndex">签章序号（从0开始）</param>
+        /// <param name="belongDocPath">所属文档路径</param>
+        public SignDocument(int signIndex, string belongDocPath)
+        {
+            // 校验签章序号合法性
+            if (signIndex < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(signIndex), "签章序号必须从0开始，不允许为负数");
+            }
+            // 校验所属文档路径合法性
+            if (string.IsNullOrEmpty(belongDocPath))
+            {
+                throw new ArgumentNullException(nameof(belongDocPath), "所属文档路径不能为空");
+            }
+
+            SignIndex = signIndex;
+            BelongDocPath = belongDocPath;
         }
     }
 }

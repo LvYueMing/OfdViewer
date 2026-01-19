@@ -47,7 +47,7 @@ namespace OFDViewer.Parse
                 // 若文档集合为空，自动创建第一个文档（DocIndex=0，容错处理）
                 if (Docs == null || Docs.Count == 0)
                 {
-                    AddNewDoc();
+                    NewDoc();
                 }
                 // 返回第一个文档（DocIndex=0，默认单文档）
                 return Docs[0];
@@ -61,14 +61,14 @@ namespace OFDViewer.Parse
         {
             RootOfd = new RootOFD();
             // 自动初始化第一个文档（DocIndex=0），适配单文档默认场景
-            AddNewDoc();
+            NewDoc();
         }
 
         /// <summary>
         /// 添加新文档到OFD根文档，并自动同步文档序号
         /// </summary>
         /// <returns>新增的子文档对象</returns>
-        public OFDDocument AddNewDoc()
+        public OFDDocument NewDoc()
         {
             // 自动生成文档序号（从0开始，基于现有文档数量自增）
             int newDocIndex = this.Docs.Count + 1 - 1;

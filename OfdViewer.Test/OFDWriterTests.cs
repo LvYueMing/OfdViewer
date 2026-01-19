@@ -352,7 +352,7 @@ namespace OFDViewer.Tests
             
             // Act
             // 添加第二个文档
-            var secondDoc = ofdDocument.AddNewDoc();
+            var secondDoc = ofdDocument.NewDoc();
             
             // Assert
             // 验证文档数量

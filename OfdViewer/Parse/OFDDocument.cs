@@ -28,6 +28,18 @@ namespace OFDViewer.Parse
         /// </summary>
         public int DocIndex { get; set; }
 
+
+        private string _docPath;
+        /// <summary>
+        /// 当前文档路径（当使用路径构造函数时赋值）
+        /// </summary>
+        public string DocPath
+        {
+            get => _docPath ?? Constants.GetFilePath(Constants.Doc_BaseDirectory, DocIndex);
+            set => _docPath = value;
+        }
+
+
         private Res _publicResource;
         /// <summary>
         /// 全文档公共资源描述文件（PublicRes.xml）
@@ -35,40 +47,7 @@ namespace OFDViewer.Parse
         public Res PublicResource
         {
             get => _publicResource;
-        }
-
-        /// <summary>
-        /// 设置全文档公共资源描述文件（PublicRes.xml）
-        /// </summary>
-        /// <param name="publicResource">公共资源对象</param>
-        public void SetPublicResource(Res publicResource)
-        {
-            if (publicResource != null)
-            {
-                // 设置相对路径，资源文件位于Doc_0目录下，资源目录是Doc_0/Res，所以相对路径是Res
-                publicResource.BaseLocString = ST_Loc.GetRelativePath(ResDirectory, DocBaseDirectory).Path;
-            }
-            _publicResource = publicResource;
-
-            // 更新Document对象中的公共资源路径
-            if (Document != null && Document.CommonData != null && publicResource != null)
-            {
-                var publicResFileName = ST_Loc.GetRelativePath(PublicResourceFile, DocBaseDirectory);
-                
-                // 确保PublicRes集合已初始化
-                if (Document.CommonData.PublicRes == null)
-                {
-                    Document.CommonData.PublicRes = new List<ST_Loc>();
-                }
-                
-                // 移除旧的路径
-                Document.CommonData.PublicRes = Document.CommonData.PublicRes
-                    ?.Where(path => !path.ToString().EndsWith(publicResFileName.Path))
-                    ?.ToList() ?? new List<ST_Loc>();
-                
-                // 添加新的路径（使用相对当前文档目录的路径）
-                Document.CommonData.PublicRes.Add(publicResFileName);
-            }
+            set => _publicResource = value;
         }
 
         private Res _documentResource;
@@ -79,39 +58,7 @@ namespace OFDViewer.Parse
         public Res DocumentResource
         {
             get => _documentResource;
-        }
-
-        /// <summary>
-        /// 设置当前文档的资源描述文件（DocumentRes.xml）
-        /// </summary>
-        /// <param name="documentResource">文档资源对象</param>
-        public void SetDocumentResource(Res documentResource)
-        {
-            if (documentResource != null)
-            {
-                // 设置相对路径，资源文件位于Doc_0目录下，资源目录是Doc_0/Res，所以相对路径是Res
-                documentResource.BaseLocString = ST_Loc.GetRelativePath(ResDirectory, DocBaseDirectory).Path;
-            }
-            _documentResource = documentResource;
-            // 更新Document对象中的文档资源路径
-            if (Document != null && Document.CommonData != null && documentResource != null)
-            {
-                var documentResFileName = ST_Loc.GetRelativePath(DocumentResourceFile, DocBaseDirectory);
-                
-                // 确保DocumentRes集合已初始化
-                if (Document.CommonData.DocumentRes == null)
-                {
-                    Document.CommonData.DocumentRes = new List<ST_Loc>();
-                }
-                
-                // 移除旧的路径
-                Document.CommonData.DocumentRes = Document.CommonData.DocumentRes
-                    ?.Where(path => !path.ToString().EndsWith(documentResFileName.Path))
-                    ?.ToList() ?? new List<ST_Loc>();
-                
-                // 添加新的路径（使用相对当前文档目录的路径）
-                Document.CommonData.DocumentRes.Add(documentResFileName);
-            }
+            set => _documentResource = value;
         }
 
         /// <summary>
@@ -135,47 +82,80 @@ namespace OFDViewer.Parse
         public Dictionary<string, byte[]> ResFiles { get; set; }
 
 
+        private string _documentFilePath;
         /// <summary>
-        /// 当前文档路径 (Doc_{0})
+        /// 文档主描述文件绝对路径
+        /// 默认 Doc_{0}/Document.xml
         /// </summary>
-        public string DocBaseDirectory => Constants.GetFilePath(Constants.Doc_BaseDirectory, DocIndex);
+        public string DocumentFilePath
+        {
+            get => _documentFilePath ?? 
+                (string.IsNullOrEmpty(DocPath)
+                ? Constants.GetFilePath(Constants.Doc_DocumentFile, DocIndex)
+                : Path.Combine(DocPath, "DocumentRes.xml"));
+            set => _documentFilePath = value;
+        }
 
+        private string _publicResourceFilePath;
         /// <summary>
-        /// 文档主描述文件路径（Doc_{0}/Document.xml）
+        /// 文档公共资源描述文件绝对路径（Doc_{0}/PublicRes.xml）
         /// </summary>
-        public string DocumentFile => Constants.GetFilePath(Constants.Doc_DocumentFile, DocIndex);
+        public string PublicResourceFilePath
+        {
+            get => _publicResourceFilePath ?? 
+                (string.IsNullOrEmpty(DocPath) 
+                ? Constants.GetFilePath(Constants.Doc_PublicResFile, DocIndex)
+                : Path.Combine(DocPath, "PublicRes.xml"));
+            set => _publicResourceFilePath = value;
+        }
 
-        /// <summary>
-        /// 文档公共资源描述文件路径（Doc_{0}/PublicRes.xml）
-        /// </summary>
-        public string PublicResourceFile => Constants.GetFilePath(Constants.Doc_PublicResFile, DocIndex);
-
+        private string _documentResourceFilePath;
         /// <summary>
         /// 文档私有资源描述文件路径（Doc_{0}/DocumentRes.xml）
         /// </summary>
-        public string DocumentResourceFile => Constants.GetFilePath(Constants.Doc_DocumentResFile, DocIndex);
+        public string DocumentResourceFilePath
+        {
+            get => _documentResourceFilePath ?? 
+                (string.IsNullOrEmpty(DocPath) 
+                ? Constants.GetFilePath(Constants.Doc_DocumentResFile, DocIndex)
+                : Path.Combine(DocPath, "DocumentRes.xml"));
+            set => _documentResourceFilePath = value;
+        }
 
         /// <summary>
         /// 文档级资源目录路径（Doc_{0}/Res）
         /// </summary>
-        public string ResDirectory => Constants.GetFilePath(Constants.Doc_ResDirectory, DocIndex);
-
-        /// <summary>
-        /// 页面对象集合目录（Doc_{0}/Pages）
-        /// </summary>
-        public string PagesDirectory => Constants.GetFilePath(Constants.Pages_BaseDirectory, DocIndex);
+        public string ResDirectoryPath => string.IsNullOrEmpty(DocPath) ? Constants.GetFilePath(Constants.Doc_ResDirectory, DocIndex)
+                                                                    : Path.Combine(DocPath, "Res");
 
         /// <summary>
         /// 签章对象集合目录(Doc_{0}/Signs)
         /// </summary>
-        public string SignsDirectory => Constants.GetFilePath(Constants.Signs_BaseDirectory, DocIndex);
+        public string SignsDirectory => string.IsNullOrEmpty(DocPath) ? Constants.GetFilePath(Constants.Signs_BaseDirectory, DocIndex) 
+                                                                       : Path.Combine(DocPath, "Signs");
 
         //无参构造函数
-        public OFDDocument() : this(0)
+        public OFDDocument()
         {
-
         }
 
+        /// <summary>
+        /// 构造函数，初始化文档路径及默认对象
+        /// </summary>
+        /// <param name="docFilePath">文档路径</param>
+        public OFDDocument(string docFilePath)
+        {
+            if (string.IsNullOrEmpty(docFilePath))
+            {
+                throw new ArgumentNullException(nameof(docFilePath), "文档路径不能为空");
+            }
+            DocPath = Path.GetDirectoryName(docFilePath);
+            DocumentFilePath = docFilePath;
+            //todo： 从文档路径 Doc_{0} 获取文档序号 0
+            Document = new Document();
+            PageDocs = new List<PageDocument>();
+            ResFiles = new Dictionary<string, byte[]>();
+        }
 
         /// <summary>
         /// 构造函数，初始化文档序号及默认对象（DocIndex从0开始）
@@ -201,7 +181,7 @@ namespace OFDViewer.Parse
         /// 自动创建新的PageDocument对象并添加到页面集合中
         /// 同时更新Document.Pages集合，建立页面与文档的关联
         /// </remarks>
-        public void AddPageDoc()
+        public void NewPageDoc()
         {
             PageDocs = PageDocs ?? new List<PageDocument>();
 
@@ -242,31 +222,85 @@ namespace OFDViewer.Parse
         /// </remarks>
         public void AddPageDoc(PageDocument pageDoc)
         {
-            // 计算新的页面序号（当前页面数量，从0开始）
-            int newPageIndex = PageDocs.Count;
-
-            // 设置页面序号
-            pageDoc.BelongDocIndex = DocIndex;
-            pageDoc.PageIndex = newPageIndex;
-
-
-            // 创建并添加对应的DocumentPage对象到Document.Pages集合中
-            if (Document != null && Document.Pages != null)
-            {
-                // 创建DocumentPage对象
-                var documentPage = new DocumentPage();
-                
-                // 设置BaseLoc为页面对象描述文件的路径（使用相对当前文档目录的路径）
-                documentPage.BaseLoc = new ST_Loc($"Pages/Page_{newPageIndex}/Content.xml");
-                
-                // 添加到Document.Pages集合
-                Document.Pages.Add(documentPage);
-            }
-            
+            PageDocs = PageDocs ?? new List<PageDocument>();            
             // 添加页面对象
             PageDocs.Add(pageDoc);
         }
 
 
+        /// <summary>
+        /// 设置全文档公共资源描述文件（PublicRes.xml）
+        /// </summary>
+        /// <param name="publicResource">公共资源对象</param>
+        public void SetPublicResource(Res publicResource)
+        {
+            if (publicResource != null)
+            {
+                // 设置相对路径，资源文件位于Doc_0目录下，资源目录是Doc_0/Res，所以相对路径是Res
+                publicResource.BaseLoc = string.IsNullOrEmpty(publicResource.BaseLocString) 
+                    ? ST_Loc.GetRelativePath(ResDirectoryPath, DocPath) 
+                    : publicResource.BaseLoc;
+            }
+            _publicResource = publicResource;
+
+            // 更新Document对象中的公共资源路径
+            if (Document != null && Document.CommonData != null && publicResource != null)
+            {
+                var publicResFileName = ST_Loc.GetRelativePath(PublicResourceFilePath, DocPath);
+
+                // 确保PublicRes集合已初始化
+                if (Document.CommonData.PublicRes == null)
+                {
+                    Document.CommonData.PublicRes = new List<ST_Loc>();
+                }
+
+                // 移除旧的路径
+                Document.CommonData.PublicRes = Document.CommonData.PublicRes
+                    ?.Where(path => !path.ToString().EndsWith(publicResFileName.Path))?.ToList() 
+                    ?? new List<ST_Loc>();
+
+                // 添加新的路径（使用相对当前文档目录的路径）
+                Document.CommonData.PublicRes.Add(publicResFileName);
+            }
+        }
+
+        /// <summary>
+        /// 设置当前文档的资源描述文件（DocumentRes.xml）
+        /// </summary>
+        /// <param name="documentResource">文档资源对象</param>
+        public void SetDocumentResource(Res documentResource)
+        {
+            if (documentResource != null)
+            {
+                // 设置相对路径，资源文件位于Doc_0目录下，资源目录是Doc_0/Res，所以相对路径是Res
+                documentResource.BaseLoc = string.IsNullOrEmpty(documentResource.BaseLocString)
+                    ? ST_Loc.GetRelativePath(ResDirectoryPath, DocPath)
+                    : documentResource.BaseLoc;
+            }
+            _documentResource = documentResource;
+            // 更新Document对象中的文档资源路径
+            if (Document != null && Document.CommonData != null && documentResource != null)
+            {
+                var documentResFileName = ST_Loc.GetRelativePath(DocumentResourceFilePath, DocPath);
+
+                // 确保DocumentRes集合已初始化
+                if (Document.CommonData.DocumentRes == null)
+                {
+                    Document.CommonData.DocumentRes = new List<ST_Loc>();
+                }
+
+                // 移除旧的路径
+                Document.CommonData.DocumentRes = Document.CommonData.DocumentRes
+                    ?.Where(path => !path.ToString().EndsWith(documentResFileName.Path))
+                    ?.ToList() ?? new List<ST_Loc>();
+
+                // 添加新的路径（使用相对当前文档目录的路径）
+                Document.CommonData.DocumentRes.Add(documentResFileName);
+            }
+        }
+
+
+
     }
 }
+

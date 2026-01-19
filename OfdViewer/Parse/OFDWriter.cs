@@ -177,7 +177,7 @@ namespace OFDViewer.Parse
                 if (doc.Document != null)
                 {
                     // 构建子文档元数据路径（如Doc_0/Document.xml）
-                    using var docStream = _archive.CreateFileStream(doc.DocumentFile);
+                    using var docStream = _archive.CreateFileStream(doc.DocumentFilePath);
 
                     // 序列化文档主描述文件（Document.xml）
                     XmlHelper.SerializeToStream(doc.Document, docStream);
@@ -187,7 +187,7 @@ namespace OFDViewer.Parse
                 if (doc.PublicResource != null)
                 {
                     // 构建公共资源描述文件路径(Doc_{0}/PublicRes.xml)
-                    using var publicResStream = _archive.CreateFileStream(doc.PublicResourceFile);
+                    using var publicResStream = _archive.CreateFileStream(doc.PublicResourceFilePath);
 
                     // 序列化全文档公共资源描述文件（PublicRes.xml）
                     XmlHelper.SerializeToStream(doc.PublicResource, publicResStream);
@@ -197,7 +197,7 @@ namespace OFDViewer.Parse
                 if (doc.DocumentResource != null)
                 {
                     // 构建全文档文档资源描述文件路径(Doc_{0}/DocumentRes.xml)
-                    using var documentResStream = _archive.CreateFileStream(doc.DocumentResourceFile);
+                    using var documentResStream = _archive.CreateFileStream(doc.DocumentResourceFilePath);
 
                     // 序列化全文档文档资源描述文件（DocumentRes.xml）
                     XmlHelper.SerializeToStream(doc.DocumentResource, documentResStream);
@@ -355,13 +355,13 @@ namespace OFDViewer.Parse
                     XmlHelper.SerializeToStream(pageDoc.PageRes, pageResStream);
                 }
                 //页面资源文件（Res/Image_{0}.png）
-                if (pageDoc.PageResFiles != null && pageDoc.PageResFiles.Count > 0)
+                if (pageDoc.PageResFileContents != null && pageDoc.PageResFileContents.Count > 0)
                 {
                     // 构建页面资源目录路径(Doc_{0}/Pages/Page_{1}/Res/)
                     string resDirectoryPath = Constants.GetFilePath(
                         Constants.Page_ResDirectory, pageDoc.BelongDocIndex, pageDoc.PageIndex);
                     // 遍历写入每个页面资源文件
-                    foreach (var resFileEntry in pageDoc.PageResFiles)
+                    foreach (var resFileEntry in pageDoc.PageResFileContents)
                     {
                         string resFileName = resFileEntry.Key;
                         byte[] resFileContent = resFileEntry.Value;

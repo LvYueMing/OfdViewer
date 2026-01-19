@@ -40,7 +40,7 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
 
 
         /// <summary>
-        /// 文档资源序列,每个节点指向 OFD包内的一个资源描述文档,资源
+        /// 文档资源序列,每个节点指向 OFD 包内的一个资源描述文档,资源
         /// 部分的描述见7.9,绘制参数、多媒体和矢量图像等宜在文档资源文件中描述
         /// 可选（0..∞）
         /// </summary>
