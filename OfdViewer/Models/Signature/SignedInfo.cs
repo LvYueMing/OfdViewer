@@ -36,7 +36,7 @@ namespace OFDViewer.Models.Signature
 
         /// <summary>
         /// 包内文件计算所得的摘要记录列表
-        /// 一个受本次签名保护的包内文件对应一个 Reference节点
+        /// 一个受本次签名保护的包内文件对应一个 Reference 节点
         /// 必选
         /// </summary>
         [XmlElement("References")]
