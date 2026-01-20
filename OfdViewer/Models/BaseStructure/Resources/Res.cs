@@ -37,7 +37,7 @@ namespace OFDViewer.Models.BaseStructure.Resources
         }
 
         /// <summary>
-        /// 定义此资源文件的通用数据存储路径,BaseLoc属性的意义在于明确资源文件存储的位置,比如 R1.xml中可以指定 BaseLoc
+        /// 定义此资源文件的通用数据存储路径,BaseLoc属性的意义在于明确资源文件存储的位置,比如 R1.xml 中可以指定 BaseLoc
         /// 为“./Res”, 表明该资源文件中所有数据文件的默认存储位置在当前路径的 Res 目录下
         /// 必选
         /// </summary>

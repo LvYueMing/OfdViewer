@@ -41,10 +41,31 @@ namespace OFDViewer.Parse
         /// </summary>
         public byte[] SignedValue { get; set; }
 
+
+        private string _signFilePath;
         /// <summary>
-        /// 签章目录路径（相对根目录，格式：Doc_{BelongDocIndex}/Signs/Sign_{SignIndex}）
+        /// 签章属性描述文件绝对路径
         /// </summary>
-        public string SignDirectoryPath => string.IsNullOrEmpty(BelongDocPath) ? $"Doc_{BelongDocIndex}/Signs/Sign_{SignIndex}" : System.IO.Path.Combine(BelongDocPath, "Signs", $"Sign_{SignIndex}");
+        public string SignFilePath
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_signFilePath))
+                {
+                    _signFilePath = Constants.GetFilePath(Constants.Sign_SignatureFile, BelongDocIndex, SignIndex);
+                }
+                return _signFilePath;
+            }
+            set => _signFilePath = value;
+        }
+
+
+        /// <summary>
+        /// 签章目录路径（相对根目录，格式：Doc_{0}/Signs/Sign_{1}）
+        /// </summary>
+        public string SignDirectoryPath => string.IsNullOrEmpty(SignFilePath)
+            ? Constants.GetFilePath(Constants.Sign_BaseDirectory, BelongDocIndex, SignIndex)
+            : Path.GetDirectoryName(SignFilePath);
 
         /// <summary>
         /// 无参构造函数

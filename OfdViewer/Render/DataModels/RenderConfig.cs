@@ -1,4 +1,5 @@
 using OFDViewer.Render.Abstractions;
+using System.Drawing;
 
 namespace OFDViewer.Render.DataModels
 {
@@ -35,6 +36,27 @@ namespace OFDViewer.Render.DataModels
         /// <summary>
         /// 分辨率（DPI）
         /// </summary>
-        public float Dpi { get; set; } = 96.0f;
+        public float Dpi { get; set; }
+
+        /// <summary>
+        /// 构造函数
+        /// </summary>
+        public RenderConfig()
+        {
+            // 默认获取当前屏幕的DPI
+            using (var graphics = Graphics.FromHwnd(IntPtr.Zero))
+            {
+                Dpi = graphics.DpiX;
+            }
+        }
+
+        /// <summary>
+        /// 构造函数
+        /// </summary>
+        /// <param name="dpi">指定的DPI</param>
+        public RenderConfig(float dpi)
+        {
+            Dpi = dpi;
+        }
     }
 }

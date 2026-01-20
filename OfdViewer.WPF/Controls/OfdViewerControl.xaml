@@ -26,8 +26,13 @@
         </StackPanel>
         
         <!-- 图像显示区域 -->
-        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-            <Image x:Name="OfdImage" Stretch="Uniform"/>
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="#E5E5E5">
+            <Viewbox Stretch="Uniform">
+                <Grid>
+                    <Rectangle Fill="#FFFFFF" Stroke="#CCCCCC" StrokeThickness="1"/>
+                    <Image x:Name="OfdImage" Stretch="Uniform"/>
+                </Grid>
+            </Viewbox>
         </ScrollViewer>
     </Grid>
 </UserControl>

@@ -132,14 +132,9 @@ namespace OFDViewer.Parse
         /// </summary>
         public string SignsFilePath
         {
-            get
-            {
-                if (string.IsNullOrEmpty(_signsFilePath))
-                {
-                    _signsFilePath = Constants.GetFilePath(Constants.Signs_SignaturesFile, DocIndex);
-                }
-                return _signsFilePath;
-            }
+            get => _signsFilePath ?? (string.IsNullOrEmpty(DocDirectoryPath)
+                ? Constants.GetFilePath(Constants.Signs_SignaturesFile, DocIndex)
+                : Path.Combine(SignsDirectoryPath, "Signatures.xml"));
             set => _signsFilePath = value;
         }
 
@@ -153,8 +148,17 @@ namespace OFDViewer.Parse
         /// <summary>
         /// 文档级资源目录路径（Doc_{0}/Res）
         /// </summary>
-        public string ResDirectoryPath => string.IsNullOrEmpty(DocPath) ? Constants.GetFilePath(Constants.Doc_ResDirectory, DocIndex)
-                                                                    : Path.Combine(DocPath, "Res");
+        public string ResDirectoryPath => string.IsNullOrEmpty(DocDirectoryPath) 
+            ? Constants.GetFilePath(Constants.Doc_ResDirectory, DocIndex)
+            : Path.Combine(DocDirectoryPath, "Res");
+
+
+        /// <summary>
+        /// 文档级资源目录路径（Doc_{0}/Pages）
+        /// </summary>
+        public string PagesDirectoryPath => string.IsNullOrEmpty(DocDirectoryPath)
+            ? Constants.GetFilePath(Constants.Pages_BaseDirectory, DocIndex)
+            : Path.Combine(DocDirectoryPath, "Pages");
 
 
         //无参构造函数
@@ -252,6 +256,18 @@ namespace OFDViewer.Parse
 
 
         /// <summary>
+        /// 添加指定的签章对象
+        /// </summary>
+        /// <param name="signDoc"></param>
+        public void AddSignDoc(SignDocument signDoc)
+        {
+            SignDocs = SignDocs ?? new List<SignDocument>();
+            // 添加签章对象
+            SignDocs.Add(signDoc);
+        }
+
+
+        /// <summary>
         /// 设置全文档公共资源描述文件（PublicRes.xml）
         /// </summary>
         /// <param name="publicResource">公共资源对象</param>
@@ -261,7 +277,7 @@ namespace OFDViewer.Parse
             {
                 // 设置相对路径，资源文件位于Doc_0目录下，资源目录是Doc_0/Res，所以相对路径是Res
                 publicResource.BaseLoc = string.IsNullOrEmpty(publicResource.BaseLocString) 
-                    ? ST_Loc.GetRelativePath(ResFileDirectoryPath, DocDirectoryPath) 
+                    ? ST_Loc.GetRelativePath(ResDirectoryPath, DocDirectoryPath) 
                     : publicResource.BaseLoc;
             }
             _publicResource = publicResource;
@@ -297,7 +313,7 @@ namespace OFDViewer.Parse
             {
                 // 设置相对路径，资源文件位于Doc_0目录下，资源目录是Doc_0/Res，所以相对路径是Res
                 documentResource.BaseLoc = string.IsNullOrEmpty(documentResource.BaseLocString)
-                    ? ST_Loc.GetRelativePath(ResFileDirectoryPath, DocDirectoryPath)
+                    ? ST_Loc.GetRelativePath(ResDirectoryPath, DocDirectoryPath)
                     : documentResource.BaseLoc;
             }
             _documentResource = documentResource;

@@ -2,7 +2,7 @@
 using System.Data;
 using System.Windows;
 
-namespace OfdViewer.WPF;
+namespace OfdViewer.WPF.Test;
 
 /// <summary>
 /// Interaction logic for App.xaml

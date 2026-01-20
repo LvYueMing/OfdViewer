@@ -21,7 +21,7 @@ namespace OfdViewer.WPF.Controls
         /// <summary>
         /// 当前页码
         /// </summary>
-        private int _currentPage = 0;
+        private int _currentPage = -1;
         public int CurrentPage
         {
             get => _currentPage;
@@ -72,7 +72,6 @@ namespace OfdViewer.WPF.Controls
                 if (_zoom != value)
                 {
                     _zoom = value;
-                    OfdImage.LayoutTransform = new System.Windows.Media.ScaleTransform(_zoom, _zoom);
                     OnPropertyChanged(nameof(Zoom));
                 }
             }
@@ -284,6 +283,7 @@ namespace OfdViewer.WPF.Controls
         private void ZoomIn()
         {
             Zoom += 0.1;
+            UpdateViewbox();
         }
 
         /// <summary>
@@ -294,6 +294,24 @@ namespace OfdViewer.WPF.Controls
             if (Zoom > 0.1)
             {
                 Zoom -= 0.1;
+                UpdateViewbox();
+            }
+        }
+
+        /// <summary>
+        /// 更新Viewbox
+        /// </summary>
+        private void UpdateViewbox()
+        {
+            if (OfdImage.Source != null)
+            {
+                // 计算Viewbox的缩放比例
+                double scaleX = (ActualWidth - 20) / OfdImage.Source.Width;
+                double scaleY = (ActualHeight - 20) / OfdImage.Source.Height;
+                double scale = Math.Min(scaleX, scaleY);
+
+                // 设置Viewbox的缩放比例
+                OfdImage.LayoutTransform = new System.Windows.Media.ScaleTransform(scale * Zoom, scale * Zoom);
             }
         }
 
@@ -302,7 +320,13 @@ namespace OfdViewer.WPF.Controls
         /// </summary>
         private void FitToWindow()
         {
-            Zoom = 1.0;
+            if (OfdImage.Source != null)
+            {
+                // 计算适应窗口的缩放比例
+                double scaleX = (ActualWidth - 20) / OfdImage.Source.Width;
+                double scaleY = (ActualHeight - 20) / OfdImage.Source.Height;
+                Zoom = Math.Min(scaleX, scaleY);
+            }
         }
 
         #endregion
