@@ -31,8 +31,8 @@ namespace OFDViewer.Models.PageDesc
         public List<CT_Clip> Clips { get; set; }
 
         /// <summary>
-        /// 外接矩形,采用当前空间坐标系(页面坐标或其他容器坐标),当图
-        /// 元绘制超出此矩形区域时进行裁剪
+        /// 外接矩形,采用当前空间坐标系(页面坐标或其他容器坐标),
+        /// 当图元绘制超出此矩形区域时进行裁剪
         /// 必选
         /// </summary>
         [XmlAttribute(AttributeName = "Boundary")]

@@ -38,10 +38,35 @@ namespace OFDViewer.Render.Implementation
         /// 当前绘制路径
         /// </summary>
         private SKPath _currentPath;
+        /// <summary>
+        /// 毫米到像素的转换因子
+        /// </summary>
+        private float _mmToPixel;
+        /// <summary>
+        /// 像素到毫米的转换因子
+        /// </summary>
+        private float _pixelToMm;
 
         #endregion
 
         #region 单位转换与坐标适配
+
+        /// <summary>
+        /// 更新转换因子
+        /// </summary>
+        private void UpdateConversionFactors()
+        {
+            if (_config != null)
+            {
+                _mmToPixel = _config.Dpi / 25.4f;
+                _pixelToMm = 25.4f / _config.Dpi;
+            }
+            else
+            {
+                _mmToPixel = 96.0f / 25.4f; // 默认96 DPI
+                _pixelToMm = 25.4f / 96.0f;
+            }
+        }
 
         /// <summary>
         /// 将OFD毫米单位转换为SkiaSharp像素单位
@@ -50,7 +75,7 @@ namespace OFDViewer.Render.Implementation
         /// <returns>像素值</returns>
         public float MillimetersToPixels(float millimeters)
         {
-            return millimeters * _config.Dpi / 25.4f;
+            return millimeters * _mmToPixel;
         }
 
         /// <summary>
@@ -60,7 +85,7 @@ namespace OFDViewer.Render.Implementation
         /// <returns>OFD毫米值</returns>
         public float PixelsToMillimeters(float pixels)
         {
-            return pixels * 25.4f / _config.Dpi;
+            return pixels * _pixelToMm;
         }
 
         /// <summary>
@@ -112,7 +137,11 @@ namespace OFDViewer.Render.Implementation
         public RenderConfig Config
         {
             get => _config;
-            set => _config = value;
+            set
+            {
+                _config = value;
+                UpdateConversionFactors();
+            }
         }
 
         #endregion
@@ -126,6 +155,8 @@ namespace OFDViewer.Render.Implementation
         {
             _config = new RenderConfig();
             _paint = new SKPaint();
+            // 初始化转换因子
+            UpdateConversionFactors();
         }
 
         /// <summary>
@@ -281,6 +312,35 @@ namespace OFDViewer.Render.Implementation
                 _bitmap.Encode(ms, SKEncodedImageFormat.Png, 100);
                 return ms.ToArray();
             }
+        }
+
+        /// <summary>
+        /// 设置矩形裁剪区
+        /// </summary>
+        /// <param name="x">左上角X坐标</param>
+        /// <param name="y">左上角Y坐标</param>
+        /// <param name="width">宽度</param>
+        /// <param name="height">高度</param>
+        public void SetClipRect(float x, float y, float width, float height)
+        {
+            if (_canvas == null) return;
+
+            // 创建裁剪矩形
+            var clipRect = new SKRect(x, y, x + width, y + height);
+
+            // 设置裁剪区
+            _canvas.ClipRect(clipRect, SKClipOperation.Intersect, true);
+        }
+
+        /// <summary>
+        /// 重置裁剪区
+        /// </summary>
+        public void ResetClip()
+        {
+            if (_canvas == null) return;
+
+            // 重置裁剪区为整个画布
+            _canvas.ClipRect(new SKRect(0, 0, Width, Height), SKClipOperation.Difference, true);
         }
 
         #endregion
@@ -449,11 +509,35 @@ namespace OFDViewer.Render.Implementation
 
             using (var paint = CreatePaintFromTextStyle(style))
             {
-                // 创建字体
-                var typeface = SKTypeface.FromFamilyName(style.FontFamily, 
+                // 创建字体，添加字体回退机制
+                var typeface = SKTypeface.FromFamilyName(
+                    style.FontFamily, 
                     (SKFontStyleWeight)style.FontWeight, 
                     SKFontStyleWidth.Normal, 
                     style.Italic ? SKFontStyleSlant.Italic : SKFontStyleSlant.Upright);
+                
+                // 如果指定字体不存在，使用系统默认字体
+                if (typeface == null)
+                {
+                    // 尝试使用其他常见中文字体
+                    var fallbackFonts = new[] { "Microsoft YaHei", "SimHei", "SimSun", "Arial" };
+                    foreach (var fallbackFont in fallbackFonts)
+                    {
+                        typeface = SKTypeface.FromFamilyName(
+                            fallbackFont, 
+                            (SKFontStyleWeight)style.FontWeight, 
+                            SKFontStyleWidth.Normal, 
+                            style.Italic ? SKFontStyleSlant.Italic : SKFontStyleSlant.Upright);
+                        if (typeface != null)
+                            break;
+                    }
+                    
+                    // 如果所有回退字体都不存在，使用系统默认字体
+                    if (typeface == null)
+                    {
+                        typeface = SKTypeface.Default;
+                    }
+                }
                 
                 var font = new SKFont(typeface, style.FontSize);
                 font.ScaleX = style.HScale;

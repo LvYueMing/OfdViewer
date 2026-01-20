@@ -5,6 +5,7 @@ using OFDViewer.Render.Abstractions;
 using OFDViewer.Render.DataModels;
 using OFDViewer.Render.Implementation;
 using OFDViewer.Models.BaseStructure.Pages;
+using OFDViewer.Models.BaseStructure.Pages.PageBlockItems;
 
 namespace OFDViewer.Render
 {
@@ -271,12 +272,13 @@ namespace OFDViewer.Render
                 return;
             
             // 遍历所有图层
+            // 渲染图层顺序：背景层、正文层、前景层，按照出现的先后顺序依次进行渲染
             foreach (var layer in page.Content)
             {
                 if (layer == null || layer.PageBlockItems == null)
                     continue;
                 
-                // 遍历图层中的所有页面块
+                // 遍历图层中的所有页面块 
                 foreach (var blockItem in layer.PageBlockItems)
                 {
                     // 根据页面块类型调用相应的渲染方法
@@ -299,34 +301,42 @@ namespace OFDViewer.Render
                 return;
             
             // 检查渲染上下文是否实现了相应的渲染接口
-            var graphicRenderer = renderContext as IGraphicRenderer;
-            var textRenderer = renderContext as ITextRenderer;
-            var imageRenderer = renderContext as IImageRenderer;
-            var pathRenderer = renderContext as IPathRenderer;
+            var graphicRenderer = renderContext as IGraphicRenderer;           
             
             // 根据页面块类型调用相应的渲染方法
             switch (blockItem)
             {
                 case Models.BaseStructure.Pages.PageBlockItems.TextObject textObj:
-                    RenderTextObject(textRenderer, textObj);
-                    break;
-                    
+                    {
+                        var textRenderer = renderContext as ITextRenderer;
+                        RenderTextObject(textRenderer, textObj);
+                        break;
+                    }
                 case Models.BaseStructure.Pages.PageBlockItems.PathObject pathObj:
-                    RenderPathObject(pathRenderer, pathObj);
-                    break;
-                    
+                    {
+                        var pathRenderer = renderContext as IPathRenderer;
+                        RenderPathObject(pathRenderer, pathObj);
+                        break;
+                    }
+
                 case Models.BaseStructure.Pages.PageBlockItems.ImageObject imageObj:
-                    RenderImageObject(imageRenderer, imageObj);
-                    break;
-                    
+                    {
+                        var imageRenderer = renderContext as IImageRenderer;
+                        RenderImageObject(imageRenderer, imageObj);
+                        break;
+                    }
+
                 case Models.BaseStructure.Pages.PageBlockItems.CompositeObject compositeObj:
-                    RenderCompositeObject(renderContext, compositeObj);
-                    break;
-                    
+                    {
+                        RenderCompositeObject(renderContext, compositeObj);
+                        break;
+                    }
+
                 case Models.BaseStructure.Pages.PageBlockItems.PageBlock pageBlock:
-                    RenderPageBlockObject(renderContext, pageBlock);
-                    break;
-                    
+                    {
+                        RenderPageBlockObject(renderContext, pageBlock);
+                        break;
+                    }
                 default:
                     // 未知类型，跳过
                     break;
@@ -337,32 +347,86 @@ namespace OFDViewer.Render
         /// 渲染文本对象
         /// </summary>
         /// <param name="textRenderer">文本渲染器</param>
-        /// <param name="textObj">文本对象</param>
-        private void RenderTextObject(ITextRenderer textRenderer, object textObj)
+        /// <param name="textObject">文本对象</param>
+        private void RenderTextObject(ITextRenderer textRenderer, TextObject textObject)
         {
-            if (textRenderer == null || textObj == null)
+            if (textRenderer == null || textObject == null)
+                return;            
+            
+            // 获取渲染上下文
+            var renderContext = textRenderer as IRenderContext;
+            if (renderContext == null)
                 return;
             
-            var textObject = textObj as Models.BaseStructure.Pages.PageBlockItems.TextObject;
-            if (textObject == null)
-                return;
+            // 获取图元外接矩形位置（页面坐标系，毫米转换为像素）
+            float boundaryX = renderContext.MillimetersToPixels((float)textObject.Boundary.X);
+            float boundaryY = renderContext.MillimetersToPixels((float)textObject.Boundary.Y);
+            float boundaryWidth = renderContext.MillimetersToPixels((float)textObject.Boundary.Width);
+            float boundaryHeight = renderContext.MillimetersToPixels((float)textObject.Boundary.Height);
+            
+            // 保存当前渲染状态
+            renderContext?.SaveState();
+            
+            // 设置裁剪区（使用图元的外接矩形作为默认裁剪区）
+            renderContext?.SetClipRect(boundaryX, boundaryY, boundaryWidth, boundaryHeight);
+            
+            // 转换文本样式
+            var textStyle = ConvertToTextStyle(textObject);
             
             // 遍历文本内容列表
             foreach (var textCode in textObject.TextCodes)
             {
-                if (string.IsNullOrEmpty(textCode.Value))
+                if (string.IsNullOrEmpty(textCode.Text))
                     continue;
                 
-                // 转换文本样式
-                var textStyle = ConvertToTextStyle(textObject);
+                // 计算第一个文字的位置（边界矩形位置 + TextCode内部坐标，都转换为像素）
+                float currentX = boundaryX + renderContext.MillimetersToPixels((float)textCode.X);
+                float currentY = boundaryY + renderContext.MillimetersToPixels((float)textCode.Y);
                 
-                // 获取文本位置（OFD坐标，单位：毫米）
-                float x = (float)textObject.Boundary.X;
-                float y = (float)textObject.Boundary.Y;
+                // 将TextCode.DeltaX和DeltaY转换为double数组（如果存在）
+                double[] deltaXArray = new double[0];
+                if (textCode.DeltaX != null)
+                {
+                    deltaXArray = textCode.DeltaX.ToDoubleArray();
+                    if (deltaXArray == null)
+                    {
+                        deltaXArray = new double[0];
+                    }
+                }
                 
-                // 绘制文本
-                textRenderer.DrawText(x, y, textCode.Value, textStyle);
+                double[] deltaYArray = new double[0];
+                if (textCode.DeltaY != null)
+                {
+                    deltaYArray = textCode.DeltaY.ToDoubleArray();
+                    if (deltaYArray == null)
+                    {
+                        deltaYArray = new double[0];
+                    }
+                }
+                
+                // 遍历每个字符，考虑DeltaX和DeltaY偏移
+                for (int i = 0; i < textCode.Text.Length; i++)
+                {
+                    // 获取当前字符
+                    string currentChar = textCode.Text.Substring(i, 1);
+                    
+                    // 绘制当前字符
+                    textRenderer.DrawText(currentX, currentY, currentChar, textStyle);
+                    
+                    // 计算下一个字符的位置（根据DeltaX和DeltaY，转换为像素）
+                    if (i < deltaXArray.Length)
+                    {
+                        currentX += renderContext.MillimetersToPixels((float)deltaXArray[i]);
+                    }
+                    if (i < deltaYArray.Length)
+                    {
+                        currentY += renderContext.MillimetersToPixels((float)deltaYArray[i]);
+                    }
+                }
             }
+            
+            // 恢复渲染状态
+            renderContext?.RestoreState();
         }
         
         /// <summary>
@@ -374,8 +438,8 @@ namespace OFDViewer.Render
         {
             var style = new TextStyle
             {
-                // 字体名称（暂时使用默认字体，后续需要从资源中获取）
-                FontFamily = "SimSun",
+                // 字体名称（使用更通用的中文字体，确保能正确显示中文和英文）
+                FontFamily = "Microsoft YaHei",
                 // 字号转换：OFD毫米单位转换为像素
                 FontSize = (float)(textObject.Size * _renderConfig.Dpi / 25.4f),
                 // 字体粗细
@@ -384,8 +448,8 @@ namespace OFDViewer.Render
                 Italic = textObject.Italic,
                 // 水平缩放比例
                 HScale = (float)textObject.HScale,
-                // 填充颜色
-                Color = ConvertToARGB(textObject.FillColor),
+                // 填充颜色（默认黑色）
+                Color = textObject.FillColor != null ? ConvertToARGB(textObject.FillColor) : 0xFF000000,
                 // 透明度（默认完全不透明）
                 Alpha = 255
             };

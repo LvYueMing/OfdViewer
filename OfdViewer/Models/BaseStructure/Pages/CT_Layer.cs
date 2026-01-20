@@ -7,6 +7,8 @@ namespace OFDViewer.Models.BaseStructure.Pages
 {
     /// <summary>
     /// 图层结构
+    /// 背景层、正文层、前景层形成了多层内容,这些层按照出现的先后顺序依次进行渲染,
+    /// 每一层的默认颜色采用全透明。层的渲染顺序如图16所示。
     /// </summary>
     public class CT_Layer : CT_PageBlock
     {

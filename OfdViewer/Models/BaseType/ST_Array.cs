@@ -425,6 +425,8 @@ namespace OFDViewer.Models.BaseType
         /// </summary>
         public double[] ToDoubleArray()
         {
+            if (_values == null || _values.Count == 0)
+                return null;
             var result = new double[_values.Count];
             for (int i = 0; i < _values.Count; i++)
             {

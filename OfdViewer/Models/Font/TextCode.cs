@@ -5,7 +5,7 @@ namespace OFDViewer.Models.Font
 {
     /// <summary>
     /// 文字定位
-    /// 文字对象使用严格的文字定位信息进行定位, 文字定位结构如图61 所示
+    /// 文字对象使用严格的文字定位信息进行定位, 文字定位结构如图 61 所示
     /// </summary>
     public class TextCode
     {
@@ -73,6 +73,6 @@ namespace OFDViewer.Models.Font
 
         // TextCode 的文本内容（xs:string 基类型）
         [XmlText]
-        public string Value { get; set; }
+        public string Text { get; set; }
     }
 }

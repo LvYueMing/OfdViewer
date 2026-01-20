@@ -25,7 +25,7 @@ namespace OFDViewer.Models.Font
         public CT_Color StrokeColor { get; set; }
 
         /// <summary>
-        /// 指定字符编码到字符索引之间的变换关系, 描述见11.4 字符变换
+        /// 指定字符编码到字符索引之间的变换关系, 描述见 11.4 字符变换
         /// 可选
         /// </summary>
         [XmlElement(ElementName = "CGTransform")]

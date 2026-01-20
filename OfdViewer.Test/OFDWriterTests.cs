@@ -475,7 +475,7 @@ namespace OFDViewer.Tests
                 Y = 10,
                 // DeltaX是ST_Array类型，需要使用Parse方法转换
                 DeltaX = OFDViewer.Models.BaseType.ST_Array.Parse("1.0"),
-                Value = "这是一个测试OFD文档，包含文字内容。"
+                Text = "这是一个测试OFD文档，包含文字内容。"
             };
             textObject.TextCodes.Add(textCode);
 

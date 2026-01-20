@@ -83,6 +83,34 @@ namespace OFDViewer.Render.Abstractions
         /// 渲染配置
         /// </summary>
         RenderConfig Config { get; set; }
+
+        /// <summary>
+        /// 设置矩形裁剪区
+        /// </summary>
+        /// <param name="x">左上角X坐标</param>
+        /// <param name="y">左上角Y坐标</param>
+        /// <param name="width">宽度</param>
+        /// <param name="height">高度</param>
+        void SetClipRect(float x, float y, float width, float height);
+
+        /// <summary>
+        /// 重置裁剪区
+        /// </summary>
+        void ResetClip();
+
+        /// <summary>
+        /// 将毫米转换为像素
+        /// </summary>
+        /// <param name="millimeters">毫米值</param>
+        /// <returns>像素值</returns>
+        float MillimetersToPixels(float millimeters);
+
+        /// <summary>
+        /// 将像素转换为毫米
+        /// </summary>
+        /// <param name="pixels">像素值</param>
+        /// <returns>毫米值</returns>
+        float PixelsToMillimeters(float pixels);
     }
 
     /// <summary>
