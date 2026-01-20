@@ -23,6 +23,7 @@ namespace OFDViewer.Models.Signature
         /// 可选
         /// </summary>
         [XmlElement(ElementName = "Signature")]
-        public List<SignatureRegInfo> SignatureList { get; set; } = Array.Empty<SignatureRegInfo>().ToList();
+        public List<SignatureRegInfo> SignatureList { get; set; }
+
     }
 }

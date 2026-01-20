@@ -29,12 +29,6 @@ namespace OFDViewer.Models.Signature
         /// </summary>
         [XmlElement("SignedValue")]
         [XmlRequired(errorMsg: "SignedValue为必选项，且不能为空")]
-        public string SignedValueString
-        {
-            get => SignedValue.ToString();
-            set => SignedValue = value;
-        }
-        [XmlIgnore]
         public ST_Loc SignedValue { get; set; }
     }
 }

@@ -12,12 +12,6 @@ namespace OFDViewer.Models.Signature
         /// </summary>
         [XmlElement("BaseLoc")]
         [XmlRequired(ErrorMsg = "BaseLoc为必选项，且不能为空")]
-        public string BaseLocString
-        {
-            get => BaseLoc.ToString();
-            set => BaseLoc = value;
-        }
-        [XmlIgnore]
         public ST_Loc BaseLoc { get; set; }
     }
 }

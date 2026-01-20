@@ -61,6 +61,12 @@ namespace OFDViewer.Parse
             set => _documentResource = value;
         }
 
+
+        /// <summary>
+        /// 页面对象集合（对应Page_N目录，存储文档所有页面）
+        /// </summary>
+        public List<PageDocument> PageDocs { get; set; }
+
         /// <summary>
         /// 签章列表索引对象（对应Signatures.xml，记录所有签章信息）
         /// </summary>
@@ -71,10 +77,6 @@ namespace OFDViewer.Parse
         /// </summary>
         public List<SignDocument> SignDocs { get; set; }
 
-        /// <summary>
-        /// 页面对象集合（对应Page_N目录，存储文档所有页面）
-        /// </summary>
-        public List<PageDocument> PageDocs { get; set; }
 
         /// <summary>
         /// 文档级资源文件集合（存储Res目录下的字体、图片等资源）
@@ -122,12 +124,24 @@ namespace OFDViewer.Parse
             set => _documentResourceFilePath = value;
         }
 
+
+        private string _signsFilePath;
         /// <summary>
-        /// 文档级资源目录路径（Doc_{0}/Res）
+        /// 获取签章描述文件 
+        /// Doc_0/Signs/Signatures.xml 
         /// </summary>
-        public string ResFileDirectoryPath => string.IsNullOrEmpty(DocDirectoryPath) 
-            ? Constants.GetFilePath(Constants.Doc_ResDirectory, DocIndex)
-            : Path.Combine(DocDirectoryPath, "Res");
+        public string SignsFilePath
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_signsFilePath))
+                {
+                    _signsFilePath = Constants.GetFilePath(Constants.Signs_SignaturesFile, DocIndex);
+                }
+                return _signsFilePath;
+            }
+            set => _signsFilePath = value;
+        }
 
         /// <summary>
         /// 签章对象集合目录(Doc_{0}/Signs)
@@ -135,6 +149,13 @@ namespace OFDViewer.Parse
         public string SignsDirectoryPath => string.IsNullOrEmpty(DocDirectoryPath) 
             ? Constants.GetFilePath(Constants.Signs_BaseDirectory, DocIndex) 
             : Path.Combine(DocDirectoryPath, "Signs");
+
+        /// <summary>
+        /// 文档级资源目录路径（Doc_{0}/Res）
+        /// </summary>
+        public string ResDirectoryPath => string.IsNullOrEmpty(DocPath) ? Constants.GetFilePath(Constants.Doc_ResDirectory, DocIndex)
+                                                                    : Path.Combine(DocPath, "Res");
+
 
         //无参构造函数
         public OFDDocument()
