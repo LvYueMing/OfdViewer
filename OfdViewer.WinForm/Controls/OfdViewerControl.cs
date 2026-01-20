@@ -16,6 +16,8 @@ namespace OfdViewer.WinForm.Controls
     {
         #region 属性
 
+        private bool _isFirstLoad = true;
+
         /// <summary>
         /// 当前页码
         /// </summary>
@@ -149,19 +151,20 @@ namespace OfdViewer.WinForm.Controls
         private void InitializeUI()
         {
             // 设置控件大小
-            this.Size = new Size(800, 600);
-            
+            this.Size = new Size(600, 800);
+
             // 初始化工具栏
             InitializeToolStrip();
-            
+
             // 初始化图像显示区域
             InitializePictureBox();
-            
+
             // 设置默认A4大小的空白文档
             SetDefaultA4Document();
-            
+
             // 更新UI状态
             UpdateNavigationButtons();
+
         }
 
         /// <summary>
@@ -232,10 +235,11 @@ namespace OfdViewer.WinForm.Controls
             // 创建图片框
             _pictureBox = new PictureBox();
             _pictureBox.Name = "picOfd";
-            _pictureBox.SizeMode = PictureBoxSizeMode.AutoSize;
+            _pictureBox.SizeMode = PictureBoxSizeMode.Normal;
             _pictureBox.BackColor = Color.White;
             _pictureBox.BorderStyle = BorderStyle.FixedSingle;
-            
+            _pictureBox.Margin = new Padding(0,10,0,10);
+
             // 添加到面板
             panel.Controls.Add(_pictureBox);
             
@@ -257,7 +261,15 @@ namespace OfdViewer.WinForm.Controls
         /// </summary>
         private void Panel_Resize(object? sender, EventArgs e)
         {
-            CenterPictureBox();
+            if (_isFirstLoad)
+            {
+                // 适应窗口
+                FitToWindow();
+            }
+            else
+            {
+                CenterPictureBox();
+            }
         }
 
 
@@ -486,13 +498,17 @@ namespace OfdViewer.WinForm.Controls
         {
             if (_pictureBox != null && _pictureBoxPanel != null)
             {
-                // 计算居中位置
-                int x = (_pictureBoxPanel.ClientSize.Width - _pictureBox.Width) / 2;
-                int y = (_pictureBoxPanel.ClientSize.Height - _pictureBox.Height) / 2;
+                // 获取上下边距值
+                int marginTop = _pictureBox.Margin.Top;
+                int marginBottom = _pictureBox.Margin.Bottom;
                 
-                // 确保位置不小于0，并且顶部有一定的边距
+                // 计算居中位置，考虑上下边距
+                int x = (_pictureBoxPanel.ClientSize.Width - _pictureBox.Width) / 2;
+                int y = (_pictureBoxPanel.ClientSize.Height - _pictureBox.Height - marginTop - marginBottom) / 2 + marginTop;
+                
+                // 确保位置不小于0
                 x = Math.Max(0, x);
-                y = Math.Max(20, y); // 顶部边距20像素
+                y = Math.Max(marginTop, y);
                 
                 // 设置图片框位置
                 _pictureBox.Location = new Point(x, y);
@@ -606,9 +622,13 @@ namespace OfdViewer.WinForm.Controls
                 // 获取容器大小
                 if (_pictureBoxPanel != null)
                 {
+                    // 获取上下边距值
+                    int marginTop = _pictureBox.Margin.Top;
+                    int marginBottom = _pictureBox.Margin.Bottom;
+
                     // 计算适应窗口的缩放比例
                     double scaleX = (_pictureBoxPanel.ClientSize.Width - 20) / (double)_pictureBox.Image.Width;
-                    double scaleY = (_pictureBoxPanel.ClientSize.Height - 20) / (double)_pictureBox.Image.Height;
+                    double scaleY = (_pictureBoxPanel.ClientSize.Height - (marginTop + marginBottom)) / (double)_pictureBox.Image.Height;
                     Zoom = Math.Min(scaleX, scaleY);
                 }
             }
@@ -645,6 +665,7 @@ namespace OfdViewer.WinForm.Controls
         /// </summary>
         private void UpdatePageInfo()
         {
+            // 数据绑定 已自动更新，无需手动设置
             //if (_toolStrip != null)
             //{
             //    var lblPageInfo = _toolStrip.Items.Find("lblPageInfo", false)[0] as ToolStripLabel;

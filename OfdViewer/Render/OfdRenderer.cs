@@ -33,12 +33,42 @@ namespace OFDViewer.Render
         /// <summary>
         /// 当前OFD文档
         /// </summary>
-        public OFDRootDocument CurrentDocument { get; private set; }
+        public OFDRootDocument RootDocument { get; private set; }
         
         /// <summary>
         /// 文档总页数
         /// </summary>
         public int PageCount { get; private set; }
+        
+        /// <summary>
+        /// 获取指定文档的页数
+        /// </summary>
+        /// <param name="docIndex">文档索引</param>
+        /// <returns>指定文档的页数</returns>
+        public int GetDocumentPageCount(int docIndex)
+        {
+            if (RootDocument == null || RootDocument.Docs == null || RootDocument.Docs.Count == 0)
+                throw new InvalidOperationException("OFD文档未加载或为空");
+            
+            // 验证文档索引
+            if (docIndex < 0 || docIndex >= RootDocument.Docs.Count)
+                throw new ArgumentOutOfRangeException(nameof(docIndex), "文档索引超出范围");
+            
+            return RootDocument.Docs[docIndex].PageDocs?.Count ?? 0;
+        }
+        
+        /// <summary>
+        /// 获取文档数量
+        /// </summary>
+        public int DocumentCount
+        {
+            get
+            {
+                if (RootDocument == null || RootDocument.Docs == null)
+                    return 0;
+                return RootDocument.Docs.Count;
+            }
+        }
         
         #endregion
 
@@ -111,40 +141,50 @@ namespace OFDViewer.Render
         /// </summary>
         private void LoadDocument()
         {
-            CurrentDocument = _ofdReader.ParseOFDDocument();
+            RootDocument = _ofdReader.ParseOFDDocument();
             PageCount = CalculatePageCount();
         }
         
         /// <summary>
-        /// 计算文档总页数
+        /// 计算所有文档的总页数
         /// </summary>
         /// <returns>总页数</returns>
         private int CalculatePageCount()
         {
-            if (CurrentDocument == null || CurrentDocument.Docs == null || CurrentDocument.Docs.Count == 0)
+            if (RootDocument == null || RootDocument.Docs == null || RootDocument.Docs.Count == 0)
                 return 0;
             
-            var firstDoc = CurrentDocument.Docs[0];
-            return firstDoc.PageDocs?.Count ?? 0;
+            int totalPages = 0;
+            foreach (var doc in RootDocument.Docs)
+            {
+                totalPages += doc.PageDocs?.Count ?? 0;
+            }
+            return totalPages;
         }
         
         /// <summary>
-        /// 渲染指定页面到内存位图
+        /// 渲染指定文档中的指定页面到内存位图
         /// </summary>
-        /// <param name="pageIndex">页面索引，默认为第1页</param>
+        /// <param name="docIndex">文档索引</param>
+        /// <param name="pageIndex">页面索引</param>
         /// <returns>渲染结果（PNG格式字节数组）</returns>
-        public byte[] RenderPageToBitmap(int pageIndex = 0)
+        public byte[] RenderPageToBitmap(int docIndex, int pageIndex)
         {
-            if (CurrentDocument == null || CurrentDocument.Docs == null || CurrentDocument.Docs.Count == 0)
+            if (RootDocument == null || RootDocument.Docs == null || RootDocument.Docs.Count == 0)
                 throw new InvalidOperationException("OFD文档未加载或为空");
             
-            var ofdDoc = CurrentDocument.Docs[0];
+            // 验证文档索引
+            if (docIndex < 0 || docIndex >= RootDocument.Docs.Count)
+                throw new ArgumentOutOfRangeException(nameof(docIndex), "文档索引超出范围");
+            
+            var ofdDoc = RootDocument.Docs[docIndex];
             if (ofdDoc == null || ofdDoc.Document == null)
                 throw new InvalidOperationException("OFD文档结构无效");
             
             // 验证页面索引
-            if (pageIndex < 0 || pageIndex >= PageCount)
-                throw new ArgumentOutOfRangeException(nameof(pageIndex), "页面索引超出范围");
+            int docPageCount = ofdDoc.PageDocs?.Count ?? 0;
+            if (pageIndex < 0 || pageIndex >= docPageCount)
+                throw new ArgumentOutOfRangeException(nameof(pageIndex), "页面索引超出当前文档的范围");
             
             // 获取页面尺寸（OFD标准单位：毫米）
             var pageWidth = (float)ofdDoc.Document.CommonData.PageArea.PhysicalBox.Width;
@@ -164,6 +204,7 @@ namespace OFDViewer.Render
             // 创建渲染上下文
             using var renderContext = new SkiaRenderContext();
             renderContext.Config = _renderConfig;
+            // 初始化渲染上下文
             renderContext.Initialize(renderWidth, renderHeight);
             
             // 设置背景色为白色
@@ -175,12 +216,47 @@ namespace OFDViewer.Render
                 var pageDoc = ofdDoc.PageDocs[pageIndex];
                 if (pageDoc != null && pageDoc.Page != null)
                 {
+                    // 渲染页面内容
                     RenderPageContent(renderContext, pageDoc.Page);
                 }
             }
             
             // 返回渲染结果
             return renderContext.GetRenderResult();
+        }
+        
+        /// <summary>
+        /// 渲染指定页面到内存位图（按全局页面索引）
+        /// </summary>
+        /// <param name="pageIndex">全局页面索引，默认为第1页</param>
+        /// <returns>渲染结果（PNG格式字节数组）</returns>
+        public byte[] RenderPageToBitmap(int pageIndex = 0)
+        {
+            if (RootDocument == null || RootDocument.Docs == null || RootDocument.Docs.Count == 0)
+                throw new InvalidOperationException("OFD文档未加载或为空");
+            
+            // 验证全局页面索引
+            if (pageIndex < 0 || pageIndex >= PageCount)
+                throw new ArgumentOutOfRangeException(nameof(pageIndex), "页面索引超出范围");
+            
+            // 查找页面所在的文档和文档内的页面索引
+            int cumulativePages = 0;
+            int targetDocIndex = 0;
+            int targetPageIndex = pageIndex;
+            
+            foreach (var doc in RootDocument.Docs)
+            {
+                int docPageCount = doc.PageDocs?.Count ?? 0;
+                if (pageIndex < cumulativePages + docPageCount)
+                {
+                    targetPageIndex = pageIndex - cumulativePages;
+                    break;
+                }
+                cumulativePages += docPageCount;
+                targetDocIndex++;
+            }
+            
+            return RenderPageToBitmap(targetDocIndex, targetPageIndex);
         }
         
         /// <summary>

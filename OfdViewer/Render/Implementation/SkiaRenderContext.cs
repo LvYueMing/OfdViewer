@@ -14,11 +14,29 @@ namespace OFDViewer.Render.Implementation
     {
         #region 私有字段
 
+        /// <summary>
+        /// 渲染目标位图
+        /// </summary>
         private SKBitmap _bitmap;
+        /// <summary>
+        /// 渲染画布
+        /// </summary>
         private SKCanvas _canvas;
+        /// <summary>
+        /// 渲染画笔
+        /// </summary>
         private SKPaint _paint;
+        /// <summary>
+        /// 是否已释放
+        /// </summary>
         private bool _disposed;
+        /// <summary>
+        /// 渲染配置
+        /// </summary>
         private RenderConfig _config;
+        /// <summary>
+        /// 当前绘制路径
+        /// </summary>
         private SKPath _currentPath;
 
         #endregion
@@ -136,6 +154,8 @@ namespace OFDViewer.Render.Implementation
             if (_bitmap == null || _bitmap.Width != width || _bitmap.Height != height)
             {
                 _bitmap?.Dispose();
+                // 创建新的位图
+                // 确保位图的颜色类型为Rgba8888，透明度为Premul
                 _bitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
             }
 
@@ -185,13 +205,15 @@ namespace OFDViewer.Render.Implementation
         {
             if (_canvas == null) return;
 
+            // 转换ARGB颜色到SkiaSharp颜色
+            // 31-24位：Alpha (A)  |  23-16位：Red (R)  |  15-8位：Green (G)  |  7-0位：Blue (B)
             var skColor = new SKColor(
-                (byte)((color >> 16) & 0xFF),
-                (byte)((color >> 8) & 0xFF),
-                (byte)(color & 0xFF),
-                (byte)((color >> 24) & 0xFF)
+                (byte)((color >> 16) & 0xFF),   //red
+                (byte)((color >> 8) & 0xFF),    //green
+                (byte)(color & 0xFF),           //blue
+                (byte)((color >> 24) & 0xFF)    //alpha
             );
-
+            // 清空画布，使用指定背景色
             _canvas.Clear(skColor);
         }
 
@@ -259,38 +281,6 @@ namespace OFDViewer.Render.Implementation
                 _bitmap.Encode(ms, SKEncodedImageFormat.Png, 100);
                 return ms.ToArray();
             }
-        }
-
-        #endregion
-
-        #region IDisposable实现
-
-        /// <summary>
-        /// 释放资源
-        /// </summary>
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        /// <summary>
-        /// 释放资源
-        /// </summary>
-        /// <param name="disposing">是否手动释放</param>
-        protected virtual void Dispose(bool disposing)
-        {
-            if (_disposed) return;
-
-            if (disposing)
-            {
-                // 释放托管资源
-                _paint?.Dispose();
-                _canvas?.Dispose();
-                _bitmap?.Dispose();
-            }
-
-            _disposed = true;
         }
 
         #endregion
@@ -823,6 +813,38 @@ namespace OFDViewer.Render.Implementation
         //     // 实现OFD页面元素到SkiaSharp绘制指令的转换逻辑
         //     // 这需要根据OFD文档模型的具体结构来实现
         // }
+
+        #endregion
+
+                #region IDisposable实现
+
+        /// <summary>
+        /// 释放资源
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// 释放资源
+        /// </summary>
+        /// <param name="disposing">是否手动释放</param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_disposed) return;
+
+            if (disposing)
+            {
+                // 释放托管资源
+                _paint?.Dispose();
+                _canvas?.Dispose();
+                _bitmap?.Dispose();
+            }
+
+            _disposed = true;
+        }
 
         #endregion
     }
