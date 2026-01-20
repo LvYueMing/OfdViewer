@@ -29,14 +29,14 @@ namespace OFDViewer.Parse
         public int DocIndex { get; set; }
 
 
-        private string _docPath;
+        private string _docDirectoryPath;
         /// <summary>
         /// 当前文档路径（当使用路径构造函数时赋值）
         /// </summary>
-        public string DocPath
+        public string DocDirectoryPath
         {
-            get => _docPath ?? Constants.GetFilePath(Constants.Doc_BaseDirectory, DocIndex);
-            set => _docPath = value;
+            get => _docDirectoryPath ?? Constants.GetFilePath(Constants.Doc_BaseDirectory, DocIndex);
+            set => _docDirectoryPath = value;
         }
 
 
@@ -90,9 +90,9 @@ namespace OFDViewer.Parse
         public string DocumentFilePath
         {
             get => _documentFilePath ?? 
-                (string.IsNullOrEmpty(DocPath)
+                (string.IsNullOrEmpty(DocDirectoryPath)
                 ? Constants.GetFilePath(Constants.Doc_DocumentFile, DocIndex)
-                : Path.Combine(DocPath, "DocumentRes.xml"));
+                : Path.Combine(DocDirectoryPath, "DocumentRes.xml"));
             set => _documentFilePath = value;
         }
 
@@ -103,9 +103,9 @@ namespace OFDViewer.Parse
         public string PublicResourceFilePath
         {
             get => _publicResourceFilePath ?? 
-                (string.IsNullOrEmpty(DocPath) 
+                (string.IsNullOrEmpty(DocDirectoryPath) 
                 ? Constants.GetFilePath(Constants.Doc_PublicResFile, DocIndex)
-                : Path.Combine(DocPath, "PublicRes.xml"));
+                : Path.Combine(DocDirectoryPath, "PublicRes.xml"));
             set => _publicResourceFilePath = value;
         }
 
@@ -116,23 +116,25 @@ namespace OFDViewer.Parse
         public string DocumentResourceFilePath
         {
             get => _documentResourceFilePath ?? 
-                (string.IsNullOrEmpty(DocPath) 
+                (string.IsNullOrEmpty(DocDirectoryPath) 
                 ? Constants.GetFilePath(Constants.Doc_DocumentResFile, DocIndex)
-                : Path.Combine(DocPath, "DocumentRes.xml"));
+                : Path.Combine(DocDirectoryPath, "DocumentRes.xml"));
             set => _documentResourceFilePath = value;
         }
 
         /// <summary>
         /// 文档级资源目录路径（Doc_{0}/Res）
         /// </summary>
-        public string ResDirectoryPath => string.IsNullOrEmpty(DocPath) ? Constants.GetFilePath(Constants.Doc_ResDirectory, DocIndex)
-                                                                    : Path.Combine(DocPath, "Res");
+        public string ResFileDirectoryPath => string.IsNullOrEmpty(DocDirectoryPath) 
+            ? Constants.GetFilePath(Constants.Doc_ResDirectory, DocIndex)
+            : Path.Combine(DocDirectoryPath, "Res");
 
         /// <summary>
         /// 签章对象集合目录(Doc_{0}/Signs)
         /// </summary>
-        public string SignsDirectory => string.IsNullOrEmpty(DocPath) ? Constants.GetFilePath(Constants.Signs_BaseDirectory, DocIndex) 
-                                                                       : Path.Combine(DocPath, "Signs");
+        public string SignsDirectoryPath => string.IsNullOrEmpty(DocDirectoryPath) 
+            ? Constants.GetFilePath(Constants.Signs_BaseDirectory, DocIndex) 
+            : Path.Combine(DocDirectoryPath, "Signs");
 
         //无参构造函数
         public OFDDocument()
@@ -149,7 +151,7 @@ namespace OFDViewer.Parse
             {
                 throw new ArgumentNullException(nameof(docFilePath), "文档路径不能为空");
             }
-            DocPath = Path.GetDirectoryName(docFilePath);
+            DocDirectoryPath = Path.GetDirectoryName(docFilePath);
             DocumentFilePath = docFilePath;
             //todo： 从文档路径 Doc_{0} 获取文档序号 0
             Document = new Document();
@@ -238,7 +240,7 @@ namespace OFDViewer.Parse
             {
                 // 设置相对路径，资源文件位于Doc_0目录下，资源目录是Doc_0/Res，所以相对路径是Res
                 publicResource.BaseLoc = string.IsNullOrEmpty(publicResource.BaseLocString) 
-                    ? ST_Loc.GetRelativePath(ResDirectoryPath, DocPath) 
+                    ? ST_Loc.GetRelativePath(ResFileDirectoryPath, DocDirectoryPath) 
                     : publicResource.BaseLoc;
             }
             _publicResource = publicResource;
@@ -246,7 +248,7 @@ namespace OFDViewer.Parse
             // 更新Document对象中的公共资源路径
             if (Document != null && Document.CommonData != null && publicResource != null)
             {
-                var publicResFileName = ST_Loc.GetRelativePath(PublicResourceFilePath, DocPath);
+                var publicResFileName = ST_Loc.GetRelativePath(PublicResourceFilePath, DocDirectoryPath);
 
                 // 确保PublicRes集合已初始化
                 if (Document.CommonData.PublicRes == null)
@@ -274,14 +276,14 @@ namespace OFDViewer.Parse
             {
                 // 设置相对路径，资源文件位于Doc_0目录下，资源目录是Doc_0/Res，所以相对路径是Res
                 documentResource.BaseLoc = string.IsNullOrEmpty(documentResource.BaseLocString)
-                    ? ST_Loc.GetRelativePath(ResDirectoryPath, DocPath)
+                    ? ST_Loc.GetRelativePath(ResFileDirectoryPath, DocDirectoryPath)
                     : documentResource.BaseLoc;
             }
             _documentResource = documentResource;
             // 更新Document对象中的文档资源路径
             if (Document != null && Document.CommonData != null && documentResource != null)
             {
-                var documentResFileName = ST_Loc.GetRelativePath(DocumentResourceFilePath, DocPath);
+                var documentResFileName = ST_Loc.GetRelativePath(DocumentResourceFilePath, DocDirectoryPath);
 
                 // 确保DocumentRes集合已初始化
                 if (Document.CommonData.DocumentRes == null)

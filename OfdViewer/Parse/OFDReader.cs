@@ -154,7 +154,7 @@ namespace OFDViewer.Parse
                 foreach (var res in pubResPaths)
                 {
                     //  获取PublicRes.xml绝对路径
-                    var pubResFilePath = res.GetAbsolutePath(doc.DocPath).Path;
+                    var pubResFilePath = res.GetAbsolutePath(doc.DocDirectoryPath).Path;
                     if (_archive.FileExists(pubResFilePath))
                     {
                         using var stream = _archive.OpenFileStream(pubResFilePath);
@@ -171,7 +171,7 @@ namespace OFDViewer.Parse
                 foreach (var res in docResPaths)
                 {
                     // 获取 DocumentRes.xml 绝对路径
-                    var docResFilePath = res.GetAbsolutePath(doc.DocPath).Path;
+                    var docResFilePath = res.GetAbsolutePath(doc.DocDirectoryPath).Path;
                     if (_archive.FileExists(docResFilePath))
                     {
                         using var stream = _archive.OpenFileStream(docResFilePath);
@@ -189,7 +189,7 @@ namespace OFDViewer.Parse
                 foreach (var page in doc.Document.Pages)
                 {
                     // 获取页面对象文件 Pages/Page_0/Content.xml 绝对路径 
-                    var pageFilePath = page.BaseLoc.GetAbsolutePath(doc.DocPath).Path;
+                    var pageFilePath = page.BaseLoc.GetAbsolutePath(doc.DocDirectoryPath).Path;
                     var pageDoc = ReadPageDoc(pageFilePath);
 
                     doc.AddPageDoc(pageDoc);
