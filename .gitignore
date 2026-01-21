@@ -341,3 +341,4 @@ publish/
 OFD-File/
 .vscode/
 .trae/
+*.md
