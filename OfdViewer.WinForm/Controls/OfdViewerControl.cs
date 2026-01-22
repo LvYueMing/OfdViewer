@@ -181,6 +181,9 @@ namespace OfdViewer.WinForm.Controls
             get => _zoom;
             set
             {
+                // 限制最小缩放比例为25%
+                value = Math.Max(value, 0.25);
+                
                 if (_zoom != value)
                 {
                     _zoom = value;
@@ -228,18 +231,14 @@ namespace OfdViewer.WinForm.Controls
         private int _accumulatedHeight = 0;
 
         /// <summary>
-        /// 最后缩放比例
-        /// </summary>
-        private double _lastZoom = 1.0;
-
-        /// <summary>
         /// 用于优化Panel_Paint的标记
         /// </summary>
         private int _lastScrollPosition = -1;
         private int _lastFirstPage = -1;
         private int _lastLastPage = -1;
+        private double _lastZoom = 1.0;
 
-        
+
         /// <summary>
         /// 待渲染的页面队列
         /// </summary>
@@ -312,7 +311,7 @@ namespace OfdViewer.WinForm.Controls
             {
                 Visible = true,
                 SizeMode = PictureBoxSizeMode.StretchImage,
-                BorderStyle = BorderStyle.None
+                BorderStyle = BorderStyle.FixedSingle
             };
         }
 
@@ -710,10 +709,7 @@ namespace OfdViewer.WinForm.Controls
                 TotalPages = _ofdRenderer.PageCount;
                 
                 // 先设置CurrentPage为-1，避免触发不必要的重绘
-                _currentPage = -1;
-                
-                // 适应窗口（会计算缩放比例）
-                FitToWindow();
+                _currentPage = -1;              
                 
                 // 最后设置CurrentPage为0，触发一次重绘
                 CurrentPage = 0;
@@ -1005,74 +1001,83 @@ namespace OfdViewer.WinForm.Controls
             else
             {
                 // 未打开文档时，显示空白的A4大小的文档区域
-                // 检查是否已经有空白文档区域
-                if (panel.Controls.Count == 0 || panel.Controls.Count == 1)
+                RenderBlankDocument(panel);
+            }
+        }
+
+        /// <summary>
+        /// 渲染空白文档区域（未打开文档时显示）
+        /// </summary>
+        /// <param name="panel">要渲染到的面板</param>
+        private void RenderBlankDocument(Panel panel)
+        {
+            // 检查是否已经有空白文档区域
+            if (panel.Controls.Count == 0 || panel.Controls.Count == 1)
+            {
+                var existingPictureBox = panel.Controls.OfType<PictureBox>()
+                                        .FirstOrDefault(p => p.Tag is string s && s == "BlankDocument");
+                if (existingPictureBox != null && existingPictureBox.Image != null)
                 {
-                    var existingPictureBox = panel.Controls.OfType<PictureBox>()
-                                            .FirstOrDefault(p => p.Tag is string s && s == "BlankDocument");
-                    if (existingPictureBox != null && existingPictureBox.Image != null)
+                    // 获取当前滚动位置（取绝对值）
+                    int scrollPositionY = Math.Abs(panel.AutoScrollPosition.Y);
+                    // 计算水平居中位置
+                    int pageX = (panel.ClientSize.Width - existingPictureBox.Image.Width) / 2;
+                    pageX = Math.Max(0, pageX); // 确保不小于0
+
+                    // 计算页面的实际位置                    
+                    int pageY = PageSpacing - scrollPositionY;
+
+                    // 设置位置，确保上下边有间距
+                    existingPictureBox.Location = new Point(pageX, pageY);
+
+                    // 设置滚动范围（包含上下间距）
+                    panel.AutoScrollMinSize = new Size(existingPictureBox.Image.Width, existingPictureBox.Image.Height + PageSpacing * 2);
+                }
+                else
+                {
+                    // 创建空白的A4大小的图片框
+                    var blankPictureBox = GetPictureBoxFromPool();
+
+                    // 使用缓存的A4尺寸像素值
+                    GetA4PixelSize(out int a4Width, out int a4Height);
+
+                    var blankBitmap = new Bitmap(a4Width, a4Height);
+
+                    using (var g = Graphics.FromImage(blankBitmap))
                     {
-                        // 获取当前滚动位置（取绝对值）
-                        int scrollPositionY = Math.Abs(panel.AutoScrollPosition.Y);
-                        // 计算水平居中位置
-                        int pageX = (panel.ClientSize.Width - existingPictureBox.Image.Width) / 2;
-                        pageX = Math.Max(0, pageX); // 确保不小于0
+                        g.Clear(Color.White); // 白色背景
 
-                        // 计算页面的实际位置                    
-                        int pageY = PageSpacing - scrollPositionY;
+                        // 绘制边框（使用更粗的线条和更深的颜色，模拟其他阅读器的边框）
+                        //g.DrawRectangle(Pens.LightGray, 0, 0, a4Width - 1, a4Height - 1);
+                        //g.DrawRectangle(Pens.DarkGray, 1, 1, a4Width - 3, a4Height - 3);
 
-                        // 设置位置，确保上下边有间距
-                        existingPictureBox.Location = new Point(pageX, pageY);
-
-                        // 设置滚动范围（包含上下间距）
-                        panel.AutoScrollMinSize = new Size(existingPictureBox.Image.Width, existingPictureBox.Image.Height + PageSpacing * 2);
+                        // 显示提示文字
+                        string hintText = "请打开OFD文档";
+                        var font = new Font(FontFamily.GenericSansSerif, 16, FontStyle.Bold);
+                        var textSize = g.MeasureString(hintText, font);
+                        var textX = (a4Width - textSize.Width) / 2;
+                        var textY = (a4Height - textSize.Height) / 2;
+                        g.DrawString(hintText, font, Brushes.Gray, textX, textY);
                     }
-                    else
-                    {
-                        // 创建空白的A4大小的图片框
-                        var blankPictureBox = GetPictureBoxFromPool();
 
-                        // 使用缓存的A4尺寸像素值
-                        GetA4PixelSize(out int a4Width, out int a4Height);
+                    blankPictureBox.Image = blankBitmap;
 
-                        var blankBitmap = new Bitmap(a4Width, a4Height);
+                    // 计算水平居中位置
+                    int pageX = (panel.ClientSize.Width - a4Width) / 2;
+                    pageX = Math.Max(0, pageX); // 确保不小于0
 
-                        using (var g = Graphics.FromImage(blankBitmap))
-                        {
-                            g.Clear(Color.White); // 白色背景
+                    // 设置位置，确保上下边有间距
+                    blankPictureBox.Location = new Point(pageX, PageSpacing);
+                    blankPictureBox.Size = new Size(a4Width, a4Height);
 
-                            // 绘制边框（使用更粗的线条和更深的颜色，模拟其他阅读器的边框）
-                            g.DrawRectangle(Pens.LightGray, 0, 0, a4Width - 1, a4Height - 1);
-                            g.DrawRectangle(Pens.DarkGray, 1, 1, a4Width - 3, a4Height - 3);
+                    // 将"BlankDocument"记录到PictureBox的Tag属性中
+                    blankPictureBox.Tag = "BlankDocument";
 
-                            // 显示提示文字
-                            string hintText = "请打开OFD文档";
-                            var font = new Font(FontFamily.GenericSansSerif, 16, FontStyle.Bold);
-                            var textSize = g.MeasureString(hintText, font);
-                            var textX = (a4Width - textSize.Width) / 2;
-                            var textY = (a4Height - textSize.Height) / 2;
-                            g.DrawString(hintText, font, Brushes.Gray, textX, textY);
-                        }
+                    // 添加到面板
+                    panel.Controls.Add(blankPictureBox);
 
-                        blankPictureBox.Image = blankBitmap;
-
-                        // 计算水平居中位置
-                        int pageX = (panel.ClientSize.Width - a4Width) / 2;
-                        pageX = Math.Max(0, pageX); // 确保不小于0
-
-                        // 设置位置，确保上下边有间距
-                        blankPictureBox.Location = new Point(pageX, PageSpacing);
-                        blankPictureBox.Size = new Size(a4Width, a4Height);
-
-                        // 将"BlankDocument"记录到PictureBox的Tag属性中
-                        blankPictureBox.Tag = "BlankDocument";
-
-                        // 添加到面板
-                        panel.Controls.Add(blankPictureBox);
-
-                        // 设置滚动范围（包含上下间距）
-                        panel.AutoScrollMinSize = new Size(a4Width, a4Height + PageSpacing * 2);
-                    }
+                    // 设置滚动范围（包含上下间距）
+                    panel.AutoScrollMinSize = new Size(a4Width, a4Height + PageSpacing * 2);
                 }
             }
         }
