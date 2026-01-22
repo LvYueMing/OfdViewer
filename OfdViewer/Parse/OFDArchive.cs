@@ -538,20 +538,7 @@ namespace OFDViewer.Parse
             {
                 if (disposing)
                 {
-                    // 托管资源释放：如果未手动Save，自动调用Save确保数据不丢失
-                    if (!_saved)
-                    {
-                        try
-                        {
-                            Save();
-                        }
-                        catch
-                        {
-                            // 捕获异常，避免Dispose抛异常导致程序崩溃
-                        }
-                    }
-
-                    // 释放剩余资源
+                    // 释放剩余资源（不自动保存，避免在渲染解析时不必要地保存文档）
                     _zipArchive?.Dispose();
                     _fileStream?.Dispose();
                     if (!_leaveOpen)

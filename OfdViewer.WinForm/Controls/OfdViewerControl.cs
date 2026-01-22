@@ -34,10 +34,23 @@ namespace OfdViewer.WinForm.Controls
                     OnPropertyChanged(nameof(CurrentPage));
                     OnPropertyChanged(nameof(PageInfo));
                     
-                    // 使用智能重绘，避免不必要的重绘
-                    SmartInvalidate();
+                    // 确保页面偏移量已更新
+                    UpdatePageOffsets();
                     
-                    UpdateNavigationButtons();
+                    // 滚动到当前页面
+                    if (_pictureBoxPanel != null && _pageOffsets.TryGetValue(_currentPage, out int scrollY))
+                    {
+                        // 计算滚动位置（考虑页面高度的一半，使页面居中显示）
+                        int panelHeight = _pictureBoxPanel.ClientSize.Height;
+                        int pageHeight = (int)(842 * Zoom);
+                        int scrollOffset = scrollY - (panelHeight - pageHeight) / 2;
+                        scrollOffset = Math.Max(0, scrollOffset);
+                        
+                        // 设置滚动位置
+                    _pictureBoxPanel.AutoScrollPosition = new Point(0, scrollOffset);
+                }
+                
+                UpdateNavigationButtons();
                 }
             }
         }
@@ -82,8 +95,8 @@ namespace OfdViewer.WinForm.Controls
                 {
                     _zoom = value;
                     
-                    // 使用智能重绘，避免不必要的重绘
-                     SmartInvalidate();
+                    // 触发重绘，更新所有页面的缩放
+                    _pictureBoxPanel?.Invalidate();
                 }
             }
         }
@@ -111,10 +124,26 @@ namespace OfdViewer.WinForm.Controls
         private const int MaxPoolSize = 10;
 
         /// <summary>
-        /// 用于智能重绘的标记
+        /// 页面偏移量（用于滚动）
         /// </summary>
-        private int _lastRenderedPage = -1;
-        private double _lastZoom = -1;
+        private readonly Dictionary<int, int> _pageOffsets = new Dictionary<int, int>();
+
+        /// <summary>
+        /// 累计高度（用于滚动）
+        /// </summary>
+        private int _accumulatedHeight = 0;
+
+        /// <summary>
+        /// 用于优化Panel_Paint的标记
+        /// </summary>
+        private int _lastScrollPosition = -1;
+        private int _lastFirstPage = -1;
+        private int _lastLastPage = -1;
+
+        /// <summary>
+        /// 页面间距（像素）
+        /// </summary>
+        private const int PageSpacing = 10;
 
         /// <summary>
         /// 待渲染的页面队列
@@ -216,6 +245,12 @@ namespace OfdViewer.WinForm.Controls
             // pageInfoLabel.Text = PageInfo;
             // 绑定模式：双向绑定（控件值变化 → 模型属性变化；模型属性变化 → 控件值变化）
             pageInfoLabel.DataBindings.Add("Text",this, nameof(PageInfo),false,DataSourceUpdateMode.OnPropertyChanged);
+            
+            // 添加页码输入框
+            var pageNumberTextBox = new ToolStripTextBox();
+            pageNumberTextBox.Name = "txtPageNumber";
+            pageNumberTextBox.Size = new Size(50, 20);
+            pageNumberTextBox.KeyPress += PageNumberTextBox_KeyPress;
 
             var zoomInButton = new ToolStripButton("放大");
             zoomInButton.Click += ZoomInButton_Click;
@@ -232,6 +267,7 @@ namespace OfdViewer.WinForm.Controls
             _toolStrip.Items.Add(nextButton);
             _toolStrip.Items.Add(new ToolStripSeparator());
             _toolStrip.Items.Add(pageInfoLabel);
+            _toolStrip.Items.Add(pageNumberTextBox);
             _toolStrip.Items.Add(new ToolStripSeparator());
             _toolStrip.Items.Add(zoomInButton);
             _toolStrip.Items.Add(zoomOutButton);
@@ -251,8 +287,6 @@ namespace OfdViewer.WinForm.Controls
             panel.Dock = DockStyle.Fill;
             panel.AutoScroll = true;
             panel.BackColor = Color.FromArgb(229, 229, 229);
-            panel.MouseWheel += PictureBoxPanel_MouseWheel;
-            panel.Scroll += PictureBoxPanel_Scroll;
             panel.Paint += Panel_Paint;
             
             // 保存面板引用
@@ -264,7 +298,7 @@ namespace OfdViewer.WinForm.Controls
             // 确保工具栏位于面板上方
             if (_toolStrip != null)
             {
-                _toolStrip.BringToFront();
+                panel.BringToFront();
             }
             
             // 触发一次重绘，显示空白文档区域
@@ -278,19 +312,19 @@ namespace OfdViewer.WinForm.Controls
         /// <summary>
         /// 打开OFD文档
         /// </summary>
-        public void OpenDocument(string filePath)
+        public async void OpenDocument(string filePath)
         {
             try
             {
+                // 等待当前渲染任务完成
+                while (_isRendering)
+                {
+                    await Task.Delay(10);
+                }
+                
                 // 释放之前的渲染器
                 _ofdRenderer?.Dispose();
                 
-                // 清空已经渲染的页面
-                foreach (var bitmap in _renderedPages.Values)
-                {
-                    bitmap.Dispose();
-                }
-                _renderedPages.Clear();
                 
                 // 清空对象池
                 lock (_poolLock)
@@ -307,8 +341,31 @@ namespace OfdViewer.WinForm.Controls
                     _pendingRenderQueue.Clear();
                 }
 
-                // 清空面板
-                _pictureBoxPanel.Controls.Clear();
+                // 清空面板（在UI线程上执行，确保安全）
+                if (_pictureBoxPanel != null && !_pictureBoxPanel.IsDisposed)
+                {
+                    if (_pictureBoxPanel.InvokeRequired)
+                    {
+                        _pictureBoxPanel.Invoke(new Action(() =>
+                        {
+                            if (_pictureBoxPanel != null && !_pictureBoxPanel.IsDisposed)
+                            {
+                                _pictureBoxPanel.Controls.Clear();
+                            }
+                        }));
+                    }
+                    else
+                    {
+                        _pictureBoxPanel.Controls.Clear();
+                    }
+                }
+
+                // 清空已经渲染的页面
+                foreach (var bitmap in _renderedPages.Values)
+                {
+                    bitmap.Dispose();
+                }
+                _renderedPages.Clear();
 
                 _isRendering = false;
                 
@@ -317,18 +374,15 @@ namespace OfdViewer.WinForm.Controls
                 
                 // 更新页面信息
                 TotalPages = _ofdRenderer.PageCount;
-                CurrentPage = 0;
                 
-                // 重置智能重绘标记
-                _lastRenderedPage = -1;
-                _lastZoom = -1;
-
-
-                // 触发面板重绘
-                _pictureBoxPanel?.Invalidate();
+                // 先设置CurrentPage为-1，避免触发不必要的重绘
+                _currentPage = -1;
                 
-                // 适应窗口
+                // 适应窗口（会计算缩放比例）
                 FitToWindow();
+                
+                // 最后设置CurrentPage为0，触发一次重绘
+                CurrentPage = 0;
             }
             catch (Exception ex)
             {
@@ -488,16 +542,26 @@ namespace OfdViewer.WinForm.Controls
         }
 
         /// <summary>
-        /// 智能重绘
+        /// 更新页面偏移量和累计高度
         /// </summary>
-        private void SmartInvalidate()
+        private void UpdatePageOffsets()
         {
-            // 只有当页面或缩放变化时才重绘
-            if (CurrentPage != _lastRenderedPage || Zoom != _lastZoom)
+            _pageOffsets.Clear();
+            _accumulatedHeight = PageSpacing;
+            for (int pageIndex = 0; pageIndex < TotalPages; pageIndex++)
             {
-                _pictureBoxPanel?.Invalidate();
-                _lastRenderedPage = CurrentPage;
-                _lastZoom = Zoom;
+                _pageOffsets[pageIndex] = _accumulatedHeight;
+                if (_renderedPages.ContainsKey(pageIndex))
+                {
+                    _accumulatedHeight += (int)(_renderedPages[pageIndex].Height * Zoom);
+                }
+                else
+                {
+                    _accumulatedHeight += (int)(842 * Zoom);
+                }
+                
+                // 添加页面间距（最后一页也添加，用于底边间距）
+                _accumulatedHeight += PageSpacing;
             }
         }
 
@@ -631,47 +695,51 @@ namespace OfdViewer.WinForm.Controls
             // 检查是否已打开文档
             if (_ofdRenderer != null && TotalPages > 0)
             {
-                // 计算所有页面的累计高度（用于定位）
-                var pageOffsets = new Dictionary<int, int>();
-                int accumulatedHeight = 0;
-                for (int pageIndex = 0; pageIndex < TotalPages; pageIndex++)
-                {
-                    pageOffsets[pageIndex] = accumulatedHeight;
-                    if (_renderedPages.ContainsKey(pageIndex))
-                    {
-                        accumulatedHeight += (int)(_renderedPages[pageIndex].Height * Zoom);
-                    }
-                    else
-                    {
-                        accumulatedHeight += (int)(842 * Zoom);
-                    }
-                }
-
                 // 获取当前滚动位置（取绝对值）
-                int scrollPosition = Math.Abs(panel.AutoScrollPosition.Y);
-                
-                // 计算当前滚动位置所在的页面
-                int currentPageIndex = 0;
-                for (int pageIndex = 0; pageIndex < TotalPages; pageIndex++)
+                int scrollPositionY = Math.Abs(panel.AutoScrollPosition.Y);
+
+                // 只有当滚动位置变化时才重新计算页面偏移量和当前页码
+                if (scrollPositionY != _lastScrollPosition || _pageOffsets.Count == 0)
                 {
-                    int nextPageOffset = pageOffsets.ContainsKey(pageIndex + 1) ? pageOffsets[pageIndex + 1] : accumulatedHeight;
-                    if (scrollPosition < nextPageOffset)
+                    // 计算所有页面的累计高度（用于定位）
+                    UpdatePageOffsets();
+
+                    // 计算当前滚动位置所在的页面
+                    int currentPageIndex = 0;
+                    for (int pageIndex = 0; pageIndex < TotalPages; pageIndex++)
                     {
-                        currentPageIndex = pageIndex;
-                        break;
+                        int nextPageOffset = _pageOffsets.ContainsKey(pageIndex + 1) ? _pageOffsets[pageIndex + 1] : _accumulatedHeight;
+                        if (scrollPositionY < nextPageOffset)
+                        {
+                            currentPageIndex = pageIndex;
+                            break;
+                        }
                     }
-                }
-                
-                // 计算需要渲染的页面范围（当前页及其前后各一页）
-                int firstPage = Math.Max(0, currentPageIndex - 1);
-                int lastPage = Math.Min(TotalPages - 1, currentPageIndex + 1);
-                
-                // 更新CurrentPage（如果发生变化）
-                if (currentPageIndex != CurrentPage)
-                {
-                    CurrentPage = currentPageIndex;
+                    
+                    // 计算需要渲染的页面范围（当前页及其前后各一页）
+                    int tempFirstPage = Math.Max(0, currentPageIndex - 1);
+                    int tempLastPage = Math.Min(TotalPages - 1, currentPageIndex + 1);
+                    
+                    // 更新CurrentPage（如果发生变化）
+                    if (currentPageIndex != CurrentPage)
+                    {
+                        // 直接更新字段，不触发SmartInvalidate，避免无限循环
+                        _currentPage = currentPageIndex;
+                        OnPropertyChanged(nameof(CurrentPage));
+                        OnPropertyChanged(nameof(PageInfo));
+                        UpdateNavigationButtons();
+                    }
+                    
+                    // 更新最后滚动位置
+                    _lastScrollPosition = scrollPositionY;
+                    _lastFirstPage = tempFirstPage;
+                    _lastLastPage = tempLastPage;
                 }
 
+                // 使用缓存的页面范围
+                int firstPage = _lastFirstPage;
+                int lastPage = _lastLastPage;
+                
                 // 收集需要保留的页面索引
                 var pagesToKeep = new HashSet<int>();
                 for (int pageIndex = firstPage; pageIndex <= lastPage; pageIndex++)
@@ -709,8 +777,8 @@ namespace OfdViewer.WinForm.Controls
                         continue;
                     }
 
-                    // 计算页面的实际位置
-                    int pageY = pageOffsets[pageIndex] - scrollPosition;
+                    // 计算页面的实际位置                   
+                    int pageY = _pageOffsets[pageIndex] - scrollPositionY;
 
                     // 检查页面是否在视图范围内
                     int pageHeight = (int)(_renderedPages[pageIndex].Height * Zoom);
@@ -724,15 +792,19 @@ namespace OfdViewer.WinForm.Controls
                     var existingPictureBox = panel.Controls.OfType<PictureBox>()
                         .FirstOrDefault(p => p.Tag is int index && index == pageIndex);
 
+                    // 计算页面水平居中位置
+                    int pageWidth = (int)(_renderedPages[pageIndex].Width * Zoom);
+                    int pageX = (panel.ClientSize.Width - pageWidth) / 2;
+                    pageX = Math.Max(0, pageX); // 确保不小于0
+
                     if (existingPictureBox != null)
                     {
                         // 更新已存在的PictureBox
                         existingPictureBox.Image = _renderedPages[pageIndex];
-                        existingPictureBox.Location = new Point(0, pageY);
+                        existingPictureBox.Location = new Point(pageX, pageY);
 
                         // 缩放图片框
-                        int width = (int)(existingPictureBox.Image.Width * Zoom);
-                        existingPictureBox.Size = new Size(width, pageHeight);
+                        existingPictureBox.Size = new Size(pageWidth, pageHeight);
                     }
                     else
                     {
@@ -740,11 +812,10 @@ namespace OfdViewer.WinForm.Controls
                         // 从对象池获取PictureBox
                         var pictureBox = GetPictureBoxFromPool();
                         pictureBox.Image = _renderedPages[pageIndex];
-                        pictureBox.Location = new Point(0, pageY);
+                        pictureBox.Location = new Point(pageX, pageY);
 
                         // 缩放图片框
-                        int width = (int)(pictureBox.Image.Width * Zoom);
-                        pictureBox.Size = new Size(width, pageHeight);
+                        pictureBox.Size = new Size(pageWidth, pageHeight);
 
                         // 将页码数据记录到PictureBox的Tag属性中
                         pictureBox.Tag = pageIndex;
@@ -755,7 +826,7 @@ namespace OfdViewer.WinForm.Controls
                 }
 
                 // 计算所有页面的总高度（用于设置滚动范围）
-                int totalHeight = accumulatedHeight; // 使用之前计算的累计高度
+                int totalHeight = _accumulatedHeight; // 使用之前计算的累计高度
                 
                 // 确保总高度不小于面板高度
                 totalHeight = Math.Max(totalHeight, panel.ClientSize.Height);
@@ -764,140 +835,93 @@ namespace OfdViewer.WinForm.Controls
                 if (panel.AutoScrollMinSize.Height != totalHeight)
                 {
                     panel.AutoScrollMinSize = new Size(0, totalHeight);
-                }
+                }             
             }
             else
             {
                 // 未打开文档时，显示空白的A4大小的文档区域
                 // 检查是否已经有空白文档区域
-                if (panel.Controls.Count == 0)
+                if (panel.Controls.Count == 0 || panel.Controls.Count == 1)
                 {
-                    // 创建空白的A4大小的图片框
-                    var blankPictureBox = GetPictureBoxFromPool();
-
-                    // 创建空白的A4大小的位图（白色背景）
-                    // 使用实际的A4宽度和高度，不乘以Zoom
-                    int a4Width = 595;
-                    int a4Height = 842;
-                    var blankBitmap = new Bitmap(a4Width, a4Height);
-
-                    using (var g = Graphics.FromImage(blankBitmap))
+                    var existingPictureBox = panel.Controls.OfType<PictureBox>()
+                                            .FirstOrDefault(p => p.Tag is string s && s == "BlankDocument");
+                    if (existingPictureBox != null)
                     {
-                        g.Clear(Color.White); // 白色背景
+                        // 获取当前滚动位置（取绝对值）
+                        int scrollPositionY = Math.Abs(panel.AutoScrollPosition.Y);
+                        // 计算水平居中位置
+                        int pageX = (panel.ClientSize.Width - existingPictureBox.Image.Width) / 2;
+                        pageX = Math.Max(0, pageX); // 确保不小于0
 
-                        // 绘制边框
-                        g.DrawRectangle(Pens.LightGray, 0, 0, a4Width - 1, a4Height - 1);
+                        // 计算页面的实际位置                   
+                        int pageY = PageSpacing - scrollPositionY;
 
-                        // 显示提示文字
-                        string hintText = "请打开OFD文档";
-                        var font = new Font(FontFamily.GenericSansSerif, 16, FontStyle.Bold);
-                        var textSize = g.MeasureString(hintText, font);
-                        var textX = (a4Width - textSize.Width) / 2;
-                        var textY = (a4Height - textSize.Height) / 2;
-                        g.DrawString(hintText, font, Brushes.Gray, textX, textY);
-                    }
+                        // 设置位置，确保上下边有间距
+                        existingPictureBox.Location = new Point(pageX, pageY);
 
-                    blankPictureBox.Image = blankBitmap;
-                    blankPictureBox.Location = new Point(0, 0);
-                    blankPictureBox.Size = new Size(a4Width, a4Height);
-
-                    // 将"BlankDocument"记录到PictureBox的Tag属性中
-                    blankPictureBox.Tag = "BlankDocument";
-
-                    // 添加到面板
-                    panel.Controls.Add(blankPictureBox);
-
-                    // 设置滚动范围
-                    panel.AutoScrollMinSize = new Size(a4Width, a4Height);
-                }
-            }
-        }
-
-        /// <summary>
-        /// 图片框面板鼠标滚轮事件
-        /// </summary>
-        private void PictureBoxPanel_MouseWheel(object? sender, MouseEventArgs e)
-        {
-            var panel = sender as Panel;
-            if (panel == null) return;
-
-            if (_ofdRenderer != null && TotalPages > 1)
-            {
-                // 计算所有页面的累计高度
-                var pageOffsets = new Dictionary<int, int>();
-                int accumulatedHeight = 0;
-                for (int pageIndex = 0; pageIndex < TotalPages; pageIndex++)
-                {
-                    pageOffsets[pageIndex] = accumulatedHeight;
-                    if (_renderedPages.ContainsKey(pageIndex))
-                    {
-                        accumulatedHeight += (int)(_renderedPages[pageIndex].Height * Zoom);
+                        // 设置滚动范围（包含上下间距）
+                        panel.AutoScrollMinSize = new Size(existingPictureBox.Image.Width, existingPictureBox.Image.Height + PageSpacing * 2);
                     }
                     else
                     {
-                        accumulatedHeight += (int)(842 * Zoom);
-                    }
-                }
 
-                // 获取当前滚动位置（取绝对值）
-                int currentScrollY = Math.Abs(panel.AutoScrollPosition.Y);
+                        // 创建空白的A4大小的图片框
+                        var blankPictureBox = GetPictureBoxFromPool();
 
-                if (e.Delta > 0) // 向上滚动（滚轮向前）
-                {
-                    // 计算当前滚动位置所在的页面
-                    int currentPageIndex = 0;
-                    for (int pageIndex = 0; pageIndex < TotalPages; pageIndex++)
-                    {
-                        int nextPageOffset = pageOffsets.ContainsKey(pageIndex + 1) ? pageOffsets[pageIndex + 1] : accumulatedHeight;
-                        if (currentScrollY < nextPageOffset)
+                        // 根据_renderConfig的DPI计算A4的像素大小
+                        // A4的物理尺寸是210mm x 297mm
+                        float a4WidthMm = 210;
+                        float a4HeightMm = 297;
+
+                        // 计算毫米到像素的转换因子
+                        float mmToPixel = _renderConfig.Dpi / 25.4f;
+
+                        // 计算A4的像素大小
+                        int a4Width = (int)(a4WidthMm * mmToPixel);
+                        int a4Height = (int)(a4HeightMm * mmToPixel);
+
+                        var blankBitmap = new Bitmap(a4Width, a4Height);
+
+                        using (var g = Graphics.FromImage(blankBitmap))
                         {
-                            currentPageIndex = pageIndex;
-                            break;
-                        }
-                    }
+                            g.Clear(Color.White); // 白色背景
 
-                    // 如果不是第一页，尝试向上滚动
-                    if (currentPageIndex > 0)
-                    {
-                        // 计算滚动到上一页的位置
-                        int prevPageOffset = pageOffsets[currentPageIndex - 1];
-                        panel.AutoScrollPosition = new Point(0, prevPageOffset);
-                    }
-                }
-                else if (e.Delta < 0) // 向下滚动（滚轮向后）
-                {
-                    // 计算当前滚动位置所在的页面
-                    int currentPageIndex = 0;
-                    for (int pageIndex = 0; pageIndex < TotalPages; pageIndex++)
-                    {
-                        int nextPageOffset = pageOffsets.ContainsKey(pageIndex + 1) ? pageOffsets[pageIndex + 1] : accumulatedHeight;
-                        if (currentScrollY < nextPageOffset)
-                        {
-                            currentPageIndex = pageIndex;
-                            break;
-                        }
-                    }
+                            // 绘制边框（使用更粗的线条和更深的颜色，模拟其他阅读器的边框）
+                            g.DrawRectangle(Pens.LightGray, 0, 0, a4Width - 1, a4Height - 1);
+                            g.DrawRectangle(Pens.DarkGray, 1, 1, a4Width - 3, a4Height - 3);
 
-                    // 如果不是最后一页，尝试向下滚动
-                    if (currentPageIndex < TotalPages - 1)
-                    {
-                        // 计算滚动到下一页的位置
-                        int nextPageOffset = pageOffsets[currentPageIndex + 1];
-                        panel.AutoScrollPosition = new Point(0, nextPageOffset);
+                            // 显示提示文字
+                            string hintText = "请打开OFD文档";
+                            var font = new Font(FontFamily.GenericSansSerif, 16, FontStyle.Bold);
+                            var textSize = g.MeasureString(hintText, font);
+                            var textX = (a4Width - textSize.Width) / 2;
+                            var textY = (a4Height - textSize.Height) / 2;
+                            g.DrawString(hintText, font, Brushes.Gray, textX, textY);
+                        }
+
+                        blankPictureBox.Image = blankBitmap;
+
+                        // 计算水平居中位置
+                        int pageX = (panel.ClientSize.Width - a4Width) / 2;
+                        pageX = Math.Max(0, pageX); // 确保不小于0
+
+                        // 设置位置，确保上下边有间距
+                        blankPictureBox.Location = new Point(pageX, PageSpacing);
+                        blankPictureBox.Size = new Size(a4Width, a4Height);
+
+                        // 将"BlankDocument"记录到PictureBox的Tag属性中
+                        blankPictureBox.Tag = "BlankDocument";
+
+                        // 添加到面板
+                        panel.Controls.Add(blankPictureBox);
+
+                        // 设置滚动范围（包含上下间距）
+                        panel.AutoScrollMinSize = new Size(a4Width, a4Height + PageSpacing * 2);
                     }
                 }
             }
         }
 
-        /// <summary>
-        /// 图片框面板滚动事件
-        /// </summary>
-        private void PictureBoxPanel_Scroll(object? sender, ScrollEventArgs e)
-        {
-            // 避免在滚动事件中触发无限循环
-            // 滚动事件会触发Panel_Paint，Panel_Paint会设置AutoScrollMinSize，又会触发Scroll事件
-            // 因此我们不在这里更新CurrentPage，而是在MouseWheel事件中处理页面切换
-        }
 
         /// <summary>
         /// 打开按钮点击事件
@@ -945,6 +969,47 @@ namespace OfdViewer.WinForm.Controls
         private void FitToWindowButton_Click(object? sender, EventArgs e)
         {
             FitToWindow();
+        }
+
+        /// <summary>
+        /// 页码输入框按键事件
+        /// </summary>
+        private void PageNumberTextBox_KeyPress(object? sender, KeyPressEventArgs e)
+        {
+            // 检查是否按下回车键
+            if (e.KeyChar == (char)Keys.Enter)
+            {
+                // 获取输入框
+                var textBox = sender as ToolStripTextBox;
+                if (textBox != null && int.TryParse(textBox.Text, out int pageNumber))
+                {
+                    // 转换为从0开始的索引
+                    int pageIndex = pageNumber - 1;
+                    
+                    // 检查页码是否有效
+                    if (pageIndex >= 0 && pageIndex < TotalPages)
+                    {
+                        // 跳转到指定页码
+                        CurrentPage = pageIndex;
+                        
+                        // 清空输入框
+                        textBox.Text = string.Empty;
+                    }
+                    else
+                    {
+                        // 显示错误提示
+                        MessageBox.Show("页码超出范围", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+                else
+                {
+                    // 显示错误提示
+                    MessageBox.Show("请输入有效的页码", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                
+                // 取消按键事件，避免输入框失去焦点
+                e.Handled = true;
+            }
         }
 
 

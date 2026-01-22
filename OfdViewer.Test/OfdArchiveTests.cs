@@ -288,6 +288,7 @@ namespace OFDViewer.Tests
         {
             // Arrange
             var archive = OFDArchive.OpenFromStream(_zipStream, ZipArchiveMode.Read, leaveOpen: true);
+            archive.Save();
             archive.Dispose(); // 显式释放归档
 
             // Act & Assert
@@ -430,6 +431,7 @@ namespace OFDViewer.Tests
         {
             // Arrange
             var archive = OFDArchive.OpenFromStream(_zipStream, ZipArchiveMode.Read, leaveOpen: true);
+            archive.Save();
             archive.Dispose(); // ��ʽ�ͷŵ���
 
             // Act & Assert
