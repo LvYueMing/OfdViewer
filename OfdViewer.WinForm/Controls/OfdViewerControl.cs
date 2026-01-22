@@ -1216,7 +1216,6 @@ namespace OfdViewer.WinForm.Controls
             }
         }
 
-
         #endregion
 
         #region INotifyPropertyChanged实现

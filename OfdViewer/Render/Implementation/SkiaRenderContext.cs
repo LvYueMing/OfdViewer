@@ -821,15 +821,6 @@ namespace OFDViewer.Render.Implementation
             paint.Style = SKPaintStyle.Fill;
             paint.Color = ConvertToSKColor(style.Color, style.Alpha);
             
-            // 创建字体
-            var typeface = SKTypeface.FromFamilyName(style.FontFamily, 
-                (SKFontStyleWeight)style.FontWeight, 
-                SKFontStyleWidth.Normal, 
-                style.Italic ? SKFontStyleSlant.Italic : SKFontStyleSlant.Upright);
-            
-            var font = new SKFont(typeface, style.FontSize);
-            font.ScaleX = style.HScale;
-            
             return paint;
         }
 
