@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Collections.Generic;
 using OFDViewer.Parse;
 using OFDViewer.Render.Abstractions;
 using OFDViewer.Render.DataModels;
@@ -7,6 +8,7 @@ using OFDViewer.Render.Implementation;
 using OFDViewer.Models.BaseStructure.Pages;
 using OFDViewer.Models.BaseStructure.Pages.PageBlockItems;
 using OFDViewer.Models.BaseStructure.Resources.ResItems;
+using OFDViewer.Models.Font;
 
 namespace OFDViewer.Render
 {
@@ -375,7 +377,7 @@ namespace OFDViewer.Render
         private void RenderTextObject(ITextRenderer textRenderer, TextObject textObject)
         {
             if (textRenderer == null || textObject == null)
-                return;            
+                return;
             
             // 获取渲染上下文
             var renderContext = textRenderer as IRenderContext;
@@ -397,60 +399,246 @@ namespace OFDViewer.Render
             // 转换文本样式
             var textStyle = ConvertToTextStyle(textObject, renderContext);
             
-            // 遍历文本内容列表
-            foreach (var textCode in textObject.TextCodes)
+            // 判断处理情况：
+            // 1. 一个TextObject有一个或多个TextCode，但没有CGTransform - 直接按照多个TextCode处理
+            // 2. 一个TextObject有一个TextCode，有一个或多个CGTransform - 使用CGTransform处理
+            // 3. 一个TextObject有多个TextCode，并且有一个或多个CGTransform - 不处理CGTransform，直接按照多个TextCode处理
+            bool hasCGTransforms = textObject.CGTransforms != null && textObject.CGTransforms.Count > 0;
+            bool hasMultipleTextCodes = textObject.TextCodes != null && textObject.TextCodes.Count > 1;
+            
+            // 情况2：只有一个TextCode且有CGTransform，使用CGTransform处理
+            if (!hasMultipleTextCodes && textObject.TextCodes.Count == 1 && hasCGTransforms )
             {
-                if (string.IsNullOrEmpty(textCode.Text))
-                    continue;
-                
-                // 计算第一个文字的位置（边界矩形位置 + TextCode内部坐标，都转换为像素）
-                float currentX = boundaryX + renderContext.MillimetersToPixels((float)textCode.X);
-                float currentY = boundaryY + renderContext.MillimetersToPixels((float)textCode.Y);
-                
-                // 将TextCode.DeltaX和DeltaY转换为double数组（如果存在）
-                double[] deltaXArray = new double[0];
-                if (textCode.DeltaX != null)
+                var textCode = textObject.TextCodes[0];
+                if (!string.IsNullOrEmpty(textCode.Text))
                 {
-                    deltaXArray = textCode.DeltaX.ToDoubleArray();
-                    if (deltaXArray == null)
-                    {
-                        deltaXArray = new double[0];
-                    }
+                    RenderSingleTextCodeWithCGTransforms(textRenderer, textObject, textCode, boundaryX, boundaryY, textStyle, renderContext);
                 }
-                
-                double[] deltaYArray = new double[0];
-                if (textCode.DeltaY != null)
+            }
+            else
+            {
+                // 情况1和3：按照多个TextCode处理，不使用CGTransform
+                foreach (var textCode in textObject.TextCodes)
                 {
-                    deltaYArray = textCode.DeltaY.ToDoubleArray();
-                    if (deltaYArray == null)
-                    {
-                        deltaYArray = new double[0];
-                    }
-                }
-                
-                // 遍历每个字符，考虑DeltaX和DeltaY偏移
-                for (int i = 0; i < textCode.Text.Length; i++)
-                {
-                    // 获取当前字符
-                    string currentChar = textCode.Text.Substring(i, 1);
+                    if (string.IsNullOrEmpty(textCode.Text))
+                        continue;
                     
-                    // 绘制当前字符
-                    textRenderer.DrawText(currentX, currentY, currentChar, textStyle);
-                    
-                    // 计算下一个字符的位置（根据DeltaX和DeltaY，转换为像素）
-                    if (i < deltaXArray.Length)
-                    {
-                        currentX += renderContext.MillimetersToPixels((float)deltaXArray[i]);
-                    }
-                    if (i < deltaYArray.Length)
-                    {
-                        currentY += renderContext.MillimetersToPixels((float)deltaYArray[i]);
-                    }
+                    RenderTextCodeWithoutCGTransforms(textRenderer, textCode, boundaryX, boundaryY, textStyle, renderContext);
                 }
             }
             
             // 恢复渲染状态
             renderContext?.RestoreState();
+        }
+
+        /// <summary>
+        /// 渲染单个TextCode带字符变换的文本（情况2）
+        /// 优化：使用批量绘制提高性能，确保编码和字型一一对应，不要遗漏编码
+        /// </summary>
+        /// <param name="textRenderer">文本渲染器</param>
+        /// <param name="textObject">文本对象</param>
+        /// <param name="textCode">文本代码</param>
+        /// <param name="boundaryX">边界X坐标</param>
+        /// <param name="boundaryY">边界Y坐标</param>
+        /// <param name="textStyle">文本样式</param>
+        /// <param name="renderContext">渲染上下文</param>
+        private void RenderSingleTextCodeWithCGTransforms(ITextRenderer textRenderer, TextObject textObject, TextCode textCode, float boundaryX, float boundaryY, TextStyle textStyle, IRenderContext renderContext)
+        {
+            // 计算第一个文字的位置（边界矩形位置 + TextCode内部坐标，都转换为像素）
+            float startX = boundaryX + renderContext.MillimetersToPixels((float)textCode.X);
+            float startY = boundaryY + renderContext.MillimetersToPixels((float)textCode.Y);
+            
+            // 将TextCode.DeltaX和DeltaY转换为double数组（如果存在）
+            double[] deltaXArray = new double[0];
+            if (textCode.DeltaX != null)
+            {
+                deltaXArray = textCode.DeltaX.ToDoubleArray();
+                if (deltaXArray == null)
+                {
+                    deltaXArray = new double[0];
+                }
+            }
+            
+            double[] deltaYArray = new double[0];
+            if (textCode.DeltaY != null)
+            {
+                deltaYArray = textCode.DeltaY.ToDoubleArray();
+                if (deltaYArray == null)
+                {
+                    deltaYArray = new double[0];
+                }
+            }
+            
+            int charIndex = 0;
+            float currentX = startX;
+            float currentY = startY;
+            List<GlyphInfo> glyphInfos = new List<GlyphInfo>();
+            
+            // 遍历文本中的每个字符，收集所有需要绘制的字形信息
+            if (textObject.CGTransforms.Count == 1 && textObject.CGTransforms[0].CodeCount == textCode.Text.Length)
+            {
+                // 优化：只有一个CGTransform且CodeCount等于文本长度，直接处理
+                var cgTransform = textObject.CGTransforms[0];
+                if (cgTransform.Glyphs != null)
+                {
+                    var glyphs = cgTransform.Glyphs.ToIntArray();
+                    if (glyphs != null && glyphs.Length > 0)
+                    {
+                        for (int i = 0; i < textCode.Text.Length; i++)
+                        {
+                            int glyphIndex = Math.Min(i, glyphs.Length - 1);
+                            string glyph = glyphs[glyphIndex].ToString();
+                            
+                            if (!string.IsNullOrEmpty(glyph))
+                            {
+                                glyphInfos.Add(new GlyphInfo(currentX, currentY, glyph));
+                            }
+                            
+                            if (i < deltaXArray.Length)
+                            {
+                                currentX += renderContext.MillimetersToPixels((float)deltaXArray[i]);
+                            }
+                            if (i < deltaYArray.Length)
+                            {
+                                currentY += renderContext.MillimetersToPixels((float)deltaYArray[i]);
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // 多个CGTransform或长度不匹配，逐个字符查找对应的CGTransform
+                while (charIndex < textCode.Text.Length)
+                {
+                    var cgTransform = textObject.CGTransforms.FirstOrDefault(t => 
+                        t.CodePosition <= charIndex && t.CodePosition + t.CodeCount > charIndex);
+                    
+                    if (cgTransform != null && cgTransform.Glyphs != null)
+                    {
+                        var glyphs = cgTransform.Glyphs.ToIntArray();
+                        if (glyphs != null && glyphs.Length > 0)
+                        {
+                            // 处理当前CGTransform对应的所有字符
+                            int endIndex = Math.Min(cgTransform.CodePosition + cgTransform.CodeCount, textCode.Text.Length);
+                            for (int i = charIndex; i < endIndex; i++)
+                            {
+                                int relativePosition = i - cgTransform.CodePosition;
+                                int glyphIndex = Math.Min(relativePosition, glyphs.Length - 1);
+                                string glyph = glyphs[glyphIndex].ToString();
+                                
+                                if (!string.IsNullOrEmpty(glyph))
+                                {
+                                    glyphInfos.Add(new GlyphInfo(currentX, currentY, glyph));
+                                }
+                                
+                                // 计算下一个字符的位置
+                                if (i < deltaXArray.Length)
+                                {
+                                    currentX += renderContext.MillimetersToPixels((float)deltaXArray[i]);
+                                }
+                                if (i < deltaYArray.Length)
+                                {
+                                    currentY += renderContext.MillimetersToPixels((float)deltaYArray[i]);
+                                }
+                            }
+                        }
+                        
+                        // 跳过当前CGTransform处理的字符数
+                        charIndex += cgTransform.CodeCount;
+                    }
+                    else
+                    {
+                        string currentChar = textCode.Text.Substring(charIndex, 1);
+                        glyphInfos.Add(new GlyphInfo(currentX, currentY, currentChar));
+                        charIndex++;
+                        
+                        // 计算下一个字符的位置
+                        if (charIndex - 1 < deltaXArray.Length)
+                        {
+                            currentX += renderContext.MillimetersToPixels((float)deltaXArray[charIndex - 1]);
+                        }
+                        if (charIndex - 1 < deltaYArray.Length)
+                        {
+                            currentY += renderContext.MillimetersToPixels((float)deltaYArray[charIndex - 1]);
+                        }
+                    }
+                }
+            }
+            
+            // 批量绘制所有字形
+            if (glyphInfos.Count > 0)
+            {
+                textRenderer.DrawGlyphs(glyphInfos.ToArray(), textStyle);
+            }
+        }
+
+        /// <summary>
+        /// 渲染TextCode不带字符变换的文本（情况1和3）
+        /// 优化：使用批量绘制提高性能
+        /// </summary>
+        /// <param name="textRenderer">文本渲染器</param>
+        /// <param name="textCode">文本代码</param>
+        /// <param name="boundaryX">边界X坐标</param>
+        /// <param name="boundaryY">边界Y坐标</param>
+        /// <param name="textStyle">文本样式</param>
+        /// <param name="renderContext">渲染上下文</param>
+        private void RenderTextCodeWithoutCGTransforms(ITextRenderer textRenderer, TextCode textCode, float boundaryX, float boundaryY, TextStyle textStyle, IRenderContext renderContext)
+        {
+            // 计算第一个文字的位置（边界矩形位置 + TextCode内部坐标，都转换为像素）
+            float startX = boundaryX + renderContext.MillimetersToPixels((float)textCode.X);
+            float startY = boundaryY + renderContext.MillimetersToPixels((float)textCode.Y);
+            
+            // 将TextCode.DeltaX和DeltaY转换为double数组（如果存在）
+            double[] deltaXArray = new double[0];
+            if (textCode.DeltaX != null)
+            {
+                deltaXArray = textCode.DeltaX.ToDoubleArray();
+                if (deltaXArray == null)
+                {
+                    deltaXArray = new double[0];
+                }
+            }
+            
+            double[] deltaYArray = new double[0];
+            if (textCode.DeltaY != null)
+            {
+                deltaYArray = textCode.DeltaY.ToDoubleArray();
+                if (deltaYArray == null)
+                {
+                    deltaYArray = new double[0];
+                }
+            }
+            
+            float currentX = startX;
+            float currentY = startY;
+            List<GlyphInfo> glyphInfos = new List<GlyphInfo>();
+            
+            // 遍历每个字符，考虑DeltaX和DeltaY偏移，收集所有需要绘制的字形信息
+            for (int i = 0; i < textCode.Text.Length; i++)
+            {
+                // 获取当前字符
+                string currentChar = textCode.Text.Substring(i, 1);
+                
+                // 添加到字形信息列表
+                glyphInfos.Add(new GlyphInfo(currentX, currentY, currentChar));
+                
+                // 计算下一个字符的位置（根据DeltaX和DeltaY，转换为像素）
+                if (i < deltaXArray.Length)
+                {
+                    currentX += renderContext.MillimetersToPixels((float)deltaXArray[i]);
+                }
+                if (i < deltaYArray.Length)
+                {
+                    currentY += renderContext.MillimetersToPixels((float)deltaYArray[i]);
+                }
+            }
+            
+            // 批量绘制所有字形
+            if (glyphInfos.Count > 0)
+            {
+                textRenderer.DrawGlyphs(glyphInfos.ToArray(), textStyle);
+            }
         }
 
         /// <summary>

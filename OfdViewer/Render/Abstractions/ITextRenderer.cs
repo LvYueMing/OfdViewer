@@ -32,5 +32,15 @@ namespace OFDViewer.Render.Abstractions
         /// <param name="style">文本样式</param>
         /// <returns>文本高度（像素）</returns>
         float MeasureTextHeight(string text, TextStyle style);
+
+        /// <summary>
+        /// 批量绘制字形
+        /// 优化：使用批量绘制提高性能
+        /// </summary>
+        /// <param name="glyphs">字形信息数组</param>
+        /// <param name="style">文本样式</param>
+        void DrawGlyphs(GlyphInfo[] glyphs, TextStyle style);
     }
+
+
 }

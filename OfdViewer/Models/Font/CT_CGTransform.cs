@@ -28,7 +28,7 @@ namespace OFDViewer.Models.Font
         /// 可选
         /// </summary>
         [XmlAttribute(AttributeName = "CodeCount")]
-        public int CodeCount { get; set; }=1;
+        public int CodeCount { get; set; } = 1;
 
 
         //控制 CodeCount 属性是否序列化
@@ -43,23 +43,12 @@ namespace OFDViewer.Models.Font
         /// </summary>
         [XmlAttribute(AttributeName = "GlyphCount")]
 
-        public int GlyphCount { get; set; }=1;
+        public int GlyphCount { get; set; } = 1;
         //控制 GlyphCount 属性是否序列化
         public bool ShouldSerializeGlyphCount()
         {
             return GlyphCount != 1;
         }
 
-
-
-        /// <summary>
-        /// 构造函数，初始化默认值
-        /// </summary>
-        public CT_CGTransform()
-        {
-            // 设置 XSD 中定义的默认值
-            CodeCount = 1;
-            GlyphCount = 1;
-        }
     }
 }
