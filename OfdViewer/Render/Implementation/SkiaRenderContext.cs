@@ -13,7 +13,6 @@ namespace OFDViewer.Render.Implementation
     public class SkiaRenderContext : IRenderContext, IGraphicRenderer, ITextRenderer, IImageRenderer, IPathRenderer
     {
         #region 私有字段
-
         /// <summary>
         /// 渲染目标位图
         /// </summary>
@@ -27,10 +26,6 @@ namespace OFDViewer.Render.Implementation
         /// </summary>
         private SKPaint _paint;
         /// <summary>
-        /// 是否已释放
-        /// </summary>
-        private bool _disposed;
-        /// <summary>
         /// 渲染配置
         /// </summary>
         private RenderConfig _config;
@@ -39,13 +34,48 @@ namespace OFDViewer.Render.Implementation
         /// </summary>
         private SKPath _currentPath;
         /// <summary>
-        /// 毫米到像素的转换因子
+        /// SKTypeface缓存，避免重复创建字体对象
+        /// 缓存键：字体名称_字体粗细_斜体
         /// </summary>
-        private float _mmToPixel;
+        private readonly Dictionary<string, SKTypeface> _typefaceCache = new Dictionary<string, SKTypeface>();
         /// <summary>
-        /// 像素到毫米的转换因子
+        /// SKFont缓存，避免重复创建字体对象
+        /// 缓存键：字体名称_字体粗细_斜体_字号_水平缩放
         /// </summary>
-        private float _pixelToMm;
+        private readonly Dictionary<string, SKFont> _fontCache = new Dictionary<string, SKFont>();
+        /// <summary>
+        /// Skia对象缓存锁，确保线程安全
+        /// </summary>
+        private readonly object _skiaCacheLock = new object();
+        /// <summary>
+        /// 可重用的SKPaint对象，避免频繁创建和销毁
+        /// </summary>
+        private readonly SKPaint _reusablePaint = new SKPaint();
+        /// <summary>
+        /// 可重用SKPaint的锁
+        /// </summary>
+        private readonly object _reusablePaintLock = new object();
+        /// <summary>
+        /// 毫米到像素的转换因子（只读）
+        /// 预计算的转换因子，避免重复计算除法运算
+        /// </summary>
+        public float MmToPixel { get; private set; }
+        
+        /// <summary>
+        /// 像素到毫米的转换因子（只读）
+        /// 预计算的转换因子，避免重复计算除法运算
+        /// </summary>
+        public float PixelToMm { get; private set; }
+        /// <summary>
+        /// 资源管理器
+        /// </summary>
+        private IResourceManager _resourceManager;
+
+
+        /// <summary>
+        /// 是否已释放
+        /// </summary>
+        private bool _disposed;
 
         #endregion
 
@@ -58,13 +88,13 @@ namespace OFDViewer.Render.Implementation
         {
             if (_config != null)
             {
-                _mmToPixel = _config.Dpi / 25.4f;
-                _pixelToMm = 25.4f / _config.Dpi;
+                MmToPixel = _config.Dpi / 25.4f;
+                PixelToMm = 25.4f / _config.Dpi;
             }
             else
             {
-                _mmToPixel = 96.0f / 25.4f; // 默认96 DPI
-                _pixelToMm = 25.4f / 96.0f;
+                MmToPixel = 96.0f / 25.4f; // 默认96 DPI
+                PixelToMm = 25.4f / 96.0f;
             }
         }
 
@@ -75,7 +105,7 @@ namespace OFDViewer.Render.Implementation
         /// <returns>像素值</returns>
         public float MillimetersToPixels(float millimeters)
         {
-            return millimeters * _mmToPixel;
+            return millimeters * MmToPixel;
         }
 
         /// <summary>
@@ -85,7 +115,7 @@ namespace OFDViewer.Render.Implementation
         /// <returns>OFD毫米值</returns>
         public float PixelsToMillimeters(float pixels)
         {
-            return pixels * _pixelToMm;
+            return pixels * PixelToMm;
         }
 
         /// <summary>
@@ -142,6 +172,15 @@ namespace OFDViewer.Render.Implementation
                 _config = value;
                 UpdateConversionFactors();
             }
+        }
+
+        /// <summary>
+        /// 资源管理器
+        /// </summary>
+        public IResourceManager ResourceManager
+        {
+            get => _resourceManager;
+            set => _resourceManager = value;
         }
 
         #endregion
@@ -498,6 +537,7 @@ namespace OFDViewer.Render.Implementation
 
         /// <summary>
         /// 绘制文本
+        /// 优化：使用缓存避免重复创建 SKTypeface 和 SKFont，重用 SKPaint 对象
         /// </summary>
         /// <param name="x">X坐标</param>
         /// <param name="y">Y坐标</param>
@@ -507,43 +547,89 @@ namespace OFDViewer.Render.Implementation
         {
             if (_canvas == null || string.IsNullOrEmpty(text)) return;
 
-            using (var paint = CreatePaintFromTextStyle(style))
+            // 创建缓存键
+            string typefaceKey = $"{style.FontFamily}_{style.FontWeight}_{style.Italic}";
+            string fontKey = $"{typefaceKey}_{style.FontSize}_{style.HScale}";
+            
+            SKTypeface skTypeface = null;
+            SKFont skFont = null;
+            
+            // 检查缓存
+            lock (_skiaCacheLock)
             {
-                // 创建字体，添加字体回退机制
-                var typeface = SKTypeface.FromFamilyName(
-                    style.FontFamily, 
-                    (SKFontStyleWeight)style.FontWeight, 
-                    SKFontStyleWidth.Normal, 
-                    style.Italic ? SKFontStyleSlant.Italic : SKFontStyleSlant.Upright);
-                
-                // 如果指定字体不存在，使用系统默认字体
-                if (typeface == null)
+                if (_typefaceCache.TryGetValue(typefaceKey, out var cachedTypeface))
                 {
-                    // 尝试使用其他常见中文字体
-                    var fallbackFonts = new[] { "Microsoft YaHei", "SimHei", "SimSun", "Arial" };
-                    foreach (var fallbackFont in fallbackFonts)
-                    {
-                        typeface = SKTypeface.FromFamilyName(
-                            fallbackFont, 
-                            (SKFontStyleWeight)style.FontWeight, 
-                            SKFontStyleWidth.Normal, 
-                            style.Italic ? SKFontStyleSlant.Italic : SKFontStyleSlant.Upright);
-                        if (typeface != null)
-                            break;
-                    }
-                    
-                    // 如果所有回退字体都不存在，使用系统默认字体
-                    if (typeface == null)
-                    {
-                        typeface = SKTypeface.Default;
-                    }
+                    skTypeface = cachedTypeface;
                 }
                 
-                var font = new SKFont(typeface, style.FontSize);
-                font.ScaleX = style.HScale;
+                if (_fontCache.TryGetValue(fontKey, out var cachedFont))
+                {
+                    skFont = cachedFont;
+                }
+            }
+            
+            // 缓存未命中，创建新的 SKTypeface
+            if (skTypeface == null)
+            {
+                //从style.FontResource 加载SKTypeface
+                if (string.IsNullOrEmpty(style.FontFilePath))
+                {
+                    var fontByte = ResourceManager.GetResourceFile(style.FontFilePath);
+                    using (var stream = new MemoryStream(fontByte))
+                    {
+                        skTypeface = SKTypeface.FromStream(stream);
+                    }
+                }
+                else
+                {
+                    skTypeface = SKTypeface.FromFamilyName(
+                        style.FontFamily,
+                        (SKFontStyleWeight)style.FontWeight,
+                        SKFontStyleWidth.Normal,
+                        style.Italic ? SKFontStyleSlant.Italic : SKFontStyleSlant.Upright);
+                }
+
+                // 如果指定字体不存在，使用系统默认字体
+                if (skTypeface == null)
+                {
+                    skTypeface = SKTypeface.Default;
+                }
+                
+                // 缓存 SKTypeface
+                lock (_skiaCacheLock)
+                {
+                    if (!_typefaceCache.ContainsKey(typefaceKey))
+                    {
+                        _typefaceCache[typefaceKey] = skTypeface;
+                    }
+                }
+            }
+            
+            // 缓存未命中，创建新的 SKFont
+            if (skFont == null)
+            {
+                skFont = new SKFont(skTypeface, style.FontSize);
+                skFont.ScaleX = style.HScale;
+                
+                // 缓存 SKFont
+                lock (_skiaCacheLock)
+                {
+                    if (!_fontCache.ContainsKey(fontKey))
+                    {
+                        _fontCache[fontKey] = skFont;
+                    }
+                }
+            }
+            
+            // 重用 SKPaint 对象（避免频繁创建和销毁）
+            lock (_reusablePaintLock)
+            {
+                _reusablePaint.IsAntialias = _config.AntiAlias;
+                _reusablePaint.Style = SKPaintStyle.Fill;
+                _reusablePaint.Color = ConvertToSKColor(style.Color, style.Alpha);
                 
                 // 绘制文本
-                _canvas.DrawText(text, x, y, font, paint);
+                _canvas.DrawText(text, x, y, skFont, _reusablePaint);
             }
         }
 
@@ -916,6 +1002,30 @@ namespace OFDViewer.Render.Implementation
                 _paint?.Dispose();
                 _canvas?.Dispose();
                 _bitmap?.Dispose();
+                _currentPath?.Dispose();
+                _reusablePaint?.Dispose();
+                
+                // 清空字体缓存
+                lock (_skiaCacheLock)
+                {
+                    if (_typefaceCache != null)
+                    {
+                        foreach (var typeface in _typefaceCache.Values)
+                        {
+                            typeface?.Dispose();
+                        }
+                        _typefaceCache.Clear();
+                    }
+                    
+                    if (_fontCache != null)
+                    {
+                        foreach (var font in _fontCache.Values)
+                        {
+                            font?.Dispose();
+                        }
+                        _fontCache.Clear();
+                    }
+                }
             }
 
             _disposed = true;

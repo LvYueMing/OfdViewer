@@ -355,13 +355,13 @@ namespace OFDViewer.Parse
                     XmlHelper.SerializeToStream(pageDoc.PageRes, pageResStream);
                 }
                 //页面资源文件（Res/Image_{0}.png）
-                if (pageDoc.PageResFileContents != null && pageDoc.PageResFileContents.Count > 0)
+                if (pageDoc.PageResFiles != null && pageDoc.PageResFiles.Count > 0)
                 {
                     // 构建页面资源目录路径(Doc_{0}/Pages/Page_{1}/Res/)
                     string resDirectoryPath = Constants.GetFilePath(
                         Constants.Page_ResDirectory, pageDoc.BelongDocIndex, pageDoc.PageIndex);
                     // 遍历写入每个页面资源文件
-                    foreach (var resFileEntry in pageDoc.PageResFileContents)
+                    foreach (var resFileEntry in pageDoc.PageResFiles)
                     {
                         string resFileName = resFileEntry.Key;
                         byte[] resFileContent = resFileEntry.Value;

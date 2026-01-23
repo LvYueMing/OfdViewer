@@ -45,7 +45,7 @@ namespace OFDViewer.Models.Font
         /// 引用资源文件中定义的字型的标识 必选
         /// </summary>
         [XmlAttribute(AttributeName = "Font")]
-        public string FontString
+        public string FontRefID
         {
             get => Font.ToString();
             set => Font = ST_RefID.Parse(value);
@@ -102,8 +102,8 @@ namespace OFDViewer.Models.Font
 
         /// <summary>
         /// 字型在水平方向的放缩比 默认值为1.0
-        ///例如: 当 HScale 值为0.5 时表示实际显示的字宽为原来字宽的一半
-        ///可选
+        /// 例如: 当 HScale 值为0.5 时表示实际显示的字宽为原来字宽的一半
+        /// 可选
         /// </summary>
         [XmlAttribute(AttributeName = "HScale")]
         public double HScale { get; set; } = 1.0;

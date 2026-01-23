@@ -168,7 +168,9 @@ namespace OFDViewer.Parse
                         doc.PublicResource = XmlHelper.DeserializeFromStream<Res>(stream);
                         doc.PublicResourceFilePath = pubResFilePath;
 
-                        //todo: 读取PublicRes.xml 中的资源文件
+                        // 保存归档引用，用于延迟加载资源文件
+                        // 不立即加载资源文件，等待使用时再从归档读取
+                        doc.ResourceArchive = _archive;
                     }
                 }
 
@@ -185,7 +187,9 @@ namespace OFDViewer.Parse
                         doc.DocumentResource = XmlHelper.DeserializeFromStream<Res>(stream);
                         doc.DocumentResourceFilePath = docResFilePath;
 
-                        //todo: 读取PublicRes.xml 中的资源文件
+                        // 保存归档引用，用于延迟加载资源文件
+                        // 不立即加载资源文件，等待使用时再从归档读取
+                        doc.ResourceArchive = _archive;
                     }
                 }
             }
@@ -225,21 +229,6 @@ namespace OFDViewer.Parse
                     doc.AddSignDoc(signDoc);
                 }
             }
-
-            //// 读取文档级资源
-            //string resDirectoryPath = Path.Combine(Path.GetDirectoryName(docFilePath), "Res");
-            //if (_archive.DirectoryExists(resDirectoryPath))
-            //{
-            //    try
-            //    {
-            //        doc.ResFiles = ReadFileResInDirectory(resDirectoryPath);
-            //    }
-            //    catch (Exception ex)
-            //    {
-            //        // 忽略资源文件读取错误，继续执行
-            //        doc.ResFiles = new Dictionary<string, byte[]>();
-            //    }
-            //}
 
             return doc;
         }

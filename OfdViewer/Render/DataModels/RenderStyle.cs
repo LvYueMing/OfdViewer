@@ -67,6 +67,11 @@ namespace OFDViewer.Render.DataModels
     public class TextStyle : RenderStyle
     {
         /// <summary>
+        /// 字体资源对象
+        /// </summary>
+        public string FontFilePath { get; set; } = null;
+
+        /// <summary>
         /// 字体名称
         /// </summary>
         public string FontFamily { get; set; } = "SimSun";
@@ -100,6 +105,26 @@ namespace OFDViewer.Render.DataModels
         /// 文本水平缩放比例
         /// </summary>
         public float HScale { get; set; } = 1.0f;
+
+        /// <summary>
+        /// 是否描边
+        /// </summary>
+        public bool Stroke { get; set; } = false;
+
+        /// <summary>
+        /// 描边宽度
+        /// </summary>
+        public float StrokeWidth { get; set; } = 1.0f;
+
+        /// <summary>
+        /// 描边颜色（ARGB格式）
+        /// </summary>
+        public uint StrokeColor { get; set; } = 0xFF000000;
+
+        /// <summary>
+        /// 描边透明度
+        /// </summary>
+        public byte StrokeAlpha { get; set; } = 255;
     }
 
     /// <summary>

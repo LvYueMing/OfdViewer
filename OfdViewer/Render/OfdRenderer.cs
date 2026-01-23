@@ -6,6 +6,7 @@ using OFDViewer.Render.DataModels;
 using OFDViewer.Render.Implementation;
 using OFDViewer.Models.BaseStructure.Pages;
 using OFDViewer.Models.BaseStructure.Pages.PageBlockItems;
+using OFDViewer.Models.BaseStructure.Resources.ResItems;
 
 namespace OFDViewer.Render
 {
@@ -27,6 +28,23 @@ namespace OFDViewer.Render
         /// </summary>
         private readonly RenderConfig _renderConfig;
         
+        /// <summary>
+        /// 文本样式缓存，避免重复创建 TextStyle 对象
+        /// 缓存键：字体ID_字号_字体粗细_斜体_水平缩放
+        /// </summary>
+        private readonly Dictionary<string, TextStyle> _textStyleCache = new Dictionary<string, TextStyle>();
+        
+        /// <summary>
+        /// 样式缓存锁，确保线程安全的缓存操作
+        /// </summary>
+        private readonly object _styleCacheLock = new object();
+        
+        /// <summary>
+        /// 释放状态标志，防止重复释放资源
+        /// </summary>
+        private bool _disposed = false;
+        
+
         #endregion
 
         #region 属性
@@ -48,6 +66,8 @@ namespace OFDViewer.Render
         /// <returns>指定文档的页数</returns>
         public int GetDocumentPageCount(int docIndex)
         {
+            CheckDisposed();
+            
             if (RootDocument == null || RootDocument.Docs == null || RootDocument.Docs.Count == 0)
                 throw new InvalidOperationException("OFD文档未加载或为空");
             
@@ -171,6 +191,8 @@ namespace OFDViewer.Render
         /// <returns>渲染结果（PNG格式字节数组）</returns>
         public byte[] RenderPageToBitmap(int docIndex, int pageIndex)
         {
+            CheckDisposed();
+            
             if (RootDocument == null || RootDocument.Docs == null || RootDocument.Docs.Count == 0)
                 throw new InvalidOperationException("OFD文档未加载或为空");
             
@@ -192,22 +214,20 @@ namespace OFDViewer.Render
             var pageHeight = (float)ofdDoc.Document.CommonData.PageArea.PhysicalBox.Height;
             
             // 计算渲染尺寸（像素）
-            var renderSize = new RenderSize
-            {
-                Width = pageWidth,
-                Height = pageHeight,
-                Dpi = _renderConfig.Dpi
-            };
-            
-            int renderWidth = (int)renderSize.MillimetersToPixels(pageWidth);
-            int renderHeight = (int)renderSize.MillimetersToPixels(pageHeight);
-            
             // 创建渲染上下文
             using var renderContext = new SkiaRenderContext();
             renderContext.Config = _renderConfig;
+            
+            // 使用渲染上下文的单位转换方法（利用预计算的转换因子）
+            int renderWidth = (int)renderContext.MillimetersToPixels(pageWidth);
+            int renderHeight = (int)renderContext.MillimetersToPixels(pageHeight);
+            
             // 初始化渲染上下文
             renderContext.Initialize(renderWidth, renderHeight);
-            
+
+            // 设置资源管理器
+            renderContext.ResourceManager = new ResourceManager(ofdDoc, pageIndex);
+
             // 设置背景色为白色
             renderContext.SetBackgroundColor(0xFFFFFFFF);
             
@@ -233,6 +253,8 @@ namespace OFDViewer.Render
         /// <returns>渲染结果（PNG格式字节数组）</returns>
         public byte[] RenderPageToBitmap(int pageIndex = 0)
         {
+            CheckDisposed();
+            
             if (RootDocument == null || RootDocument.Docs == null || RootDocument.Docs.Count == 0)
                 throw new InvalidOperationException("OFD文档未加载或为空");
             
@@ -266,18 +288,19 @@ namespace OFDViewer.Render
         /// </summary>
         /// <param name="renderContext">渲染上下文</param>
         /// <param name="page">页面对象</param>
+        /// <param name="pageIndex">页面索引</param>
         private void RenderPageContent(IRenderContext renderContext, Page page)
         {
             if (page == null || page.Content == null)
                 return;
-            
+
             // 遍历所有图层
             // 渲染图层顺序：背景层、正文层、前景层，按照出现的先后顺序依次进行渲染
             foreach (var layer in page.Content)
             {
                 if (layer == null || layer.PageBlockItems == null)
                     continue;
-                
+
                 // 遍历图层中的所有页面块 
                 foreach (var blockItem in layer.PageBlockItems)
                 {
@@ -295,14 +318,15 @@ namespace OFDViewer.Render
         /// </summary>
         /// <param name="renderContext">渲染上下文</param>
         /// <param name="blockItem">页面块对象</param>
+        /// <param name="pageIndex">页面索引</param>
         private void RenderPageBlock(IRenderContext renderContext, object blockItem)
         {
             if (renderContext == null || blockItem == null)
                 return;
-            
+
             // 检查渲染上下文是否实现了相应的渲染接口
             var graphicRenderer = renderContext as IGraphicRenderer;           
-            
+
             // 根据页面块类型调用相应的渲染方法
             switch (blockItem)
             {
@@ -369,9 +393,9 @@ namespace OFDViewer.Render
             
             // 设置裁剪区（使用图元的外接矩形作为默认裁剪区）
             renderContext?.SetClipRect(boundaryX, boundaryY, boundaryWidth, boundaryHeight);
-            
+
             // 转换文本样式
-            var textStyle = ConvertToTextStyle(textObject);
+            var textStyle = ConvertToTextStyle(textObject, renderContext);
             
             // 遍历文本内容列表
             foreach (var textCode in textObject.TextCodes)
@@ -428,31 +452,68 @@ namespace OFDViewer.Render
             // 恢复渲染状态
             renderContext?.RestoreState();
         }
-        
+
         /// <summary>
-        /// 将OFD文本对象转换为文本样式
+        /// 将OFD文本对象转换为TextStyle
+        /// 优化：使用缓存避免重复创建对象，预计算DPI转换系数
         /// </summary>
         /// <param name="textObject">OFD文本对象</param>
+        /// <param name="renderContext">渲染上下文</param>
         /// <returns>文本样式</returns>
-        private TextStyle ConvertToTextStyle(Models.Font.CT_Text textObject)
+        private TextStyle ConvertToTextStyle(Models.Font.CT_Text textObject, IRenderContext renderContext)
         {
-            var style = new TextStyle
+            // 创建缓存键（基于字体ID和文本属性）
+            string cacheKey = $"{textObject.FontRefID}_{textObject.Size}_{textObject.Weight}_{textObject.Italic}_{textObject.HScale}";
+            
+            // 检查缓存
+            lock (_styleCacheLock)
             {
-                // 字体名称（使用更通用的中文字体，确保能正确显示中文和英文）
-                FontFamily = "Microsoft YaHei",
-                // 字号转换：OFD毫米单位转换为像素
-                FontSize = (float)(textObject.Size * _renderConfig.Dpi / 25.4f),
-                // 字体粗细
-                FontWeight = textObject.Weight,
-                // 是否斜体
-                Italic = textObject.Italic,
-                // 水平缩放比例
-                HScale = (float)textObject.HScale,
-                // 填充颜色（默认黑色）
-                Color = textObject.FillColor != null ? ConvertToARGB(textObject.FillColor) : 0xFF000000,
-                // 透明度（默认完全不透明）
-                Alpha = 255
-            };
+                if (_textStyleCache.TryGetValue(cacheKey, out var cachedStyle))
+                {
+                    return cachedStyle;  // 缓存命中，直接返回
+                }
+            }
+            
+            // 缓存未命中，创建新的样式
+            OFDFont oFDFont = renderContext.ResourceManager.GetResource<OFDFont>(textObject.FontRefID);
+            
+
+            var style = new TextStyle();
+            
+            // 字体资源（使用延迟加载的MemoryStream）
+            style.FontFilePath = oFDFont.FontFile != null ? oFDFont.FontFile.Path : null;
+            
+            // 字体名称（使用更通用的中文字体，确保能正确显示中文和英文）
+            style.FontFamily = oFDFont.FontName ?? oFDFont.FamilyName ?? "宋体";
+            
+            // 字号转换：使用SkiaRenderContext的只读属性（避免重复计算除法）
+            var skiaRenderContext = renderContext as SkiaRenderContext;
+            float dpiScaleFactor = skiaRenderContext?.MmToPixel ?? (_renderConfig.Dpi / 25.4f);
+            style.FontSize = (float)(textObject.Size * dpiScaleFactor);
+            
+            // 字体粗细
+            style.FontWeight = textObject.Weight;
+            
+            // 是否斜体
+            style.Italic = textObject.Italic;
+            
+            // 水平缩放比例
+            style.HScale = (float)textObject.HScale;
+            
+            // 填充颜色（默认黑色）
+            style.Color = textObject.FillColor != null ? ConvertToARGB(textObject.FillColor) : 0xFF000000;
+            
+            // 透明度（默认完全不透明）
+            style.Alpha = 255;
+
+            // 缓存结果（线程安全）
+            lock (_styleCacheLock)
+            {
+                if (!_textStyleCache.ContainsKey(cacheKey))
+                {
+                    _textStyleCache[cacheKey] = style;
+                }
+            }
             
             return style;
         }
@@ -645,34 +706,47 @@ namespace OFDViewer.Render
         /// </summary>
         /// <param name="imageRenderer">图像渲染器</param>
         /// <param name="imageObj">图像对象</param>
+        /// <param name="pageIndex">页面索引</param>
         private void RenderImageObject(IImageRenderer imageRenderer, object imageObj)
         {
             if (imageRenderer == null || imageObj == null)
                 return;
-            
+
             var imageObject = imageObj as Models.BaseStructure.Pages.PageBlockItems.ImageObject;
             if (imageObject == null)
                 return;
-            
+
             // 转换图像样式
             var imageStyle = ConvertToImageStyle(imageObject);
-            
+
             // 获取图像位置和大小（OFD坐标，单位：毫米）
             float x = (float)imageObject.Boundary.X;
             float y = (float)imageObject.Boundary.Y;
             float width = (float)imageObject.Boundary.Width;
             float height = (float)imageObject.Boundary.Height;
-            
-            // 图像数据（暂时使用占位符，后续需要从资源中获取实际图像数据）
+
+            // 获取渲染上下文
+            var renderContext = imageRenderer as IRenderContext;
+            if (renderContext == null)
+                return;
+
+            // 从资源管理器获取图像数据
             byte[] imageData = null;
-            
-            // TODO: 实现从OFD资源中获取图像数据的逻辑
-            // 需要根据imageObject.ResourceID从资源中加载图像数据
-            
+            if (renderContext.ResourceManager != null && imageObject.ResourceID != null)
+            {
+                // 首先尝试获取多媒体资源对象
+                var multiMedia = renderContext.ResourceManager.GetResource<Models.BaseStructure.Resources.ResItems.MultiMedia>(imageObject.ResourceID.ToString());
+                if (multiMedia != null && multiMedia.MediaFile != null)
+                {
+                    // 从资源文件获取图像数据
+                    imageData = renderContext.ResourceManager.GetResourceFile(multiMedia.MediaFile.Path);
+                }
+            }
+
             // 如果图像数据为空，跳过渲染
             if (imageData == null || imageData.Length == 0)
                 return;
-            
+
             // 绘制图像
             imageRenderer.DrawImage(x, y, width, height, imageData, imageStyle);
         }
@@ -702,36 +776,48 @@ namespace OFDViewer.Render
         /// </summary>
         /// <param name="renderContext">渲染上下文</param>
         /// <param name="compositeObj">复合对象</param>
+        /// <param name="pageIndex">页面索引</param>
         private void RenderCompositeObject(IRenderContext renderContext, object compositeObj)
         {
             if (renderContext == null || compositeObj == null)
                 return;
-            
+
             var compositeObject = compositeObj as Models.BaseStructure.Pages.PageBlockItems.CompositeObject;
             if (compositeObject == null)
                 return;
-            
-            // TODO: 实现从OFD资源中获取复合对象内容的逻辑
-            // 需要根据compositeObject.ResourceID从资源中加载复合对象内容
-            // 复合对象的内容是CT_VectorG类型，包含多个子图元
-            
-            // 保存当前渲染状态
-            renderContext.SaveState();
-            
-            // 获取复合对象位置和大小（OFD坐标，单位：毫米）
-            float x = (float)compositeObject.Boundary.X;
-            float y = (float)compositeObject.Boundary.Y;
-            float width = (float)compositeObject.Boundary.Width;
-            float height = (float)compositeObject.Boundary.Height;
-            
-            // 应用变换
-            renderContext.Translate(x, y);
-            
-            // TODO: 实现递归渲染复合对象中的子对象
-            // 需要遍历复合对象中的子图元，并调用相应的渲染方法
-            
-            // 恢复渲染状态
-            renderContext.RestoreState();
+
+            // 从资源管理器获取复合对象内容
+            if (renderContext.ResourceManager != null && compositeObject.ResourceID != null)
+            {
+                // 获取矢量图形资源
+                var vectorGraphic = renderContext.ResourceManager.GetResource<Models.BaseStructure.Resources.ResItems.CompositeGraphicUnit>(compositeObject.ResourceID.ToString());
+                if (vectorGraphic != null && vectorGraphic.Content != null)
+                {
+                    // 保存当前渲染状态
+                    renderContext.SaveState();
+
+                    // 获取复合对象位置和大小（OFD坐标，单位：毫米）
+                    float x = (float)compositeObject.Boundary.X;
+                    float y = (float)compositeObject.Boundary.Y;
+                    float width = (float)compositeObject.Boundary.Width;
+                    float height = (float)compositeObject.Boundary.Height;
+
+                    // 应用变换
+                    renderContext.Translate(x, y);
+
+                    // 递归渲染复合对象中的子对象
+                    if (vectorGraphic.Content.PageBlockItems != null && vectorGraphic.Content.PageBlockItems.Count > 0)
+                    {
+                        foreach (var childBlock in vectorGraphic.Content.PageBlockItems)
+                        {
+                            RenderPageBlock(renderContext, childBlock);
+                        }
+                    }
+
+                    // 恢复渲染状态
+                    renderContext.RestoreState();
+                }
+            }
         }
         
         /// <summary>
@@ -739,18 +825,19 @@ namespace OFDViewer.Render
         /// </summary>
         /// <param name="renderContext">渲染上下文</param>
         /// <param name="pageBlock">页面块对象</param>
+        /// <param name="pageIndex">页面索引</param>
         private void RenderPageBlockObject(IRenderContext renderContext, object pageBlock)
         {
             if (renderContext == null || pageBlock == null)
                 return;
-            
+
             var pageBlockObj = pageBlock as Models.BaseStructure.Pages.PageBlockItems.PageBlock;
             if (pageBlockObj == null)
                 return;
-            
+
             // 保存当前渲染状态
             renderContext.SaveState();
-            
+
             // 遍历页面块中的所有子元素并递归渲染
             if (pageBlockObj.PageBlockItems != null && pageBlockObj.PageBlockItems.Count > 0)
             {
@@ -759,7 +846,7 @@ namespace OFDViewer.Render
                     RenderPageBlock(renderContext, childBlock);
                 }
             }
-            
+
             // 恢复渲染状态
             renderContext.RestoreState();
         }
@@ -770,6 +857,8 @@ namespace OFDViewer.Render
         /// <returns>所有页面的渲染结果（PNG格式字节数组列表）</returns>
         public byte[][] RenderAllPagesToBitmap()
         {
+            CheckDisposed();
+            
             var results = new byte[PageCount][];
             
             for (int i = 0; i < PageCount; i++)
@@ -787,6 +876,8 @@ namespace OFDViewer.Render
         /// <param name="pageIndex">页面索引，默认为第1页</param>
         public void RenderPageToFile(string outputPath, int pageIndex = 0)
         {
+            CheckDisposed();
+            
             var renderResult = RenderPageToBitmap(pageIndex);
             File.WriteAllBytes(outputPath, renderResult);
         }
@@ -798,6 +889,8 @@ namespace OFDViewer.Render
         /// <param name="fileNamePattern">文件名模板，默认为"page_{0}.png"</param>
         public void RenderAllPagesToFile(string outputDirectory, string fileNamePattern = "page_{0}.png")
         {
+            CheckDisposed();
+            
             if (!Directory.Exists(outputDirectory))
                 Directory.CreateDirectory(outputDirectory);
             
@@ -817,7 +910,63 @@ namespace OFDViewer.Render
         /// </summary>
         public void Dispose()
         {
-            _ofdReader?.Dispose();
+            // 调用带参数的Dispose方法
+            Dispose(true);
+            // 阻止垃圾回收器调用终结器
+            GC.SuppressFinalize(this);
+        }
+        
+        /// <summary>
+        /// 释放资源（带参数）
+        /// </summary>
+        /// <param name="disposing">是否释放托管资源</param>
+        protected virtual void Dispose(bool disposing)
+        {
+            // 检查是否已释放
+            if (_disposed)
+                return;
+            
+            // 释放托管资源
+            if (disposing)
+            {
+                // 释放OFD读取器
+                _ofdReader?.Dispose();
+                
+                // 清空文本样式缓存
+                lock (_styleCacheLock)
+                {
+                    if (_textStyleCache != null)
+                    {
+                        _textStyleCache.Clear();
+                    }
+                }
+            }
+            
+            // 释放非托管资源（如果有）
+            // 目前没有非托管资源需要释放
+            
+            // 标记为已释放
+            _disposed = true;
+        }
+        
+        /// <summary>
+        /// 终结器
+        /// </summary>
+        ~OfdRenderer()
+        {
+            Dispose(false);
+        }
+        
+        /// <summary>
+        /// 检查对象是否已释放
+        /// </summary>
+        /// <exception cref="ObjectDisposedException">对象已释放时抛出</exception>
+        private void CheckDisposed()
+        {
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(GetType().Name, "OFD渲染器已释放，无法执行操作");
+            }
         }
         
         #endregion

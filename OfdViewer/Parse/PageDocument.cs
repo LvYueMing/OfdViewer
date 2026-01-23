@@ -39,7 +39,7 @@ namespace OFDViewer.Parse
         /// 页面私有资源路径集合（Doc_{0}/Pages/Page_{1}/Res）
         /// 如局部插图、水印等
         /// </summary>
-        public Dictionary<string, byte[]> PageResFileContents { get; set; }
+        public Dictionary<string, byte[]> PageResFiles { get; set; }
 
         private string _pageFilePath;
         /// <summary>

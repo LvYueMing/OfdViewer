@@ -10,6 +10,11 @@ namespace OFDViewer.Render.Abstractions
     public interface IRenderContext : IDisposable
     {
         /// <summary>
+        /// 资源管理器
+        /// </summary>
+        IResourceManager ResourceManager { get; set; }
+
+        /// <summary>
         /// 初始化渲染上下文，绑定渲染目标
         /// </summary>
         /// <param name="width">渲染宽度（像素）</param>

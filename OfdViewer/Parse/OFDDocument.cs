@@ -1,3 +1,4 @@
+using System.Xml.Serialization;
 using OFDViewer.Models.BaseStructure.DocumentRoot;
 using OFDViewer.Models.BaseStructure.Resources;
 using OFDViewer.Models.BaseStructure.Resources.ResItems;
@@ -81,8 +82,21 @@ namespace OFDViewer.Parse
 
         /// <summary>
         /// 文档级资源文件集合（存储Res目录下的字体、图片等资源）
+        /// 延迟加载缓存：首次使用时从归档文件加载，之后缓存在此处
         /// </summary>
         public Dictionary<string, byte[]> ResFiles { get; set; }
+
+        /// <summary>
+        /// 归档文件引用，用于延迟加载资源文件
+        /// 解析时保存归档引用，使用时从归档读取资源文件
+        /// </summary>
+        internal OFDArchive ResourceArchive { get; set; }
+
+        /// <summary>
+        /// 缓存锁，用于线程安全的缓存操作
+        /// 确保多线程环境下缓存的一致性
+        /// </summary>
+        private readonly object _cacheLock = new object();
 
 
         private string _documentFilePath;
@@ -343,6 +357,43 @@ namespace OFDViewer.Parse
 
         #region 获取资源对象
 
+
+        /// 泛型版本：从指定位置获取指定类型的资源
+        /// </summary>
+        /// <typeparam name="T">资源类型（OFDFont、ColorSpace、DrawParam等）</typeparam>
+        /// <param name="pageIndex">页面索引</param>
+        /// <param name="resourceId">资源ID</param>
+        /// <param name="location">资源位置</param>
+        /// <returns>指定类型的资源对象，如果未找到返回default(T)</returns>
+        public T GetResource<T>(int pageIndex, string resourceId, ResourceLocation location = ResourceLocation.Auto)
+        {
+            // 获取页面对象
+            PageDocument pageDoc = PageDocs?.FirstOrDefault(p => p.PageIndex == pageIndex);
+            if (pageDoc == null) return default(T);
+
+            // 按照指定位置或自动搜索顺序查找资源
+            switch (location)
+            {
+                case ResourceLocation.Page:
+                    return GetResourceFromLocation<T>(pageDoc.PageRes, resourceId);
+                case ResourceLocation.Document:
+                    return GetResourceFromLocation<T>(DocumentResource, resourceId);
+                case ResourceLocation.Public:
+                    return GetResourceFromLocation<T>(PublicResource, resourceId);
+                case ResourceLocation.Auto:
+                default:
+                    // 自动搜索顺序：Page -> Document -> Public
+                    T resource = GetResourceFromLocation<T>(pageDoc.PageRes, resourceId);
+                    if (resource != null) return resource;
+
+                    resource = GetResourceFromLocation<T>(DocumentResource, resourceId);
+                    if (resource != null) return resource;
+
+                    resource = GetResourceFromLocation<T>(PublicResource, resourceId);
+                    return resource;
+            }
+        }
+
         /// <summary>
         /// 获取指定资源
         /// </summary>
@@ -380,6 +431,55 @@ namespace OFDViewer.Parse
             }
         }
 
+
+        /// <summary>
+        /// 泛型版本：从指定资源集合中获取指定类型的资源
+        /// </summary>
+        /// <typeparam name="T">资源类型</typeparam>
+        /// <param name="res">资源集合</param>
+        /// <param name="resourceId">资源ID</param>
+        /// <returns>指定类型的资源对象，如果未找到返回default(T)</returns>
+        private T GetResourceFromLocation<T>(Res res, string resourceId)
+        {
+            if (res == null || res.ResItems == null)
+                return default(T);
+
+            // 根据泛型类型查找对应的资源
+            if (typeof(T) == typeof(OFDFont))
+            {
+                var fontsCollection = res.ResItems.OfType<OFDFonts>().FirstOrDefault();
+                var font = fontsCollection?.ofdFonts.FirstOrDefault(f => f.ID.ToString() == resourceId);
+                return (T)(object)font;
+            }
+            else if (typeof(T) == typeof(ColorSpace))
+            {
+                var colorSpacesCollection = res.ResItems.OfType<ColorSpaces>().FirstOrDefault();
+                var colorSpace = colorSpacesCollection?.colorSpaces?.FirstOrDefault(c => c.ID.ToString() == resourceId);
+                return (T)(object)colorSpace;
+            }
+            else if (typeof(T) == typeof(DrawParam))
+            {
+                var drawParamsCollection = res.ResItems.OfType<DrawParams>().FirstOrDefault();
+                var drawParam = drawParamsCollection?.drawParams?.FirstOrDefault(d => d.ID.ToString() == resourceId);
+                return (T)(object)drawParam;
+            }
+            else if (typeof(T) == typeof(CompositeGraphicUnit))
+            {
+                var compositeGraphicsCollection = res.ResItems.OfType<CompositeGraphicUnits>().FirstOrDefault();
+                var vectorGraphic = compositeGraphicsCollection?.compositeGraphicUnits?.FirstOrDefault(v => v.ID.ToString() == resourceId);
+                return (T)(object)vectorGraphic;
+            }
+            else if (typeof(T) == typeof(MultiMedia))
+            {
+                var multiMediasCollection = res.ResItems.OfType<MultiMedias>().FirstOrDefault();
+                var multimedia = multiMediasCollection?.multiMedias?.FirstOrDefault(m => m.ID.ToString() == resourceId);
+                return (T)(object)multimedia;
+            }
+
+            // 如果不是已知的资源类型，返回default(T)
+            return default(T);
+        }
+
         /// <summary>
         /// 从指定资源集合中获取资源
         /// </summary>
@@ -398,49 +498,49 @@ namespace OFDViewer.Parse
                 case ResourceType.Font:
                     // 查找Fonts资源集合
                     var fontsCollection = res.ResItems.OfType<OFDFonts>().FirstOrDefault();
-                    return fontsCollection?.ofdFonts.FirstOrDefault(f => f.ID == resourceId);
+                    return fontsCollection?.ofdFonts.FirstOrDefault(f => f.ID.ToString() == resourceId);
                 case ResourceType.ColorSpace:
                     // 查找ColorSpaces资源集合
                     var colorSpacesCollection = res.ResItems.OfType<ColorSpaces>().FirstOrDefault();
-                    return colorSpacesCollection?.colorSpaces?.FirstOrDefault(c => c.ID == resourceId);
+                    return colorSpacesCollection?.colorSpaces?.FirstOrDefault(c => c.ID.ToString() == resourceId);
                 case ResourceType.DrawParam:
                     // 查找DrawParams资源集合
                     var drawParamsCollection = res.ResItems.OfType<DrawParams>().FirstOrDefault();
-                    return drawParamsCollection?.drawParams?.FirstOrDefault(d => d.ID == resourceId);
+                    return drawParamsCollection?.drawParams?.FirstOrDefault(d => d.ID.ToString() == resourceId);
                 case ResourceType.VectorGraphic:
                     // 查找CompositeGraphicUnits资源集合（包含矢量图像）
                     var compositeGraphicsCollection = res.ResItems.OfType<CompositeGraphicUnits>().FirstOrDefault();
-                    return compositeGraphicsCollection?.compositeGraphicUnits?.FirstOrDefault(v => v.ID == resourceId);
+                    return compositeGraphicsCollection?.compositeGraphicUnits?.FirstOrDefault(v => v.ID.ToString() == resourceId);
                 case ResourceType.Multimedia:
                     // 查找MultiMedias资源集合
                     var multiMediasCollection = res.ResItems.OfType<MultiMedias>().FirstOrDefault();
-                    return multiMediasCollection?.multiMedias?.FirstOrDefault(m => m.ID == resourceId);
+                    return multiMediasCollection?.multiMedias?.FirstOrDefault(m => m.ID.ToString() == resourceId);
                 case ResourceType.All:
                 default:
                     // 搜索所有类型
                     // 1. 查找Fonts
                     var allFontsCollection = res.ResItems.OfType<OFDFonts>().FirstOrDefault();
-                    var font = allFontsCollection?.ofdFonts.FirstOrDefault(f => f.ID == resourceId);
+                    var font = allFontsCollection?.ofdFonts.FirstOrDefault(f => f.ID.ToString() == resourceId);
                     if (font != null) return font;
 
                     // 2. 查找ColorSpaces
                     var allColorSpacesCollection = res.ResItems.OfType<ColorSpaces>().FirstOrDefault();
-                    var colorSpace = allColorSpacesCollection?.colorSpaces?.FirstOrDefault(c => c.ID == resourceId);
+                    var colorSpace = allColorSpacesCollection?.colorSpaces?.FirstOrDefault(c => c.ID.ToString() == resourceId);
                     if (colorSpace != null) return colorSpace;
 
                     // 3. 查找DrawParams
                     var allDrawParamsCollection = res.ResItems.OfType<DrawParams>().FirstOrDefault();
-                    var drawParam = allDrawParamsCollection?.drawParams?.FirstOrDefault(d => d.ID == resourceId);
+                    var drawParam = allDrawParamsCollection?.drawParams?.FirstOrDefault(d => d.ID.ToString() == resourceId);
                     if (drawParam != null) return drawParam;
 
                     // 4. 查找CompositeGraphicUnits（矢量图像）
                     var allCompositeGraphicsCollection = res.ResItems.OfType<CompositeGraphicUnits>().FirstOrDefault();
-                    var vectorGraphic = allCompositeGraphicsCollection?.compositeGraphicUnits?.FirstOrDefault(v => v.ID == resourceId);
+                    var vectorGraphic = allCompositeGraphicsCollection?.compositeGraphicUnits?.FirstOrDefault(v => v.ID.ToString() == resourceId);
                     if (vectorGraphic != null) return vectorGraphic;
 
                     // 5. 查找MultiMedias
                     var allMultiMediasCollection = res.ResItems.OfType<MultiMedias>().FirstOrDefault();
-                    var multimedia = allMultiMediasCollection?.multiMedias?.FirstOrDefault(m => m.ID == resourceId);
+                    var multimedia = allMultiMediasCollection?.multiMedias?.FirstOrDefault(m => m.ID.ToString() == resourceId);
                     return multimedia;
             }
         }
@@ -458,11 +558,17 @@ namespace OFDViewer.Parse
             PageDocument pageDoc = PageDocs?.FirstOrDefault(p => p.PageIndex == pageIndex);
             if (pageDoc == null) return null;
 
+            // 构建完整的文件路径
+            string fullResFilePath = pageDoc.PageRes?.BaseLoc == null
+                ? filePath
+                : ST_Loc.GetAbsolutePath(filePath,pageDoc.PageRes.BaseLocString).Path;
+
             // 按照指定位置或自动搜索顺序查找资源文件
             switch (location)
             {
                 case ResourceLocation.Page:
-                    if (pageDoc.PageResFileContents != null && pageDoc.PageResFileContents.TryGetValue(filePath, out byte[] pageContent))
+                    // 构建完整的文件路径
+                    if (pageDoc.PageResFiles != null && pageDoc.PageResFiles.TryGetValue(fullResFilePath, out byte[] pageContent))
                     {
                         return pageContent;
                     }
@@ -472,19 +578,91 @@ namespace OFDViewer.Parse
                 case ResourceLocation.Auto:
                 default:
                     // 自动搜索顺序：Page -> Document
-                    if (pageDoc.PageResFileContents != null && pageDoc.PageResFileContents.TryGetValue(filePath, out byte[] pageFileContent))
+                    if (pageDoc.PageResFiles != null && pageDoc.PageResFiles.TryGetValue(fullResFilePath, out byte[] pageFileContent))
                     {
                         return pageFileContent;
                     }
-                    if (ResFiles != null && ResFiles.TryGetValue(filePath, out byte[] docContent))
+                    // 构建完整的文件路径
+                    fullResFilePath =  ST_Loc.GetAbsolutePath(filePath, ResDirectoryPath).Path;
+
+                    // 延迟加载：先检查缓存
+                    if (ResFiles != null && ResFiles.TryGetValue(fullResFilePath, out byte[] cachedContent))
                     {
-                        return docContent;
+                        return cachedContent;
                     }
-                    return null;
+                    
+                    // 缓存未命中，从归档文件加载
+                    byte[] fileContent = LoadResourceFileFromArchive(fullResFilePath);
+                    
+                    // 缓存结果
+                    if (fileContent != null)
+                    {
+                        lock (_cacheLock)
+                        {
+                            if (ResFiles == null)
+                            {
+                                ResFiles = new Dictionary<string, byte[]>();
+                            }
+                            
+                            if (!ResFiles.ContainsKey(filePath))
+                            {
+                                ResFiles[filePath] = fileContent;
+                            }
+                        }
+                    }
+                    
+                    return fileContent;
             }
         }
         #endregion
 
+        #region 私有方法
+
+        /// <summary>
+        /// 从归档文件加载资源文件内容
+        /// 延迟加载的核心方法：使用时从归档读取，不使用时不加载
+        /// </summary>
+        /// <param name="filePath">文件路径</param>
+        /// <returns>资源文件内容，如果未找到返回null</returns>
+        private byte[] LoadResourceFileFromArchive(string fullFilePath)
+        {
+            // 参数验证
+            if (string.IsNullOrEmpty(fullFilePath))
+                return null;
+            
+            // 检查归档引用是否存在
+            if (ResourceArchive == null)
+                return null;
+            
+            
+            // 检查文件是否存在于归档中
+            if (!ResourceArchive.FileExists(fullFilePath))
+            {
+                // 尝试直接使用相对路径
+                if (!ResourceArchive.FileExists(fullFilePath))
+                {
+                    return null;
+                }
+                fullFilePath = fullFilePath;
+            }
+            
+            // 从归档文件读取内容
+            try
+            {
+                using var stream = ResourceArchive.OpenFileStream(fullFilePath);
+                using var memoryStream = new MemoryStream();
+                stream.CopyTo(memoryStream);
+                return memoryStream.ToArray();
+            }
+            catch (Exception ex)
+            {
+                // 记录错误日志（可以添加日志框架）
+                System.Diagnostics.Debug.WriteLine($"加载资源文件失败: {fullFilePath}, 错误: {ex.Message}");
+                return null;
+            }
+        }
+        
+        #endregion
     }
 }
 
