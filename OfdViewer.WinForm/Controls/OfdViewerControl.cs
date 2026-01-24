@@ -655,11 +655,11 @@ namespace OfdViewer.WinForm.Controls
                 {
                     await Task.Delay(10);
                 }
-                
+
                 // 释放之前的渲染器
                 _ofdRenderer?.Dispose();
-                
-                
+
+
                 // 清空对象池
                 lock (_poolLock)
                 {
@@ -668,7 +668,7 @@ namespace OfdViewer.WinForm.Controls
                         _pictureBoxPool.Dequeue()?.Dispose();
                     }
                 }
-                
+
                 // 清空待渲染队列
                 lock (_renderLock)
                 {
@@ -701,17 +701,30 @@ namespace OfdViewer.WinForm.Controls
                 }
                 _renderedPages.Clear();
 
+                // 页面偏移量（用于滚动）
+                _pageOffsets.Clear();
+
+                // 累计高度（用于滚动）
+                _accumulatedHeight = 0;
+
+
+                // 用于优化Panel_Paint的标记
+                _lastScrollPosition = -1;
+                _lastFirstPage = -1;
+                _lastLastPage = -1;
+                _lastZoom = 1.0;
+
                 _isRendering = false;
-                
+
                 // 创建新的渲染器
                 _ofdRenderer = new OfdRenderer(filePath, _renderConfig);
-                
+
                 // 更新页面信息
                 TotalPages = _ofdRenderer.PageCount;
-                
+
                 // 先设置CurrentPage为-1，避免触发不必要的重绘
-                _currentPage = -1;              
-                
+                _currentPage = -1;
+
                 // 最后设置CurrentPage为0，触发一次重绘
                 CurrentPage = 0;
             }
