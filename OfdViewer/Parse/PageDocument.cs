@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using OFDViewer.Models.BaseStructure.Pages;
 using OFDViewer.Models.BaseStructure.Resources;
 
@@ -55,7 +56,11 @@ namespace OFDViewer.Parse
                 }
                 return _pageFilePath;
             }
-            set => _pageFilePath = value;
+            set
+            {
+                _pageFilePath = value;
+                PageIndex = int.Parse(Regex.Match(value, @"Page_(\d+)").Groups[1].Value);
+            }
         }
 
 
@@ -106,8 +111,8 @@ namespace OFDViewer.Parse
             {
                 throw new ArgumentNullException(nameof(belongDocPath), "所属文档路径不能为空");
             }
-            PageIndex = 0;
             BelongDocPath = belongDocPath;
+            BelongDocIndex = int.Parse(Regex.Match(belongDocPath, @"Doc_(\d+)").Groups[1].Value);
             Page = new Page();
         }
     }

@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using System.Xml.Serialization;
 using OFDViewer.Models.BaseStructure.DocumentRoot;
 using OFDViewer.Models.BaseStructure.Resources;
@@ -193,7 +194,8 @@ namespace OFDViewer.Parse
             }
             DocDirectoryPath = Path.GetDirectoryName(docFilePath);
             DocumentFilePath = docFilePath;
-            //todo： 从文档路径 Doc_{0} 获取文档序号 0
+            // 从文档路径 Doc_{0} 获取文档序号 0
+            DocIndex = int.Parse(Regex.Match(DocDirectoryPath, @"Doc_(\d+)").Groups[1].Value);
             Document = new Document();
             PageDocs = new List<PageDocument>();
             ResFiles = new Dictionary<string, byte[]>();

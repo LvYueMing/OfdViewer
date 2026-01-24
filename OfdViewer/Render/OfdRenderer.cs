@@ -247,6 +247,8 @@ namespace OFDViewer.Render
             // 返回渲染结果
             return renderContext.GetRenderResult();
         }
+
+
         
         /// <summary>
         /// 渲染指定页面到内存位图（按全局页面索引）
@@ -505,6 +507,12 @@ namespace OFDViewer.Render
                         }
                     }
                 }
+
+                // 批量绘制所有字形
+                if (glyphInfos.Count > 0)
+                {
+                    textRenderer.DrawGlyphs(glyphInfos.ToArray(), textStyle);
+                }
             }
             else
             {
@@ -564,13 +572,13 @@ namespace OFDViewer.Render
                         }
                     }
                 }
-            }
-            
-            // 批量绘制所有字形
-            if (glyphInfos.Count > 0)
-            {
-                textRenderer.DrawGlyphs(glyphInfos.ToArray(), textStyle);
-            }
+
+                foreach (var glyphInfo in glyphInfos)
+                {
+                    // 绘制字形
+                    textRenderer.DrawText(glyphInfo.X, glyphInfo.Y, glyphInfo.Glyph, textStyle);
+                }
+            }         
         }
 
         /// <summary>
@@ -633,12 +641,13 @@ namespace OFDViewer.Render
                     currentY += renderContext.MillimetersToPixels((float)deltaYArray[i]);
                 }
             }
-            
-            // 批量绘制所有字形
-            if (glyphInfos.Count > 0)
+
+            foreach (var glyphInfo in glyphInfos)
             {
-                textRenderer.DrawGlyphs(glyphInfos.ToArray(), textStyle);
+                // 绘制字形
+                textRenderer.DrawText(glyphInfo.X, glyphInfo.Y, glyphInfo.Glyph, textStyle);
             }
+        
         }
 
         /// <summary>

@@ -439,7 +439,7 @@ namespace OFDViewer.Parse
         }
         #endregion
 
-        #region 辅助方法（与OFDReader的LoadDocFramework对齐，增强实用性）
+        #region 辅助方法
 
         private void EnsureNotDisposed()
         {

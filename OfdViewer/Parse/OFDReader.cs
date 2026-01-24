@@ -201,7 +201,7 @@ namespace OFDViewer.Parse
                 {
                     // 获取页面对象文件 Pages/Page_0/Content.xml 绝对路径 
                     var pageFilePath = page.BaseLoc.GetAbsolutePath(doc.DocDirectoryPath).Path;
-                    var pageDoc = ReadPageDoc(pageFilePath);
+                    var pageDoc = ReadPageDoc(pageFilePath, doc.DocDirectoryPath);
 
                     doc.AddPageDoc(pageDoc);
                 }
@@ -291,10 +291,10 @@ namespace OFDViewer.Parse
         /// </summary>
         /// <param name="pageDocFilePath">文档路径</param>
         /// <returns>页面对象</returns>
-        private PageDocument ReadPageDoc(string pageDocFilePath)
+        private PageDocument ReadPageDoc(string pageDocFilePath,string docFilePath)
         {
             EnsureNotDisposed();
-            var pageDoc = new PageDocument();
+            var pageDoc = new PageDocument(docFilePath);
 
             // Doc_{0}/Pages/Page_{1}/Content.xml
             if (_archive.FileExists(pageDocFilePath))

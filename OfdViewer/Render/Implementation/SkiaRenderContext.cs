@@ -572,7 +572,7 @@ namespace OFDViewer.Render.Implementation
             if (skTypeface == null)
             {
                 //从style.FontResource 加载SKTypeface
-                if (string.IsNullOrEmpty(style.FontFilePath))
+                if (!string.IsNullOrEmpty(style.FontFilePath))
                 {
                     var fontByte = ResourceManager.GetResourceFile(style.FontFilePath);
                     using (var stream = new MemoryStream(fontByte))
@@ -668,7 +668,7 @@ namespace OFDViewer.Render.Implementation
             if (skTypeface == null)
             {
                 //从style.FontResource 加载SKTypeface
-                if (string.IsNullOrEmpty(style.FontFilePath))
+                if (!string.IsNullOrEmpty(style.FontFilePath))
                 {
                     var fontByte = ResourceManager.GetResourceFile(style.FontFilePath);
                     using (var stream = new MemoryStream(fontByte))
@@ -724,24 +724,25 @@ namespace OFDViewer.Render.Implementation
                 _reusablePaint.Style = SKPaintStyle.Fill;
                 _reusablePaint.Color = ConvertToSKColor(style.Color, style.Alpha);
 
-                //SKTextBlobBuilder builder = new SKTextBlobBuilder();
-                //SKTextBlob sKTextBlob = builder.Build();
+                List<ushort> allGlyphs = new List<ushort>();
+                List<SKPoint> allPositions = new List<SKPoint>();
 
-                //var glyphs = _reusablePaint.GetGlyphs("Positioned Text");
-                //using (var positionedBlob = SKTextBlob.CreatePositioned(glyphs, paint.Typeface, positions))
-                //{
-                //    canvas.DrawText(positionBlob, paint);
-                //}
-
-
-                // 批量绘制字形
+                // 设置每个字形的位置
                 foreach (var glyph in glyphs)
                 {
-                    if (!string.IsNullOrEmpty(glyph.Glyph))
-                    {
-                        _canvas.DrawText(glyph.Glyph, glyph.X, glyph.Y, skFont, _reusablePaint);
-                    }
+                    allGlyphs.Add(ushort.Parse(glyph.Glyph));
+                    allPositions.Add(new SKPoint(glyph.X, glyph.Y));
                 }
+
+                using var builder = new SKTextBlobBuilder();
+
+                var run = builder.AllocatePositionedRun(skFont, glyphs.Length);
+                run.SetGlyphs(allGlyphs.ToArray());
+                run.SetPositions(allPositions.ToArray());
+               
+                using var positionedTextBlob = builder.Build();
+
+                _canvas.DrawText(positionedTextBlob, 0, 0, _reusablePaint);
             }
         }
 
