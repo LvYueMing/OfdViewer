@@ -733,6 +733,9 @@ namespace OFDViewer.Render
             if (ofdColor == null)
                 return 0xFF000000;
             
+            // 获取透明度（0-255）
+            byte alpha = (byte)(ofdColor.Alpha >= 0 && ofdColor.Alpha <= 255 ? ofdColor.Alpha : 255);
+            
             // 简单处理RGB颜色（后续需要支持更多颜色空间）
             if (ofdColor.Value != null && ofdColor.Value.Count >= 3)
             {
@@ -745,10 +748,10 @@ namespace OFDViewer.Render
                 byte r = (byte)(rValue * 255);
                 byte g = (byte)(gValue * 255);
                 byte b = (byte)(bValue * 255);
-                return (uint)(0xFF000000 | ((uint)r << 16) | ((uint)g << 8) | b);
+                return (uint)((uint)alpha << 24 | ((uint)r << 16) | ((uint)g << 8) | b);
             }
             
-            return 0xFF000000;
+            return (uint)((uint)alpha << 24 | 0x000000);
         }
         
         /// <summary>
@@ -787,13 +790,13 @@ namespace OFDViewer.Render
             renderContext?.SetClipRect(boundaryX, boundaryY, boundaryWidth, boundaryHeight);
             
             // 转换图形样式
-            var graphStyle = ConvertToGraphicStyle(pathObject);
+            var graphStyle = ConvertToGraphStyle(pathObject);
             
             // 开始绘制路径
             pathRenderer.BeginPath();
             
             // 解析并绘制路径（将图形平移到页面空间）
-            ParseAndRenderPath(pathRenderer, pathObject.AbbreviatedData, boundaryX, boundaryY);
+            ParseAndRenderPath(pathRenderer, renderContext, pathObject.AbbreviatedData, boundaryX, boundaryY);
             
             // 根据样式绘制路径
             if (graphStyle.Fill && graphStyle.Stroke)
@@ -825,10 +828,11 @@ namespace OFDViewer.Render
         /// C - 自动闭合子路径
         /// </summary>
         /// <param name="pathRenderer">路径渲染器</param>
+        /// <param name="renderContext">渲染上下文</param>
         /// <param name="abbreviatedData">OFD路径数据</param>
         /// <param name="boundaryX">图元外接矩形X坐标（页面坐标系，像素）</param>
         /// <param name="boundaryY">图元外接矩形Y坐标（页面坐标系，像素）</param>
-        private void ParseAndRenderPath(IPathRenderer pathRenderer, string abbreviatedData, float boundaryX = 0, float boundaryY = 0)
+        private void ParseAndRenderPath(IPathRenderer pathRenderer, IRenderContext renderContext, string abbreviatedData, float boundaryX = 0, float boundaryY = 0)
         {
             if (string.IsNullOrEmpty(abbreviatedData))
                 return;
@@ -849,8 +853,8 @@ namespace OFDViewer.Render
                     case "S":// 定义子绘制图形边线的起始点坐标
                         if (index + 1 < tokens.Length)
                         {
-                            float x = float.Parse(tokens[index]) + boundaryX;
-                            float y = float.Parse(tokens[index + 1]) + boundaryY;
+                            float x = renderContext.MillimetersToPixels(float.Parse(tokens[index])) + boundaryX;
+                            float y = renderContext.MillimetersToPixels(float.Parse(tokens[index + 1])) + boundaryY;
                             pathRenderer.MoveTo(x, y);
                             index += 2;
                         }
@@ -859,8 +863,8 @@ namespace OFDViewer.Render
                     case "M":// 将当前点移动到指定点
                         if (index + 1 < tokens.Length)
                         {
-                            float x = float.Parse(tokens[index]) + boundaryX;
-                            float y = float.Parse(tokens[index + 1]) + boundaryY;
+                            float x = renderContext.MillimetersToPixels(float.Parse(tokens[index])) + boundaryX;
+                            float y = renderContext.MillimetersToPixels(float.Parse(tokens[index + 1])) + boundaryY;
                             pathRenderer.MoveTo(x, y);
                             index += 2;
                         }
@@ -869,8 +873,8 @@ namespace OFDViewer.Render
                     case "L":// 绘制线段到指定点
                         if (index + 1 < tokens.Length)
                         {
-                            float x = float.Parse(tokens[index]) + boundaryX;
-                            float y = float.Parse(tokens[index + 1]) + boundaryY;
+                            float x = renderContext.MillimetersToPixels(float.Parse(tokens[index])) + boundaryX;
+                            float y = renderContext.MillimetersToPixels(float.Parse(tokens[index + 1])) + boundaryY;
                             pathRenderer.LineTo(x, y);
                             index += 2;
                         }
@@ -879,10 +883,10 @@ namespace OFDViewer.Render
                     case "Q":// 二次贝塞尔曲线
                         if (index + 3 < tokens.Length)
                         {
-                            float x1 = float.Parse(tokens[index]) + boundaryX;
-                            float y1 = float.Parse(tokens[index + 1]) + boundaryY;
-                            float x2 = float.Parse(tokens[index + 2]) + boundaryX;
-                            float y2 = float.Parse(tokens[index + 3]) + boundaryY;
+                            float x1 = renderContext.MillimetersToPixels(float.Parse(tokens[index])) + boundaryX;
+                            float y1 = renderContext.MillimetersToPixels(float.Parse(tokens[index + 1])) + boundaryY;
+                            float x2 = renderContext.MillimetersToPixels(float.Parse(tokens[index + 2])) + boundaryX;
+                            float y2 = renderContext.MillimetersToPixels(float.Parse(tokens[index + 3])) + boundaryY;
                             pathRenderer.QuadTo(x1, y1, x2, y2);
                             index += 4;
                         }
@@ -891,12 +895,12 @@ namespace OFDViewer.Render
                     case "B":// 三次贝塞尔曲线
                         if (index + 5 < tokens.Length)
                         {
-                            float x1 = float.Parse(tokens[index]) + boundaryX;
-                            float y1 = float.Parse(tokens[index + 1]) + boundaryY;
-                            float x2 = float.Parse(tokens[index + 2]) + boundaryX;
-                            float y2 = float.Parse(tokens[index + 3]) + boundaryY;
-                            float x3 = float.Parse(tokens[index + 4]) + boundaryX;
-                            float y3 = float.Parse(tokens[index + 5]) + boundaryY;
+                            float x1 = renderContext.MillimetersToPixels(float.Parse(tokens[index])) + boundaryX;
+                            float y1 = renderContext.MillimetersToPixels(float.Parse(tokens[index + 1])) + boundaryY;
+                            float x2 = renderContext.MillimetersToPixels(float.Parse(tokens[index + 2])) + boundaryX;
+                            float y2 = renderContext.MillimetersToPixels(float.Parse(tokens[index + 3])) + boundaryY;
+                            float x3 = renderContext.MillimetersToPixels(float.Parse(tokens[index + 4])) + boundaryX;
+                            float y3 = renderContext.MillimetersToPixels(float.Parse(tokens[index + 5])) + boundaryY;
                             pathRenderer.CubicTo(x1, y1, x2, y2, x3, y3);
                             index += 6;
                         }
@@ -905,13 +909,13 @@ namespace OFDViewer.Render
                     case "A":// 圆弧
                         if (index + 6 < tokens.Length)
                         {
-                            float rx = float.Parse(tokens[index]);
-                            float ry = float.Parse(tokens[index + 1]);
-                            float angle = float.Parse(tokens[index + 2]);
-                            int large = int.Parse(tokens[index + 3]);
-                            int sweep = int.Parse(tokens[index + 4]);
-                            float x = float.Parse(tokens[index + 5]) + boundaryX;
-                            float y = float.Parse(tokens[index + 6]) + boundaryY;
+                            float rx = renderContext.MillimetersToPixels(float.Parse(tokens[index]));
+                            float ry = renderContext.MillimetersToPixels(float.Parse(tokens[index + 1]));
+                            float angle = renderContext.MillimetersToPixels(float.Parse(tokens[index + 2]));
+                            int large = (int)renderContext.MillimetersToPixels(int.Parse(tokens[index + 3]));
+                            int sweep = (int)renderContext.MillimetersToPixels(int.Parse(tokens[index + 4]));
+                            float x = renderContext.MillimetersToPixels(float.Parse(tokens[index + 5])) + boundaryX;
+                            float y = renderContext.MillimetersToPixels(float.Parse(tokens[index + 6])) + boundaryY;
                             
                             pathRenderer.ArcTo(rx, ry, angle, large == 1, sweep == 1, x, y);
                             index += 7;
@@ -929,35 +933,35 @@ namespace OFDViewer.Render
                 }
             }
         }
-        
+
         /// <summary>
         /// 将OFD路径对象转换为图形样式
         /// </summary>
         /// <param name="pathObject">OFD路径对象</param>
         /// <returns>图形样式</returns>
-        private GraphStyle ConvertToGraphicStyle(Models.Graph.CT_Path pathObject)
+        private GraphStyle ConvertToGraphStyle(Models.Graph.CT_Path pathObject)
         {
             var style = new GraphStyle
             {
-                // 填充颜色
+                // 填充颜色 默认透明色
                 Color = ConvertToARGB(pathObject.FillColor),
-                Alpha = 255,
-                
-                // 描边颜色
+                Alpha = (byte)pathObject.Alpha,
+
+                // 描边颜色 默认黑色
                 StrokeColor = ConvertToARGB(pathObject.StrokeColor),
                 StrokeAlpha = 255,
-                
+
                 // 描边宽度
                 StrokeWidth = (float)pathObject.LineWidth,
-                
+
                 // 是否填充和描边
                 Fill = pathObject.Fill,
                 Stroke = pathObject.Stroke,
-                
+
                 // 虚线样式（暂时不支持）
                 DashPattern = null
             };
-            
+
             return style;
         }
         

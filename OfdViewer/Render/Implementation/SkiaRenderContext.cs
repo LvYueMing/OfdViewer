@@ -24,7 +24,7 @@ namespace OFDViewer.Render.Implementation
         /// <summary>
         /// 渲染画笔
         /// </summary>
-        private SKPaint _paint;
+
         /// <summary>
         /// 渲染配置
         /// </summary>
@@ -193,7 +193,6 @@ namespace OFDViewer.Render.Implementation
         public SkiaRenderContext()
         {
             _config = new RenderConfig();
-            _paint = new SKPaint();
             // 初始化转换因子
             UpdateConversionFactors();
         }
@@ -324,19 +323,20 @@ namespace OFDViewer.Render.Implementation
         /// <param name="quality">渲染质量</param>
         public void SetRenderQuality(RenderQuality quality)
         {
-            if (_paint == null) return;
-
             _config.Quality = quality;
 
             // 根据渲染质量设置抗锯齿
-            switch (quality)
+            lock (_reusablePaintLock)
             {
-                case RenderQuality.Performance:
-                    _paint.IsAntialias = false;
-                    break;
-                case RenderQuality.HighQuality:
-                    _paint.IsAntialias = true;
-                    break;
+                switch (quality)
+                {
+                    case RenderQuality.Performance:
+                        _reusablePaint.IsAntialias = false;
+                        break;
+                    case RenderQuality.HighQuality:
+                        _reusablePaint.IsAntialias = true;
+                        break;
+                }
             }
         }
 
@@ -352,31 +352,31 @@ namespace OFDViewer.Render.Implementation
             {
                 _bitmap.Encode(ms, SKEncodedImageFormat.Png, 100);
                 var result = ms.ToArray();
-                
+
                 // 调试：仅在调试环境下保存渲染结果到本地文件，查看图片质量
 #if DEBUG
-                //try
-                //{
-                //    string debugDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "OFD_Debug");
-                //    if (!Directory.Exists(debugDir))
-                //    {
-                //        Directory.CreateDirectory(debugDir);
-                //    }
-                    
-                //    string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
-                //    string debugFilePath = Path.Combine(debugDir, $"ofd_render_{timestamp}.png");
-                //    File.WriteAllBytes(debugFilePath, result);
-                    
-                //    // 输出调试信息
-                //    System.Diagnostics.Debug.WriteLine($"渲染结果已保存到: {debugFilePath}");
-                //}
-                //catch (Exception ex)
-                //{
-                //    // 忽略保存错误，避免影响正常渲染
-                //    System.Diagnostics.Debug.WriteLine($"保存调试图片失败: {ex.Message}");
-                //}
+                try
+                {
+                    string debugDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "OFD_Debug");
+                    if (!Directory.Exists(debugDir))
+                    {
+                        Directory.CreateDirectory(debugDir);
+                    }
+
+                    string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
+                    string debugFilePath = Path.Combine(debugDir, $"ofd_render_{timestamp}.png");
+                    File.WriteAllBytes(debugFilePath, result);
+
+                    // 输出调试信息
+                    System.Diagnostics.Debug.WriteLine($"渲染结果已保存到: {debugFilePath}");
+                }
+                catch (Exception ex)
+                {
+                    // 忽略保存错误，避免影响正常渲染
+                    System.Diagnostics.Debug.WriteLine($"保存调试图片失败: {ex.Message}");
+                }
 #endif
-                
+
                 return result;
             }
         }
@@ -424,9 +424,9 @@ namespace OFDViewer.Render.Implementation
         /// <param name="style">图形样式</param>
         public void DrawLine(float x1, float y1, float x2, float y2, GraphStyle style)
         {
-            if (_canvas == null || _paint == null) return;
+            if (_canvas == null) return;
 
-            using (var paint = CreatePaintFromGraphicStyle(style))
+            using (var paint = CreateFillPaintFromGraphStyle(style))
             {
                 _canvas.DrawLine(x1, y1, x2, y2, paint);
             }
@@ -442,11 +442,11 @@ namespace OFDViewer.Render.Implementation
         /// <param name="style">图形样式</param>
         public void DrawRectangle(float x, float y, float width, float height, GraphStyle style)
         {
-            if (_canvas == null || _paint == null) return;
+            if (_canvas == null) return;
 
             var rect = new SKRect(x, y, x + width, y + height);
 
-            using (var paint = CreatePaintFromGraphicStyle(style))
+            using (var paint = CreateFillPaintFromGraphStyle(style))
             {
                 if (style.Fill)
                 {
@@ -454,7 +454,7 @@ namespace OFDViewer.Render.Implementation
                 }
                 if (style.Stroke)
                 {
-                    using (var strokePaint = CreateStrokePaintFromGraphicStyle(style))
+                    using (var strokePaint = CreateStrokePaintFromGraphStyle(style))
                     {
                         _canvas.DrawRect(rect, strokePaint);
                     }
@@ -471,9 +471,9 @@ namespace OFDViewer.Render.Implementation
         /// <param name="style">图形样式</param>
         public void DrawCircle(float x, float y, float radius, GraphStyle style)
         {
-            if (_canvas == null || _paint == null) return;
+            if (_canvas == null) return;
 
-            using (var paint = CreatePaintFromGraphicStyle(style))
+            using (var paint = CreateFillPaintFromGraphStyle(style))
             {
                 if (style.Fill)
                 {
@@ -481,7 +481,7 @@ namespace OFDViewer.Render.Implementation
                 }
                 if (style.Stroke)
                 {
-                    using (var strokePaint = CreateStrokePaintFromGraphicStyle(style))
+                    using (var strokePaint = CreateStrokePaintFromGraphStyle(style))
                     {
                         _canvas.DrawCircle(x, y, radius, strokePaint);
                     }
@@ -499,11 +499,11 @@ namespace OFDViewer.Render.Implementation
         /// <param name="style">图形样式</param>
         public void DrawEllipse(float x, float y, float width, float height, GraphStyle style)
         {
-            if (_canvas == null || _paint == null) return;
+            if (_canvas == null) return;
 
             var rect = new SKRect(x, y, x + width, y + height);
 
-            using (var paint = CreatePaintFromGraphicStyle(style))
+            using (var paint = CreateFillPaintFromGraphStyle(style))
             {
                 if (style.Fill)
                 {
@@ -511,7 +511,7 @@ namespace OFDViewer.Render.Implementation
                 }
                 if (style.Stroke)
                 {
-                    using (var strokePaint = CreateStrokePaintFromGraphicStyle(style))
+                    using (var strokePaint = CreateStrokePaintFromGraphStyle(style))
                     {
                         _canvas.DrawOval(rect, strokePaint);
                     }
@@ -526,7 +526,7 @@ namespace OFDViewer.Render.Implementation
         /// <param name="style">图形样式</param>
         public void DrawPolygon(float[] points, GraphStyle style)
         {
-            if (_canvas == null || _paint == null || points == null || points.Length < 6) return;
+            if (_canvas == null || points == null || points.Length < 6) return;
 
             using (var path = new SKPath())
             {
@@ -542,7 +542,7 @@ namespace OFDViewer.Render.Implementation
                 // 闭合路径
                 path.Close();
 
-                using (var paint = CreatePaintFromGraphicStyle(style))
+                using (var paint = CreateFillPaintFromGraphStyle(style))
                 {
                     if (style.Fill)
                     {
@@ -550,7 +550,7 @@ namespace OFDViewer.Render.Implementation
                     }
                     if (style.Stroke)
                     {
-                        using (var strokePaint = CreateStrokePaintFromGraphicStyle(style))
+                        using (var strokePaint = CreateStrokePaintFromGraphStyle(style))
                         {
                             _canvas.DrawPath(path, strokePaint);
                         }
@@ -840,7 +840,7 @@ namespace OFDViewer.Render.Implementation
         /// <param name="style">图像样式</param>
         public void DrawImage(float x, float y, float width, float height, byte[] imageData, ImageStyle style)
         {
-            if (_canvas == null || _paint == null || imageData == null || imageData.Length == 0) return;
+            if (_canvas == null  || imageData == null || imageData.Length == 0) return;
 
             using (var stream = new MemoryStream(imageData))
             {
@@ -859,7 +859,7 @@ namespace OFDViewer.Render.Implementation
         /// <param name="style">图像样式</param>
         public void DrawImage(float x, float y, float width, float height, Stream stream, ImageStyle style)
         {
-            if (_canvas == null || _paint == null || stream == null) return;
+            if (_canvas == null || stream == null) return;
 
             try
             {
@@ -868,10 +868,13 @@ namespace OFDViewer.Render.Implementation
                     if (skImage == null) return;
 
                     // 设置图像插值模式
-                    _paint.IsAntialias = style.InterpolationMode != ImageInterpolationMode.LowQuality;
+                    lock (_reusablePaintLock)
+                    {
+                        _reusablePaint.IsAntialias = style.InterpolationMode != ImageInterpolationMode.LowQuality;
 
-                    // 绘制图像（使用正确的API调用）
-                    _canvas.DrawImage(skImage, new SKRect(x, y, x + width, y + height), _paint);
+                        // 绘制图像（使用正确的API调用）
+                        _canvas.DrawImage(skImage, new SKRect(x, y, x + width, y + height), _reusablePaint);
+                    }
                 }
             }
             catch (Exception ex)
@@ -975,9 +978,9 @@ namespace OFDViewer.Render.Implementation
         /// <param name="style">图形样式</param>
         public void FillPath(GraphStyle style)
         {
-            if (_canvas == null || _paint == null || _currentPath == null) return;
+            if (_canvas == null || _currentPath == null) return;
 
-            using (var paint = CreatePaintFromGraphicStyle(style))
+            using (var paint = CreateFillPaintFromGraphStyle(style))
             {
                 _canvas.DrawPath(_currentPath, paint);
             }
@@ -989,9 +992,9 @@ namespace OFDViewer.Render.Implementation
         /// <param name="style">图形样式</param>
         public void StrokePath(GraphStyle style)
         {
-            if (_canvas == null || _paint == null || _currentPath == null) return;
+            if (_canvas == null || _currentPath == null) return;
 
-            using (var paint = CreateStrokePaintFromGraphicStyle(style))
+            using (var paint = CreateStrokePaintFromGraphStyle(style))
             {
                 _canvas.DrawPath(_currentPath, paint);
             }
@@ -1003,19 +1006,14 @@ namespace OFDViewer.Render.Implementation
         /// <param name="style">图形样式</param>
         public void FillAndStrokePath(GraphStyle style)
         {
-            if (_canvas == null || _paint == null || _currentPath == null) return;
+            if (_canvas == null || _currentPath == null) return;
 
-            // 先填充
-            using (var fillPaint = CreatePaintFromGraphicStyle(style))
+            // 填充和描边合并为一个绘制调用，提升性能
+            using (var fillPaint = CreatePaintFromGraphStyle(style))
             {
                 _canvas.DrawPath(_currentPath, fillPaint);
             }
 
-            // 再描边
-            using (var strokePaint = CreateStrokePaintFromGraphicStyle(style))
-            {
-                _canvas.DrawPath(_currentPath, strokePaint);
-            }
         }
 
         #endregion
@@ -1027,7 +1025,7 @@ namespace OFDViewer.Render.Implementation
         /// </summary>
         /// <param name="style">图形样式</param>
         /// <returns>SKPaint对象</returns>
-        private SKPaint CreatePaintFromGraphicStyle(GraphStyle style)
+        private SKPaint CreateFillPaintFromGraphStyle(GraphStyle style)
         {
             var paint = new SKPaint();
             paint.IsAntialias = _config.AntiAlias;
@@ -1045,12 +1043,35 @@ namespace OFDViewer.Render.Implementation
         /// </summary>
         /// <param name="style">图形样式</param>
         /// <returns>SKPaint对象</returns>
-        private SKPaint CreateStrokePaintFromGraphicStyle(GraphStyle style)
+        private SKPaint CreateStrokePaintFromGraphStyle(GraphStyle style)
         {
             var paint = new SKPaint();
             paint.IsAntialias = _config.AntiAlias;
             paint.Style = SKPaintStyle.Stroke;
-            paint.StrokeWidth = style.StrokeWidth;
+            paint.StrokeWidth = style.StrokeWidth * this.MmToPixel;
+            paint.Color = ConvertToSKColor(style.StrokeColor, style.StrokeAlpha);
+
+            // 设置虚线样式
+            if (style.DashPattern != null && style.DashPattern.Length > 0)
+            {
+                paint.PathEffect = SKPathEffect.CreateDash(style.DashPattern, 0);
+            }
+
+            return paint;
+        }
+
+
+        /// <summary>
+        /// 从GraphicStyle创建描边和填充样式的SKPaint
+        /// </summary>
+        /// <param name="style">图形样式</param>
+        /// <returns>SKPaint对象</returns>
+        private SKPaint CreatePaintFromGraphStyle(GraphStyle style)
+        {
+            var paint = new SKPaint();
+            paint.IsAntialias = _config.AntiAlias;
+            paint.Style = SKPaintStyle.StrokeAndFill;
+            paint.StrokeWidth = style.StrokeWidth * this.MmToPixel;
             paint.Color = ConvertToSKColor(style.StrokeColor, style.StrokeAlpha);
 
             // 设置虚线样式
@@ -1090,8 +1111,15 @@ namespace OFDViewer.Render.Implementation
             byte g = (byte)((color >> 8) & 0xFF);
             byte b = (byte)(color & 0xFF);
 
-            // 使用style.Alpha覆盖颜色中的alpha通道
-            return new SKColor(r, g, b, alpha);
+            // 使用传入的alpha值（如果alpha为255则使用颜色中的alpha）
+            if (alpha == 255)
+            {
+                return new SKColor(r, g, b, a);
+            }
+            else
+            {
+                return new SKColor(r, g, b, alpha);
+            }
         }
 
         #endregion
@@ -1166,7 +1194,6 @@ namespace OFDViewer.Render.Implementation
             if (disposing)
             {
                 // 释放托管资源
-                _paint?.Dispose();
                 _canvas?.Dispose();
                 _bitmap?.Dispose();
                 _currentPath?.Dispose();
