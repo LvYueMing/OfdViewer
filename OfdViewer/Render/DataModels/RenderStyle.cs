@@ -74,7 +74,7 @@ namespace OFDViewer.Render.DataModels
         /// <summary>
         /// 字体名称
         /// </summary>
-        public string FontFamily { get; set; } = "SimSun";
+        public string FontFamily { get; set; } = "宋体";
 
         /// <summary>
         /// 字号（像素）
@@ -118,13 +118,10 @@ namespace OFDViewer.Render.DataModels
 
         /// <summary>
         /// 描边颜色（ARGB格式）
+        /// 默认透明
         /// </summary>
-        public uint StrokeColor { get; set; } = 0xFF000000;
+        public uint StrokeColor { get; set; } = 255;
 
-        /// <summary>
-        /// 描边透明度
-        /// </summary>
-        public byte StrokeAlpha { get; set; } = 255;
     }
 
     /// <summary>

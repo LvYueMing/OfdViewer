@@ -226,6 +226,8 @@ namespace OFDViewer.Render.Implementation
                 _bitmap?.Dispose();
                 // 创建新的位图
                 // 确保位图的颜色类型为Rgba8888，透明度为Premul
+                // Premul:定义了透明度（Alpha）与 RGB 颜色值的计算关系，核心是 “预乘” 的概念
+                // Skia 引擎（SKBitmap 是 Skia 库的封装）内部渲染时，默认使用预乘透明度计算，能避免颜色混合时的精度丢失，让渲染结果更准确、效率更高
                 _bitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
             }
 
@@ -349,7 +351,33 @@ namespace OFDViewer.Render.Implementation
             using (var ms = new MemoryStream())
             {
                 _bitmap.Encode(ms, SKEncodedImageFormat.Png, 100);
-                return ms.ToArray();
+                var result = ms.ToArray();
+                
+                // 调试：仅在调试环境下保存渲染结果到本地文件，查看图片质量
+#if DEBUG
+                //try
+                //{
+                //    string debugDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "OFD_Debug");
+                //    if (!Directory.Exists(debugDir))
+                //    {
+                //        Directory.CreateDirectory(debugDir);
+                //    }
+                    
+                //    string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
+                //    string debugFilePath = Path.Combine(debugDir, $"ofd_render_{timestamp}.png");
+                //    File.WriteAllBytes(debugFilePath, result);
+                    
+                //    // 输出调试信息
+                //    System.Diagnostics.Debug.WriteLine($"渲染结果已保存到: {debugFilePath}");
+                //}
+                //catch (Exception ex)
+                //{
+                //    // 忽略保存错误，避免影响正常渲染
+                //    System.Diagnostics.Debug.WriteLine($"保存调试图片失败: {ex.Message}");
+                //}
+#endif
+                
+                return result;
             }
         }
 
@@ -624,9 +652,13 @@ namespace OFDViewer.Render.Implementation
             // 重用 SKPaint 对象（避免频繁创建和销毁）
             lock (_reusablePaintLock)
             {
-                _reusablePaint.IsAntialias = _config.AntiAlias;
+                _reusablePaint.IsAntialias = true; // 强制启用抗锯齿，提高文字清晰度
                 _reusablePaint.Style = SKPaintStyle.Fill;
                 _reusablePaint.Color = ConvertToSKColor(style.Color, style.Alpha);
+                _reusablePaint.BlendMode = SKBlendMode.SrcOver; // 设置混合模式，确保文字颜色正确
+                
+                // 优化：设置字体渲染质量
+                _reusablePaint.TextEncoding = SKTextEncoding.Utf8;
 
                 // 绘制文本
                 _canvas.DrawText(text, x, y, skFont, _reusablePaint);

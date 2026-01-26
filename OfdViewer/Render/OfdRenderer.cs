@@ -670,18 +670,19 @@ namespace OFDViewer.Render
                     return cachedStyle;  // 缓存命中，直接返回
                 }
             }
-            
-            // 缓存未命中，创建新的样式
-            OFDFont oFDFont = renderContext.ResourceManager.GetResource<OFDFont>(textObject.FontRefID);
-            
 
+
+            // 缓存未命中，创建新的样式
             var style = new TextStyle();
-            
-            // 字体资源（使用延迟加载的MemoryStream）
-            style.FontFilePath = oFDFont.FontFile != null ? oFDFont.FontFile.Path : null;
-            
-            // 字体名称（使用更通用的中文字体，确保能正确显示中文和英文）
-            style.FontFamily = oFDFont.FontName ?? oFDFont.FamilyName ?? "宋体";
+
+            OFDFont oFDFont = renderContext.ResourceManager.GetResource<OFDFont>(textObject.FontRefID);
+            if (oFDFont != null)
+            {
+                // 字体资源（使用延迟加载的MemoryStream）
+                style.FontFilePath = oFDFont.FontFile != null ? oFDFont.FontFile.Path : null;
+                // 字体名称（使用更通用的中文字体，确保能正确显示中文和英文）
+                style.FontFamily = oFDFont.FontName ?? oFDFont.FamilyName ?? "宋体";
+            }
             
             // 字号转换：使用SkiaRenderContext的只读属性（避免重复计算除法）
             var skiaRenderContext = renderContext as SkiaRenderContext;
@@ -699,6 +700,12 @@ namespace OFDViewer.Render
             
             // 填充颜色（默认黑色）
             style.Color = textObject.FillColor != null ? ConvertToARGB(textObject.FillColor) : 0xFF000000;
+
+            // 是否描边
+            style.Stroke = textObject.Stroke;
+
+            // 描边颜色（默认透明）
+            style.StrokeColor =  textObject.StrokeColor != null ? ConvertToARGB(textObject.StrokeColor) : 255;
             
             // 透明度（默认完全不透明）
             style.Alpha = 255;

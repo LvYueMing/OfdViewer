@@ -308,12 +308,23 @@ namespace OfdViewer.WinForm.Controls
             }
 
             // 池为空，创建新的PictureBox
-            return new PictureBox
+            var pictureBox = new PictureBox
             {
                 Visible = true,
-                SizeMode = PictureBoxSizeMode.StretchImage,
+                SizeMode = PictureBoxSizeMode.Zoom,  // 使用Zoom模式，保持图片比例并支持缩放
                 BorderStyle = BorderStyle.FixedSingle
             };
+            
+            // 设置图片插值模式为高质量
+            pictureBox.Paint += (s, e) =>
+            {
+                e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+                e.Graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
+                e.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+            };
+            
+            return pictureBox;
         }
 
         /// <summary>

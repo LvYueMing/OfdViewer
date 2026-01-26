@@ -72,7 +72,7 @@ namespace OFDViewer.Models.Font
         /// <summary>
         /// 是否是粗体字型,用于匹配替代字型
         /// 默认值是false
-        // 可选
+        /// 可选
         /// </summary>
         [XmlAttribute("Bold")]
         public bool Bold { get; set; } = false;

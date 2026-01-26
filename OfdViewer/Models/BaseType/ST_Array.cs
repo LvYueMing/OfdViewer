@@ -428,15 +428,30 @@ namespace OFDViewer.Models.BaseType
             if (_values == null || _values.Count == 0)
                 return null;
             var result = new double[_values.Count];
+            int currentIndex = 0;
             for (int i = 0; i < _values.Count; i++)
             {
                 if (TryGetDouble(i, out double value))
                 {
-                    result[i] = value;
+                    result[currentIndex] = value;
+                    currentIndex++;
                 }
                 else
                 {
-                    result[i] = 0;
+                    // 处理 g 2 数据
+                    if (_values[i].ToString() == "g" && _values[i + 1].ToString() == "2")
+                    {
+                        //获取 g 2 后的值
+
+                        result[currentIndex] = result[currentIndex - 1];
+                        currentIndex++;
+                        i++;
+                    }
+                    else
+                    {
+                        result[currentIndex] = result[currentIndex - 1];
+                        currentIndex++;
+                    }
                 }
             }
             return result;
