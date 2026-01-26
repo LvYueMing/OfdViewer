@@ -16,7 +16,7 @@ namespace OFDViewer.Models.PageDesc
     {
         /// <summary>
         /// 图元对象的动作序列
-        /// 当存在多个 Action对象时, 所有动作依次执行
+        /// 当存在多个 Action 对象时, 所有动作依次执行
         /// 可选
         /// </summary>
         [XmlArray(ElementName = "Actions")]
@@ -110,7 +110,7 @@ namespace OFDViewer.Models.PageDesc
         /// <summary>
         /// 绘制路径时使用的线宽
         /// 如果图元对象有 DrawParam 属性,则用此值覆盖 DrawParam 中对应的值
-        ///可选
+        /// 可选
         /// </summary>
         [XmlAttribute(AttributeName = "LineWidth")]
         public double LineWidth { get; set; }

@@ -16,7 +16,7 @@ namespace OFDViewer.Render.Abstractions
         /// <param name="x2">终点X坐标</param>
         /// <param name="y2">终点Y坐标</param>
         /// <param name="style">图形样式</param>
-        void DrawLine(float x1, float y1, float x2, float y2, GraphicStyle style);
+        void DrawLine(float x1, float y1, float x2, float y2, GraphStyle style);
 
         /// <summary>
         /// 绘制矩形
@@ -26,7 +26,7 @@ namespace OFDViewer.Render.Abstractions
         /// <param name="width">宽度</param>
         /// <param name="height">高度</param>
         /// <param name="style">图形样式</param>
-        void DrawRectangle(float x, float y, float width, float height, GraphicStyle style);
+        void DrawRectangle(float x, float y, float width, float height, GraphStyle style);
 
         /// <summary>
         /// 绘制圆形
@@ -35,7 +35,7 @@ namespace OFDViewer.Render.Abstractions
         /// <param name="y">圆心Y坐标</param>
         /// <param name="radius">半径</param>
         /// <param name="style">图形样式</param>
-        void DrawCircle(float x, float y, float radius, GraphicStyle style);
+        void DrawCircle(float x, float y, float radius, GraphStyle style);
 
         /// <summary>
         /// 绘制椭圆
@@ -45,13 +45,13 @@ namespace OFDViewer.Render.Abstractions
         /// <param name="width">宽度</param>
         /// <param name="height">高度</param>
         /// <param name="style">图形样式</param>
-        void DrawEllipse(float x, float y, float width, float height, GraphicStyle style);
+        void DrawEllipse(float x, float y, float width, float height, GraphStyle style);
 
         /// <summary>
         /// 绘制多边形
         /// </summary>
         /// <param name="points">顶点坐标数组</param>
         /// <param name="style">图形样式</param>
-        void DrawPolygon(float[] points, GraphicStyle style);
+        void DrawPolygon(float[] points, GraphStyle style);
     }
 }

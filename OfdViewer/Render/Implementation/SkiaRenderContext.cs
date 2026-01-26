@@ -422,7 +422,7 @@ namespace OFDViewer.Render.Implementation
         /// <param name="x2">终点X坐标</param>
         /// <param name="y2">终点Y坐标</param>
         /// <param name="style">图形样式</param>
-        public void DrawLine(float x1, float y1, float x2, float y2, GraphicStyle style)
+        public void DrawLine(float x1, float y1, float x2, float y2, GraphStyle style)
         {
             if (_canvas == null || _paint == null) return;
 
@@ -440,7 +440,7 @@ namespace OFDViewer.Render.Implementation
         /// <param name="width">宽度</param>
         /// <param name="height">高度</param>
         /// <param name="style">图形样式</param>
-        public void DrawRectangle(float x, float y, float width, float height, GraphicStyle style)
+        public void DrawRectangle(float x, float y, float width, float height, GraphStyle style)
         {
             if (_canvas == null || _paint == null) return;
 
@@ -469,7 +469,7 @@ namespace OFDViewer.Render.Implementation
         /// <param name="y">圆心Y坐标</param>
         /// <param name="radius">半径</param>
         /// <param name="style">图形样式</param>
-        public void DrawCircle(float x, float y, float radius, GraphicStyle style)
+        public void DrawCircle(float x, float y, float radius, GraphStyle style)
         {
             if (_canvas == null || _paint == null) return;
 
@@ -497,7 +497,7 @@ namespace OFDViewer.Render.Implementation
         /// <param name="width">宽度</param>
         /// <param name="height">高度</param>
         /// <param name="style">图形样式</param>
-        public void DrawEllipse(float x, float y, float width, float height, GraphicStyle style)
+        public void DrawEllipse(float x, float y, float width, float height, GraphStyle style)
         {
             if (_canvas == null || _paint == null) return;
 
@@ -524,7 +524,7 @@ namespace OFDViewer.Render.Implementation
         /// </summary>
         /// <param name="points">顶点坐标数组（x1,y1,x2,y2,...）</param>
         /// <param name="style">图形样式</param>
-        public void DrawPolygon(float[] points, GraphicStyle style)
+        public void DrawPolygon(float[] points, GraphStyle style)
         {
             if (_canvas == null || _paint == null || points == null || points.Length < 6) return;
 
@@ -940,6 +940,28 @@ namespace OFDViewer.Render.Implementation
         }
 
         /// <summary>
+        /// 绘制圆弧
+        /// </summary>
+        /// <param name="rx">椭圆的长轴长度</param>
+        /// <param name="ry">椭圆的短轴长度</param>
+        /// <param name="angle">椭圆旋转角度（度）</param>
+        /// <param name="largeArc">是否为大弧（>180度）</param>
+        /// <param name="sweep">是否为顺时针方向</param>
+        /// <param name="x">终点X坐标</param>
+        /// <param name="y">终点Y坐标</param>
+        public void ArcTo(float rx, float ry, float angle, bool largeArc, bool sweep, float x, float y)
+        {
+            if (_currentPath == null) return;
+            
+            // SkiaSharp的ArcTo参数与OFD的A命令参数有所不同
+            // 需要进行参数转换
+            _currentPath.ArcTo(rx, ry, angle, 
+                largeArc ? SKPathArcSize.Large : SKPathArcSize.Small,
+                sweep ? SKPathDirection.Clockwise : SKPathDirection.CounterClockwise,
+                x, y);
+        }
+
+        /// <summary>
         /// 闭合路径
         /// </summary>
         public void ClosePath()
@@ -951,7 +973,7 @@ namespace OFDViewer.Render.Implementation
         /// 填充路径
         /// </summary>
         /// <param name="style">图形样式</param>
-        public void FillPath(GraphicStyle style)
+        public void FillPath(GraphStyle style)
         {
             if (_canvas == null || _paint == null || _currentPath == null) return;
 
@@ -965,7 +987,7 @@ namespace OFDViewer.Render.Implementation
         /// 描边路径
         /// </summary>
         /// <param name="style">图形样式</param>
-        public void StrokePath(GraphicStyle style)
+        public void StrokePath(GraphStyle style)
         {
             if (_canvas == null || _paint == null || _currentPath == null) return;
 
@@ -979,7 +1001,7 @@ namespace OFDViewer.Render.Implementation
         /// 填充并描边路径
         /// </summary>
         /// <param name="style">图形样式</param>
-        public void FillAndStrokePath(GraphicStyle style)
+        public void FillAndStrokePath(GraphStyle style)
         {
             if (_canvas == null || _paint == null || _currentPath == null) return;
 
@@ -1005,7 +1027,7 @@ namespace OFDViewer.Render.Implementation
         /// </summary>
         /// <param name="style">图形样式</param>
         /// <returns>SKPaint对象</returns>
-        private SKPaint CreatePaintFromGraphicStyle(GraphicStyle style)
+        private SKPaint CreatePaintFromGraphicStyle(GraphStyle style)
         {
             var paint = new SKPaint();
             paint.IsAntialias = _config.AntiAlias;
@@ -1023,7 +1045,7 @@ namespace OFDViewer.Render.Implementation
         /// </summary>
         /// <param name="style">图形样式</param>
         /// <returns>SKPaint对象</returns>
-        private SKPaint CreateStrokePaintFromGraphicStyle(GraphicStyle style)
+        private SKPaint CreateStrokePaintFromGraphicStyle(GraphStyle style)
         {
             var paint = new SKPaint();
             paint.IsAntialias = _config.AntiAlias;

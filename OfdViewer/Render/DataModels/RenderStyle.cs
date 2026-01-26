@@ -27,7 +27,7 @@ namespace OFDViewer.Render.DataModels
     /// 图形样式类
     /// 继承自RenderStyle，添加图形特有的样式属性
     /// </summary>
-    public class GraphicStyle : RenderStyle
+    public class GraphStyle : RenderStyle
     {
         /// <summary>
         /// 描边宽度

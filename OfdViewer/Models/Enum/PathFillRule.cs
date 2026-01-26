@@ -3,7 +3,7 @@
 namespace OFDViewer.Models.Enums
 {
     /// <summary>
-    /// 图形的填充规则,当 Fill属性存在时出现
+    /// 图形的填充规则,当 Fill 属性存在时出现
     /// 可选值为 NonZero和 Even-Odd
     /// 默认值为 NonZero
     /// </summary>

@@ -48,6 +48,18 @@ namespace OFDViewer.Render.Abstractions
         void QuadTo(float cpx, float cpy, float x, float y);
 
         /// <summary>
+        /// 绘制圆弧
+        /// </summary>
+        /// <param name="rx">椭圆的长轴长度</param>
+        /// <param name="ry">椭圆的短轴长度</param>
+        /// <param name="angle">椭圆旋转角度（度）</param>
+        /// <param name="largeArc">是否为大弧（>180度）</param>
+        /// <param name="sweep">是否为顺时针方向</param>
+        /// <param name="x">终点X坐标</param>
+        /// <param name="y">终点Y坐标</param>
+        void ArcTo(float rx, float ry, float angle, bool largeArc, bool sweep, float x, float y);
+
+        /// <summary>
         /// 闭合路径
         /// </summary>
         void ClosePath();
@@ -56,18 +68,18 @@ namespace OFDViewer.Render.Abstractions
         /// 填充路径
         /// </summary>
         /// <param name="style">图形样式</param>
-        void FillPath(GraphicStyle style);
+        void FillPath(GraphStyle style);
 
         /// <summary>
         /// 描边路径
         /// </summary>
         /// <param name="style">图形样式</param>
-        void StrokePath(GraphicStyle style);
+        void StrokePath(GraphStyle style);
 
         /// <summary>
         /// 填充并描边路径
         /// </summary>
         /// <param name="style">图形样式</param>
-        void FillAndStrokePath(GraphicStyle style);
+        void FillAndStrokePath(GraphStyle style);
     }
 }

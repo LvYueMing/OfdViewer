@@ -16,14 +16,14 @@ namespace OFDViewer.Models.Graph
         /// 勾边颜色 默认为黑色
         /// 可选
         /// </summary>
-        [XmlElement(ElementName = "StrokeColor", IsNullable = false)]
+        [XmlElement(ElementName = "StrokeColor")]
         public CT_Color StrokeColor { get; set; }
 
         /// <summary>
         /// 填充颜色 默认为透明色
         /// 可选
         /// </summary>
-        [XmlElement(ElementName = "FillColor", IsNullable = false)]
+        [XmlElement(ElementName = "FillColor")]
         public CT_Color FillColor { get; set; }
 
         /// <summary>
@@ -49,7 +49,7 @@ namespace OFDViewer.Models.Graph
 
         /// <summary>
         /// 图形的填充规则,当 Fill属性存在时出现
-        /// 可选值为 NonZero和 Even-Odd
+        /// 可选值为 NonZero 和 Even-Odd
         /// 默认值为 NonZero
         /// 可选
         /// </summary>

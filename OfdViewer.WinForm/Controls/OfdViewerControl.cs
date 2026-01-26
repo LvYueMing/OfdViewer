@@ -288,6 +288,7 @@ namespace OfdViewer.WinForm.Controls
         {
             InitializeComponent();
             InitializeUI();
+            this.DoubleBuffered = true; // 启用双缓冲，提高显示质量
         }
 
         #endregion

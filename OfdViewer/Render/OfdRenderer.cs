@@ -769,43 +769,72 @@ namespace OFDViewer.Render
             if (string.IsNullOrEmpty(pathObject.AbbreviatedData))
                 return;
             
+            // 获取渲染上下文
+            var renderContext = pathRenderer as IRenderContext;
+            if (renderContext == null)
+                return;
+            
+            // 获取图元外接矩形位置（页面坐标系，毫米转换为像素）
+            float boundaryX = renderContext.MillimetersToPixels((float)pathObject.Boundary.X);
+            float boundaryY = renderContext.MillimetersToPixels((float)pathObject.Boundary.Y);
+            float boundaryWidth = renderContext.MillimetersToPixels((float)pathObject.Boundary.Width);
+            float boundaryHeight = renderContext.MillimetersToPixels((float)pathObject.Boundary.Height);
+            
+            // 保存当前渲染状态
+            renderContext?.SaveState();
+            
+            // 设置裁剪区（使用图元的外接矩形作为默认裁剪区）
+            renderContext?.SetClipRect(boundaryX, boundaryY, boundaryWidth, boundaryHeight);
+            
             // 转换图形样式
-            var graphicStyle = ConvertToGraphicStyle(pathObject);
+            var graphStyle = ConvertToGraphicStyle(pathObject);
             
             // 开始绘制路径
             pathRenderer.BeginPath();
             
-            // 解析并绘制路径
-            ParseAndRenderPath(pathRenderer, pathObject.AbbreviatedData);
+            // 解析并绘制路径（将图形平移到页面空间）
+            ParseAndRenderPath(pathRenderer, pathObject.AbbreviatedData, boundaryX, boundaryY);
             
             // 根据样式绘制路径
-            if (graphicStyle.Fill && graphicStyle.Stroke)
+            if (graphStyle.Fill && graphStyle.Stroke)
             {
-                pathRenderer.FillAndStrokePath(graphicStyle);
+                pathRenderer.FillAndStrokePath(graphStyle);
             }
-            else if (graphicStyle.Fill)
+            else if (graphStyle.Fill)
             {
-                pathRenderer.FillPath(graphicStyle);
+                pathRenderer.FillPath(graphStyle);
             }
-            else if (graphicStyle.Stroke)
+            else if (graphStyle.Stroke)
             {
-                pathRenderer.StrokePath(graphicStyle);
+                pathRenderer.StrokePath(graphStyle);
             }
+            
+            // 恢复渲染状态
+            renderContext?.RestoreState();
         }
         
         /// <summary>
         /// 解析OFD路径数据并调用路径渲染器绘制
+        /// 支持的命令：
+        /// S x y - 定义子绘制图形边线的起始点坐标
+        /// M x y - 将当前点移动到指定点
+        /// L x y - 绘制线段到指定点
+        /// Q x1 y1 x2 y2 - 二次贝塞尔曲线
+        /// B x1 y1 x2 y2 x3 y3 - 三次贝塞尔曲线
+        /// A rx ry angle large sweep x y - 圆弧
+        /// C - 自动闭合子路径
         /// </summary>
         /// <param name="pathRenderer">路径渲染器</param>
         /// <param name="abbreviatedData">OFD路径数据</param>
-        private void ParseAndRenderPath(IPathRenderer pathRenderer, string abbreviatedData)
+        /// <param name="boundaryX">图元外接矩形X坐标（页面坐标系，像素）</param>
+        /// <param name="boundaryY">图元外接矩形Y坐标（页面坐标系，像素）</param>
+        private void ParseAndRenderPath(IPathRenderer pathRenderer, string abbreviatedData, float boundaryX = 0, float boundaryY = 0)
         {
             if (string.IsNullOrEmpty(abbreviatedData))
                 return;
             
-            // 简单的路径解析实现
             // OFD路径数据格式：操作符+空格+参数+空格+...
-            // 例如："M 100 100 L 200 200 Z"
+            // 例如："M 100 100 L 200 200 C"
             var tokens = abbreviatedData.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
             if (tokens.Length == 0)
                 return;
@@ -817,58 +846,85 @@ namespace OFDViewer.Render
                 
                 switch (command.ToUpper())
                 {
-                    case "M":// 移动到
+                    case "S":// 定义子绘制图形边线的起始点坐标
                         if (index + 1 < tokens.Length)
                         {
-                            float x = float.Parse(tokens[index]);
-                            float y = float.Parse(tokens[index + 1]);
+                            float x = float.Parse(tokens[index]) + boundaryX;
+                            float y = float.Parse(tokens[index + 1]) + boundaryY;
                             pathRenderer.MoveTo(x, y);
                             index += 2;
                         }
                         break;
                     
-                    case "L":// 绘制直线
+                    case "M":// 将当前点移动到指定点
                         if (index + 1 < tokens.Length)
                         {
-                            float x = float.Parse(tokens[index]);
-                            float y = float.Parse(tokens[index + 1]);
-                            pathRenderer.LineTo(x, y);
+                            float x = float.Parse(tokens[index]) + boundaryX;
+                            float y = float.Parse(tokens[index + 1]) + boundaryY;
+                            pathRenderer.MoveTo(x, y);
                             index += 2;
                         }
                         break;
                     
-                    case "C":// 三次贝塞尔曲线
-                        if (index + 5 < tokens.Length)
+                    case "L":// 绘制线段到指定点
+                        if (index + 1 < tokens.Length)
                         {
-                            float cp1x = float.Parse(tokens[index]);
-                            float cp1y = float.Parse(tokens[index + 1]);
-                            float cp2x = float.Parse(tokens[index + 2]);
-                            float cp2y = float.Parse(tokens[index + 3]);
-                            float x = float.Parse(tokens[index + 4]);
-                            float y = float.Parse(tokens[index + 5]);
-                            pathRenderer.CubicTo(cp1x, cp1y, cp2x, cp2y, x, y);
-                            index += 6;
+                            float x = float.Parse(tokens[index]) + boundaryX;
+                            float y = float.Parse(tokens[index + 1]) + boundaryY;
+                            pathRenderer.LineTo(x, y);
+                            index += 2;
                         }
                         break;
                     
                     case "Q":// 二次贝塞尔曲线
                         if (index + 3 < tokens.Length)
                         {
-                            float cpx = float.Parse(tokens[index]);
-                            float cpy = float.Parse(tokens[index + 1]);
-                            float x = float.Parse(tokens[index + 2]);
-                            float y = float.Parse(tokens[index + 3]);
-                            pathRenderer.QuadTo(cpx, cpy, x, y);
+                            float x1 = float.Parse(tokens[index]) + boundaryX;
+                            float y1 = float.Parse(tokens[index + 1]) + boundaryY;
+                            float x2 = float.Parse(tokens[index + 2]) + boundaryX;
+                            float y2 = float.Parse(tokens[index + 3]) + boundaryY;
+                            pathRenderer.QuadTo(x1, y1, x2, y2);
                             index += 4;
                         }
                         break;
                     
-                    case "Z":// 闭合路径
+                    case "B":// 三次贝塞尔曲线
+                        if (index + 5 < tokens.Length)
+                        {
+                            float x1 = float.Parse(tokens[index]) + boundaryX;
+                            float y1 = float.Parse(tokens[index + 1]) + boundaryY;
+                            float x2 = float.Parse(tokens[index + 2]) + boundaryX;
+                            float y2 = float.Parse(tokens[index + 3]) + boundaryY;
+                            float x3 = float.Parse(tokens[index + 4]) + boundaryX;
+                            float y3 = float.Parse(tokens[index + 5]) + boundaryY;
+                            pathRenderer.CubicTo(x1, y1, x2, y2, x3, y3);
+                            index += 6;
+                        }
+                        break;
+                    
+                    case "A":// 圆弧
+                        if (index + 6 < tokens.Length)
+                        {
+                            float rx = float.Parse(tokens[index]);
+                            float ry = float.Parse(tokens[index + 1]);
+                            float angle = float.Parse(tokens[index + 2]);
+                            int large = int.Parse(tokens[index + 3]);
+                            int sweep = int.Parse(tokens[index + 4]);
+                            float x = float.Parse(tokens[index + 5]) + boundaryX;
+                            float y = float.Parse(tokens[index + 6]) + boundaryY;
+                            
+                            pathRenderer.ArcTo(rx, ry, angle, large == 1, sweep == 1, x, y);
+                            index += 7;
+                        }
+                        break;
+                    
+                    case "C":// 自动闭合子路径
                         pathRenderer.ClosePath();
                         break;
                     
                     default:
                         // 未知命令，跳过
+                        System.Diagnostics.Debug.WriteLine($"未知的路径命令: {command}");
                         break;
                 }
             }
@@ -879,9 +935,9 @@ namespace OFDViewer.Render
         /// </summary>
         /// <param name="pathObject">OFD路径对象</param>
         /// <returns>图形样式</returns>
-        private GraphicStyle ConvertToGraphicStyle(Models.Graph.CT_Path pathObject)
+        private GraphStyle ConvertToGraphicStyle(Models.Graph.CT_Path pathObject)
         {
-            var style = new GraphicStyle
+            var style = new GraphStyle
             {
                 // 填充颜色
                 Color = ConvertToARGB(pathObject.FillColor),
@@ -892,7 +948,7 @@ namespace OFDViewer.Render
                 StrokeAlpha = 255,
                 
                 // 描边宽度
-                StrokeWidth = 1.0f,
+                StrokeWidth = (float)pathObject.LineWidth,
                 
                 // 是否填充和描边
                 Fill = pathObject.Fill,

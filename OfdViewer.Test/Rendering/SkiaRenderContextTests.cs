@@ -65,7 +65,7 @@ namespace OFDViewer.Test.Rendering
             renderContext.Initialize(width, height);
 
             // Act
-            var style = new GraphicStyle
+            var style = new GraphStyle
             {
                 Color = 0xFFFF0000, // 红色
                 Alpha = 255,
@@ -93,7 +93,7 @@ namespace OFDViewer.Test.Rendering
             renderContext.Initialize(width, height);
 
             // Act
-            var style = new GraphicStyle
+            var style = new GraphStyle
             {
                 Color = 0xFF00FF00, // 绿色
                 Alpha = 255,
@@ -180,7 +180,7 @@ namespace OFDViewer.Test.Rendering
             renderContext.Rotate((float)Math.PI / 4); // 45度
             
             // 绘制变换后的矩形
-            var style = new GraphicStyle
+            var style = new GraphStyle
             {
                 Color = 0xFFFF00FF, // 紫色
                 Alpha = 255,
