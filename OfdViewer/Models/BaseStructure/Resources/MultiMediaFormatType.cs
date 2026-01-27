@@ -9,6 +9,8 @@
         JPEG,
         PNG,
         TIFF,
-        AVS
+        AVS,
+        // 中文点阵字库格式
+        GBIG2
     }
 }

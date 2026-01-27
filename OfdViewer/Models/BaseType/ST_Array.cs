@@ -416,65 +416,123 @@ namespace OFDViewer.Models.BaseType
                     sb.Append(value.ToString());
                 }
             }
-
             return sb.ToString();
         }
 
         /// <summary>
         /// 将数组转换为double数组（尽可能转换）
+        /// 支持压缩格式：g count value 表示重复count次value
+        /// 例如：g 27 2.5 -67.5 g 27 2.5 表示 [2.5*27, -67.5, 2.5*27]
         /// </summary>
         public double[] ToDoubleArray()
         {
             if (_values == null || _values.Count == 0)
                 return null;
-            var result = new double[_values.Count];
-            int currentIndex = 0;
-            for (int i = 0; i < _values.Count; i++)
+
+            var tempResult = new List<double>();
+            int i = 0;
+            while (i < _values.Count)
             {
                 if (TryGetDouble(i, out double value))
                 {
-                    result[currentIndex] = value;
-                    currentIndex++;
+                    tempResult.Add(value);
+                    i++;
                 }
                 else
                 {
-                    // 处理 g 2 数据
-                    if (_values[i].ToString() == "g" && _values[i + 1].ToString() == "2")
+                    // 处理压缩格式：g count value
+                    if (_values[i].ToString() == "g" && i + 2 < _values.Count)
                     {
-                        //获取 g 2 后的值
-
-                        result[currentIndex] = result[currentIndex - 1];
-                        currentIndex++;
-                        i++;
+                        // 获取重复次数
+                        if (TryGetDouble(i + 1, out double count))
+                        {
+                            // 获取要重复的值
+                            if (TryGetDouble(i + 2, out double repeatValue))
+                            {
+                                // 重复count次value
+                                for (int j = 0; j < (int)count; j++)
+                                {
+                                    tempResult.Add(repeatValue);
+                                }
+                                i += 3;
+                            }
+                            else
+                            {
+                                i++;
+                            }
+                        }
+                        else
+                        {
+                            i++;
+                        }
                     }
                     else
                     {
-                        result[currentIndex] = result[currentIndex - 1];
-                        currentIndex++;
+                        // 无法解析的值，跳过
+                        i++;
                     }
                 }
             }
-            return result;
+            
+            return tempResult.ToArray();
         }
 
         /// <summary>
         /// 将数组转换为int数组（尽可能转换）
+        /// 支持压缩格式：g count value 表示重复count次value
+        /// 例如：g 27 2 -67 g 27 2 表示 [2*27, -67, 2*27]
         /// </summary>
         public int[] ToIntArray()
         {
-            var result = new int[_values.Count];
-            for (int i = 0; i < _values.Count; i++)
+            if (_values == null || _values.Count == 0)
+                return null;
+
+            var tempResult = new List<int>();
+            int i = 0;
+            while (i < _values.Count)
             {
                 if (TryGetInt(i, out int value))
                 {
-                    result[i] = value;
+                    tempResult.Add(value);
+                    i++;
                 }
                 else
                 {
-                    result[i] = 0;
+                    // 处理压缩格式：g count value
+                    if (_values[i].ToString() == "g" && i + 2 < _values.Count)
+                    {
+                        // 获取重复次数
+                        if (TryGetInt(i + 1, out int count))
+                        {
+                            // 获取要重复的值
+                            if (TryGetInt(i + 2, out int repeatValue))
+                            {
+                                // 重复count次value
+                                for (int j = 0; j < count; j++)
+                                {
+                                    tempResult.Add(repeatValue);
+                                }
+                                i += 3;
+                            }
+                            else
+                            {
+                                i++;
+                            }
+                        }
+                        else
+                        {
+                            i++;
+                        }
+                    }
+                    else
+                    {
+                        // 无法解析的值，跳过
+                        i++;
+                    }
                 }
             }
-            return result;
+            
+            return tempResult.ToArray();
         }
 
         /// <summary>

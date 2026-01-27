@@ -7,6 +7,7 @@ namespace OFDViewer.Models.Signature
     /// 签名列表文件的入口点在7.4主入口中定义。签名列表文件中可以包含多个签名(例如联合发文等情况),见图85。
     /// 当允许下次继续添加签名时,该文件不会被包含到本次签名的保护文件列表(References)中。
     /// </summary>
+    [XmlRoot("Signatures", Namespace = Constants.OFD_NAMESPACE_URI)]
     public class Signatures
     {
         /// <summary>
