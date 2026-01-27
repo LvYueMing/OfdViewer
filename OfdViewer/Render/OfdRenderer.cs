@@ -1082,7 +1082,7 @@ namespace OFDViewer.Render
                     if (multiMedia.FormatString == "TIFF" || multiMedia.MediaFile.Path.ToUpper().Contains(".TIF"))
                     {
                         // 转换为 PNG 格式
-                        imageData = ConvertToPNG(imageData);
+                        imageData = ConvertTIFF2PNG(imageData);
                     }                
                 }
             }
@@ -1264,7 +1264,7 @@ namespace OFDViewer.Render
         /// <returns>PNG格式的图像数据</returns>
         /// <exception cref="ArgumentNullException">当imageData为null或空时抛出</exception>
         /// <exception cref="InvalidOperationException">当无法打开或读取TIFF图像时抛出</exception>
-        private byte[] ConvertToPNG(byte[] imageData)
+        private byte[] ConvertTIFF2PNG(byte[] imageData)
         {
             // 验证输入参数
             if (imageData == null || imageData.Length == 0)
