@@ -134,7 +134,7 @@ namespace OFDViewer.Parse
         /// <param name="docFilePath"> document.xml 的路径</param>
         /// <param name="signsFilePath"> Signatures.xml 的路径</param>
         /// <returns>OFDDocument对象</returns>
-        public OFDDocument ReadOFDDocument(string docFilePath,string signsFilePath)
+        public OFDDocument ReadOFDDocument(string docFilePath, string signsFilePath)
         {
             if (string.IsNullOrEmpty(docFilePath))
                 return null;
@@ -143,6 +143,10 @@ namespace OFDViewer.Parse
 
 
             var doc = new OFDDocument(docFilePath);
+
+            // 保存归档引用，用于延迟加载资源文件
+            // 不立即加载资源文件，等待使用时再从归档读取
+            doc.ResourceArchive = _archive;
 
             // 读取 Document.xml
             if (_archive.FileExists(docFilePath))
@@ -170,7 +174,7 @@ namespace OFDViewer.Parse
 
                         // 保存归档引用，用于延迟加载资源文件
                         // 不立即加载资源文件，等待使用时再从归档读取
-                        doc.ResourceArchive = _archive;
+                        // doc.ResourceArchive = _archive;
                     }
                 }
 
@@ -189,7 +193,20 @@ namespace OFDViewer.Parse
 
                         // 保存归档引用，用于延迟加载资源文件
                         // 不立即加载资源文件，等待使用时再从归档读取
-                        doc.ResourceArchive = _archive;
+                        // doc.ResourceArchive = _archive;
+                    }
+                }
+
+                // 读取模板页面对象
+                if (doc.Document.CommonData.TemplatePage != null && doc.Document.CommonData.TemplatePage.Count > 0)
+                {
+                    foreach (var tpl in doc.Document.CommonData.TemplatePage)
+                    {
+                        // 获取模板页面对象文件 Doc_0/Templates/Tpl_0/Content.xml 绝对路径 
+                        var tplFilePath = tpl.BaseLoc.GetAbsolutePath(doc.DocDirectoryPath).Path;
+                        var tplDoc = ReadTemplateDoc(tplFilePath, doc.DocDirectoryPath);
+
+                        doc.AddTemplateDoc(tplDoc);
                     }
                 }
             }
@@ -218,7 +235,7 @@ namespace OFDViewer.Parse
             }
 
             // 读取签章对象
-            if (doc.Signatures != null&&doc.Signatures.SignatureList != null)
+            if (doc.Signatures != null && doc.Signatures.SignatureList != null)
             {
                 foreach (var sign in doc.Signatures.SignatureList)
                 {
@@ -319,12 +336,59 @@ namespace OFDViewer.Parse
                         pageDoc.PageRes = XmlHelper.DeserializeFromStream<Res>(stream);
                         pageDoc.PageResFilePath = pubResFilePath;
 
-                        //todo: 读取 PageRes.xml 中的资源文件
+                        // 保存归档引用，用于延迟加载资源文件
+                        // 不立即加载资源文件，等待使用时再从归档读取
+                        // doc.ResourceArchive = _archive;
                     }
                 }
             }
 
             return pageDoc;
+        }
+
+        /// <summary>
+        /// 读取指定索引的模板页对象（根据路径）
+        /// </summary>
+        /// <param name="templateDocFilePath">模板页文档路径</param>
+        /// <param name="docFilePath">文档路径</param>
+        /// <returns>模板页对象</returns>
+        private TemplateDocument ReadTemplateDoc(string templateDocFilePath, string docFilePath)
+        {
+            EnsureNotDisposed();
+            var templateDoc = new TemplateDocument(docFilePath);
+
+            // Doc_{0}/Tpls/Tpl_{1}/Content.xml
+            if (_archive.FileExists(templateDocFilePath))
+            {
+                using var stream = _archive.OpenFileStream(templateDocFilePath);
+                templateDoc.TemplatePage = XmlHelper.DeserializeFromStream<Page>(stream);
+                templateDoc.TemplateFilePath = templateDocFilePath;
+            }
+
+            if (templateDoc.TemplatePage != null && templateDoc.TemplatePage.PageRes != null)
+            {
+                // 读取 TemplateRes.xml 等
+                var templateResPaths = templateDoc.TemplatePage.PageRes;
+
+                foreach (var res in templateResPaths)
+                {
+                    //  获取 TemplateRes.xml 绝对路径
+                    var templateResFilePath = res.GetAbsolutePath(templateDoc.TemplateDirectoryPath).Path;
+                    if (_archive.FileExists(templateResFilePath))
+                    {
+                        using var stream = _archive.OpenFileStream(templateResFilePath);
+                        templateDoc.TemplateRes = XmlHelper.DeserializeFromStream<Res>(stream);
+                        templateDoc.TemplateResFilePath = templateResFilePath;
+
+                        // 读取 TemplateRes.xml 中的资源文件
+                        // 保存归档引用，用于延迟加载资源文件
+                        // 不立即加载资源文件，等待使用时再从归档读取
+                        // doc.ResourceArchive = _archive;
+                    }
+                }
+            }
+
+            return templateDoc;
         }
 
 

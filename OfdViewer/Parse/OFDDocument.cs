@@ -42,7 +42,6 @@ namespace OFDViewer.Parse
             set => _docDirectoryPath = value;
         }
 
-
         private Res _publicResource;
         /// <summary>
         /// 全文档公共资源描述文件（PublicRes.xml）
@@ -80,12 +79,17 @@ namespace OFDViewer.Parse
         /// </summary>
         public List<SignDocument> SignDocs { get; set; }
 
-
         /// <summary>
         /// 文档级资源文件集合（存储Res目录下的字体、图片等资源）
         /// 延迟加载缓存：首次使用时从归档文件加载，之后缓存在此处
         /// </summary>
         public Dictionary<string, byte[]> ResFiles { get; set; }
+
+
+        /// <summary>
+        /// 模板页对象集合（对应Tpl_N目录，一个文档可包含多个模板页）
+        /// </summary>
+        public List<TemplateDocument> TemplateDocs { get; set; }
 
         /// <summary>
         /// 归档文件引用，用于延迟加载资源文件
@@ -98,7 +102,6 @@ namespace OFDViewer.Parse
         /// 确保多线程环境下缓存的一致性
         /// </summary>
         private readonly object _cacheLock = new object();
-
 
         private string _documentFilePath;
         /// <summary>
@@ -140,7 +143,6 @@ namespace OFDViewer.Parse
             set => _documentResourceFilePath = value;
         }
 
-
         private string _signsFilePath;
         /// <summary>
         /// 获取签章描述文件 
@@ -175,6 +177,13 @@ namespace OFDViewer.Parse
         public string PagesDirectoryPath => string.IsNullOrEmpty(DocDirectoryPath)
             ? Constants.GetFilePath(Constants.Pages_BaseDirectory, DocIndex)
             : Path.Combine(DocDirectoryPath, "Pages");
+
+        /// <summary>
+        /// 模板页总目录路径（Doc_{0}/Tpls）
+        /// </summary>
+        public string TemplatesDirectoryPath => string.IsNullOrEmpty(DocDirectoryPath)
+            ? Constants.GetFilePath(Constants.Templates_BaseDirectory, DocIndex)
+            : Path.Combine(DocDirectoryPath, "Tpls");
 
 
         //无参构造函数
@@ -281,6 +290,45 @@ namespace OFDViewer.Parse
             SignDocs = SignDocs ?? new List<SignDocument>();
             // 添加签章对象
             SignDocs.Add(signDoc);
+        }
+
+        /// <summary>
+        /// 添加空白模板页对象
+        /// </summary>
+        /// <remarks>
+        /// 自动创建新的TemplateDocument对象并添加到模板页集合中
+        /// 同时更新Document.CommonData.Templates集合，建立模板页与文档的关联
+        /// </remarks>
+        public void NewTemplateDoc()
+        {
+            TemplateDocs = TemplateDocs ?? new List<TemplateDocument>();
+
+            // 计算新的模板页序号（当前模板页数量，从0开始）
+            int newTemplateIndex = TemplateDocs.Count;
+
+            var templateDoc = new TemplateDocument();
+
+            // 设置模板页序号
+            templateDoc.BelongDocIndex = DocIndex;
+
+            // 添加模板页对象
+            TemplateDocs.Add(templateDoc);
+        }
+
+        /// <summary>
+        /// 添加指定的模板页对象
+        /// </summary>
+        /// <param name="templateDoc">要添加的模板页对象</param>
+        /// <remarks>
+        /// 将指定的TemplateDocument对象添加到模板页集合中
+        /// 自动设置模板页对象的所属文档序号和模板页序号
+        /// </remarks>
+        public void AddTemplateDoc(TemplateDocument templateDoc)
+        {
+            TemplateDocs = TemplateDocs ?? new List<TemplateDocument>();
+            
+            // 添加模板页对象
+            TemplateDocs.Add(templateDoc);
         }
 
 

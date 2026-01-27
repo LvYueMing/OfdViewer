@@ -1,4 +1,4 @@
-﻿namespace OFDViewer
+namespace OFDViewer
 {
     /// <summary>
     /// OFD 常量类（复用之前定义）
@@ -119,6 +119,45 @@
         /// 相对根目录路径：Doc_{0}/Pages/Page_{1}/Res/Image_{2}.png
         /// </summary>
         public const string Page_Res_ImageFile = "Doc_{0}/Pages/Page_{1}/Res/Image_{2}.png";
+
+        #endregion
+
+        #region 模板页（Templates）层级
+        /// <summary>
+        /// 模板页总目录（对应某个Doc_N目录下）
+        /// 相对根目录路径：Doc_{0}/Tpls
+        /// </summary>
+        public const string Templates_BaseDirectory = "Doc_{0}/Tpls";
+
+        /// <summary>
+        /// 单个模板页专属目录（对应某个Doc_N/Templates目录下，需替换{N}为模板页序号）
+        /// 相对根目录路径：Doc_{0}/Templates/Tpl_{1}
+        /// </summary>
+        public const string Template_BaseDirectory = "Doc_{0}/Tpls/Tpl_{1}";
+
+        /// <summary>
+        /// 模板页内容描述文件（对应某个Doc_N/Templates/Tpl_N目录下）
+        /// 相对根目录路径：Doc_{0}/Templates/Tpl_{1}/Content.xml
+        /// </summary>
+        public const string Template_ContentFile = "Doc_{0}/Tpls/Tpl_{1}/Content.xml";
+
+        /// <summary>
+        /// 模板页资源映射文件（对应某个Doc_N/Templates/Tpl_N目录下）
+        /// 相对根目录路径：Doc_{0}/Templates/Tpl_{1}/TemplateRes.xml
+        /// </summary>
+        public const string Template_TemplateResFile = "Doc_{0}/Tpls/Tpl_{1}/TemplateRes.xml";
+
+        /// <summary>
+        /// 模板页私有资源目录（对应某个Doc_N/Templates/Tpl_N目录下）
+        /// 相对根目录路径：Doc_{0}/Templates/Tpl_{1}/Res
+        /// </summary>
+        public const string Template_ResDirectory = "Doc_{0}/Tpls/Tpl_{1}/Res";
+
+        /// <summary>
+        /// 模板页私有图片资源（对应某个Doc_N/Templates/Tpl_N/Res目录下，需替换{M}为图片序号）
+        /// 相对根目录路径：Doc_{0}/Templates/Tpl_{1}/Res/Image_{2}.png
+        /// </summary>
+        public const string Template_Res_ImageFile = "Doc_{0}/Tpls/Tpl_{1}/Res/Image_{2}.png";
 
         #endregion
 
