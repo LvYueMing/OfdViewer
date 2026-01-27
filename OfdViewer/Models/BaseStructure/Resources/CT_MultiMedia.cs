@@ -34,7 +34,7 @@ namespace OFDViewer.Models.BaseStructure.Resources
         }
 
         /// <summary>
-        /// 资源的格式。支 持 BMP、JPEG、PNG、TIFF 及 AVS等 格 式,其 中TIFF格式不支持多页
+        /// 资源的格式。支持 BMP、JPEG、PNG、TIFF 及 AVS 等格式,其中 TIFF 格式不支持多页
         /// 可选
         /// </summary>
         [XmlAttribute("Format")]

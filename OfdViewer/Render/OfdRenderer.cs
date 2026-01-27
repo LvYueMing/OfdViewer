@@ -981,39 +981,125 @@ namespace OFDViewer.Render
             if (imageObject == null)
                 return;
 
+
             // 转换图像样式
             var imageStyle = ConvertToImageStyle(imageObject);
-
-            // 获取图像位置和大小（OFD坐标，单位：毫米）
-            float x = (float)imageObject.Boundary.X;
-            float y = (float)imageObject.Boundary.Y;
-            float width = (float)imageObject.Boundary.Width;
-            float height = (float)imageObject.Boundary.Height;
 
             // 获取渲染上下文
             var renderContext = imageRenderer as IRenderContext;
             if (renderContext == null)
                 return;
 
+            // 获取图像位置和大小（OFD坐标，单位：毫米）
+            // 将毫米转换为像素
+            float boundaryX = renderContext.MillimetersToPixels((float)imageObject.Boundary.X);
+            float boundaryY = renderContext.MillimetersToPixels((float)imageObject.Boundary.Y);
+            float width = renderContext.MillimetersToPixels((float)imageObject.Boundary.Width);
+            float height = renderContext.MillimetersToPixels((float)imageObject.Boundary.Height);
+
+            // 保存当前渲染状态
+            renderContext?.SaveState();
+
+            // 设置裁剪区（使用图元的外接矩形作为默认裁剪区）
+            renderContext?.SetClipRect(boundaryX, boundaryY, width, height);
+
+            // 先平移到 Boundary 位置（页面空间），再应用 CTM 矩阵（对象空间）
+            // 先通过 Boundary 平移到页面空间，再通过 CTM 变换到对象空间（Skia 中矩阵变换是 “反向作用”，因此代码中先平移再乘 CTM，效果等价于 OFD 的先 CTM 再平移
+            renderContext.Translate(boundaryX, boundaryY);
+
+            // 应用CTM变换矩阵（使用SKMatrix进行2D仿射变换）
+            if (imageObject.CTM != null && imageObject.CTM.Count >= 6)
+            {
+                // OFD中的CTM矩阵形式（3x3仿射变换矩阵）最后一列为[0, 0, 1]：
+                // | scaleX  skewX  0 |
+                // | skewY   scaleY 0 |
+                // | transX  transY 1 |
+                
+                // 其中：
+                // scaleX: X轴缩放因子
+                // skewX: X轴倾斜因子（Y轴方向的倾斜）
+                // skewY: Y轴倾斜因子（X轴方向的倾斜）
+                // scaleY: Y轴缩放因子
+                // transX: X轴平移量
+                // transY: Y轴平移量
+                
+                var ctm = imageObject.CTM.ToDoubleArray();
+                // 获取CTM矩阵参数
+                float scaleX = renderContext.MillimetersToPixels((float)ctm[0]);
+                float skewX = renderContext.MillimetersToPixels((float)ctm[1]);
+                float skewY = renderContext.MillimetersToPixels((float)ctm[2]);
+                float scaleY = renderContext.MillimetersToPixels((float)ctm[3]);
+                float transX = renderContext.MillimetersToPixels((float)ctm[4]);
+                float transY = renderContext.MillimetersToPixels((float)ctm[5]);
+                
+                // 创建SKMatrix（注意：SKMatrix的顺序与OFD矩阵不同）
+                // SKMatrix的形式：
+                // | ScaleX  SkewX  TransX |
+                // | SkewY   ScaleY TransY |
+                // | 0       0      1      |
+                
+                // 对应关系：
+                // ScaleX = scaleX (X轴缩放)
+                // SkewX = skewX (X轴倾斜)
+                // SkewY = skewY (Y轴倾斜)
+                // ScaleY = scaleY (Y轴缩放)
+                // TransX = transX (X轴平移)
+                // TransY = transY (Y轴平移)
+                
+                var matrix = new SkiaSharp.SKMatrix
+                {
+                    ScaleX = scaleX,
+                    SkewX = skewX,
+                    SkewY = skewY,
+                    ScaleY = scaleY,
+                    TransX = transX,
+                    TransY = transY,
+                    Persp0 = 0,
+                    Persp1 = 0,
+                    Persp2 = 1
+                };
+                
+                // 直接获取SkiaRenderContext并应用矩阵变换
+                var skiaContext = renderContext as SkiaRenderContext;
+                if (skiaContext != null)
+                {
+                    skiaContext.ConcatMatrix(matrix);
+                }
+            }
+
             // 从资源管理器获取图像数据
             byte[] imageData = null;
             if (renderContext.ResourceManager != null && imageObject.ResourceID != null)
             {
                 // 首先尝试获取多媒体资源对象
-                var multiMedia = renderContext.ResourceManager.GetResource<Models.BaseStructure.Resources.ResItems.MultiMedia>(imageObject.ResourceID.ToString());
+                var multiMedia = renderContext.ResourceManager.GetResource<MultiMedia>(imageObject.ResourceID.ToString());
                 if (multiMedia != null && multiMedia.MediaFile != null)
                 {
                     // 从资源文件获取图像数据
                     imageData = renderContext.ResourceManager.GetResourceFile(multiMedia.MediaFile.Path);
+
+                    // SkiaSharp 不支持 TIFF,需要处理,
+                    if (multiMedia.FormatString == "TIFF" || multiMedia.MediaFile.Path.ToUpper().Contains(".TIF"))
+                    {
+                        // 转换为 PNG 格式
+                        imageData = ConvertToPNG(imageData);
+                    }                
                 }
             }
 
             // 如果图像数据为空，跳过渲染
             if (imageData == null || imageData.Length == 0)
+            {
+                // 恢复渲染状态
+                renderContext?.RestoreState();
                 return;
+            }
 
-            // 绘制图像
-            imageRenderer.DrawImage(x, y, width, height, imageData, imageStyle);
+            // 图元原始坐标：(0,0) 到 (1,1)（归一化尺寸），Skia 会自动应用矩阵变换
+            imageRenderer.DrawImage(0, 0, 1, 1, imageData, imageStyle);
+
+            // 恢复渲染状态
+            renderContext?.RestoreState();
         }
         
         /// <summary>
@@ -1165,11 +1251,81 @@ namespace OFDViewer.Render
                 RenderPageToFile(outputPath, i);
             }
         }
-        
+
+        #endregion
+
+        #region 图像格式转换
+
+        /// <summary>
+        /// 将TIFF格式的图像数据转换为PNG格式
+        /// 该方法使用LibTiff.Net库来处理TIFF图像，支持多种TIFF格式
+        /// </summary>
+        /// <param name="imageData">TIFF格式的图像数据</param>
+        /// <returns>PNG格式的图像数据</returns>
+        /// <exception cref="ArgumentNullException">当imageData为null或空时抛出</exception>
+        /// <exception cref="InvalidOperationException">当无法打开或读取TIFF图像时抛出</exception>
+        private byte[] ConvertToPNG(byte[] imageData)
+        {
+            // 验证输入参数
+            if (imageData == null || imageData.Length == 0)
+                throw new ArgumentNullException(nameof(imageData), "图像数据不能为空");
+
+            try
+            {
+                // 创建TIFF流
+                using var tiffStream = new MemoryStream(imageData);
+                
+                // 使用LibTiff.Net打开TIFF图像
+                using var tiff = BitMiracle.LibTiff.Classic.Tiff.ClientOpen("TIFF", "r", tiffStream,
+                    new BitMiracle.LibTiff.Classic.TiffStream());
+
+                if (tiff == null)
+                    throw new InvalidOperationException("无法打开TIFF图像，可能是损坏的TIFF文件或不支持的格式");
+
+                // 获取图像尺寸
+                int width = tiff.GetField(BitMiracle.LibTiff.Classic.TiffTag.IMAGEWIDTH)[0].ToInt();
+                int height = tiff.GetField(BitMiracle.LibTiff.Classic.TiffTag.IMAGELENGTH)[0].ToInt();
+
+                // 验证图像尺寸
+                if (width <= 0 || height <= 0)
+                    throw new InvalidOperationException("无效的图像尺寸");
+
+                // 分配RGBA缓冲区（每个像素4个字节：R, G, B, A）
+                int[] rgbaBuffer = new int[width * height];
+
+                // 使用LibTiff.Net的RGBA接口直接读取为RGBA格式
+                // 这个方法是关键，它会自动处理TIFF的各种格式和压缩
+                if (!tiff.ReadRGBAImageOriented(width, height, rgbaBuffer,
+                    BitMiracle.LibTiff.Classic.Orientation.TOPLEFT, true))
+                {
+                    throw new InvalidOperationException("无法读取TIFF图像为RGBA格式");
+                }
+
+                // 创建SkiaSharp位图
+                using var bitmap = new SkiaSharp.SKBitmap(width, height,
+                    SkiaSharp.SKColorType.Rgba8888, SkiaSharp.SKAlphaType.Unpremul);
+
+                // 将RGBA数据拷贝到位图
+                IntPtr pixels = bitmap.GetPixels();
+                System.Runtime.InteropServices.Marshal.Copy(rgbaBuffer, 0, pixels, rgbaBuffer.Length);
+
+                // 编码为PNG格式
+                using var pngStream = new MemoryStream();
+                bitmap.Encode(pngStream, SkiaSharp.SKEncodedImageFormat.Png, 100);
+
+                // 返回PNG数据
+                return pngStream.ToArray();
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"图像格式转换失败：{ex.Message}", ex);
+            }
+        }
+
         #endregion
 
         #region IDisposable实现
-        
+
         /// <summary>
         /// 释放资源
         /// </summary>

@@ -13,7 +13,7 @@ namespace OFDViewer.Models.Image
         /// <summary>
         /// 图像边框设置 可选
         /// </summary>
-        [XmlElement("Border", IsNullable = false)]
+        [XmlElement("Border")]
         public ImageBorder Border { get; set; }
 
         /// <summary>

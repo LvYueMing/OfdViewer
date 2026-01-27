@@ -299,6 +299,15 @@ namespace OFDViewer.Render.Implementation
         }
 
         /// <summary>
+        /// 应用矩阵变换（使用SKMatrix）
+        /// </summary>
+        /// <param name="matrix">变换矩阵</param>
+        public void ConcatMatrix(SKMatrix matrix)
+        {
+            _canvas?.Concat(ref matrix);
+        }
+
+        /// <summary>
         /// 旋转画布
         /// </summary>
         /// <param name="angle">旋转角度（弧度）</param>
