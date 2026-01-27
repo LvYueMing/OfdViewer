@@ -409,7 +409,7 @@ namespace OFDViewer.Render
             bool hasMultipleTextCodes = textObject.TextCodes != null && textObject.TextCodes.Count > 1;
             
             // 情况2：只有一个TextCode且有CGTransform，使用CGTransform处理
-            if (!hasMultipleTextCodes && textObject.TextCodes.Count == 1 && hasCGTransforms )
+            if (!hasMultipleTextCodes && textObject.TextCodes.Count == 1 && hasCGTransforms)
             {
                 var textCode = textObject.TextCodes[0];
                 if (!string.IsNullOrEmpty(textCode.Text))
@@ -955,7 +955,8 @@ namespace OFDViewer.Render
                 StrokeWidth = (float)pathObject.LineWidth,
 
                 // 是否填充和描边
-                Fill = pathObject.Fill,
+                // Fill = pathObject.Fill,
+                Fill = true,
                 Stroke = pathObject.Stroke,
 
                 // 虚线样式（暂时不支持）
