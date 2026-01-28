@@ -55,10 +55,6 @@ namespace OFDViewer.Models.BaseType
             }
         }
 
-        /// <summary>
-        /// 隐式转换为字符串
-        /// </summary>
-        public static implicit operator string(ST_ID id) => id.ToString();
 
         /// <summary>
         /// 初始化ST_ID
@@ -206,8 +202,10 @@ namespace OFDViewer.Models.BaseType
         public static bool operator <(ST_ID left, ST_ID right) => left.CompareTo(right) < 0;
         public static bool operator >(ST_ID left, ST_ID right) => left.CompareTo(right) > 0;
 
-        public static explicit operator uint(ST_ID id) => id._value;
+        public static implicit operator int(ST_ID id) => (int)id._value;
+        public static implicit operator uint(ST_ID id) => id._value;
         public static implicit operator ST_ID(uint value) => new ST_ID(value);
+        public static implicit operator string(ST_ID id) => id.ToString();
         #endregion
     }
 }

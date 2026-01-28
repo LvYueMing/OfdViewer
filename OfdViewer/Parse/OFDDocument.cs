@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using System.Xml.Serialization;
 using OFDViewer.Models.BaseStructure.DocumentRoot;
+using OFDViewer.Models.BaseStructure.Pages;
 using OFDViewer.Models.BaseStructure.Resources;
 using OFDViewer.Models.BaseStructure.Resources.ResItems;
 using OFDViewer.Models.BaseType;
@@ -10,15 +11,16 @@ namespace OFDViewer.Parse
 {
     /// <summary>
     /// OFD 文档核心类，对应 OFD 标准中的 Doc_N 目录
-    /// </summary>
     /// <remarks>
     /// 负责管理单个 OFD 文档的所有内容，包括：
     /// 1. 文档主描述信息（Document.xml）
     /// 2. 公共资源和文档资源
     /// 3. 页面集合
     /// 4. 签章集合
-    /// 5. 文档级资源文件
+    /// 5. 模板页集合
+    /// 6. 其他资源文件
     /// </remarks>
+    /// </summary>
     public class OFDDocument
     {
         /// <summary>
@@ -84,7 +86,6 @@ namespace OFDViewer.Parse
         /// 延迟加载缓存：首次使用时从归档文件加载，之后缓存在此处
         /// </summary>
         public Dictionary<string, byte[]> ResFiles { get; set; }
-
 
         /// <summary>
         /// 模板页对象集合（对应Tpl_N目录，一个文档可包含多个模板页）
@@ -404,10 +405,90 @@ namespace OFDViewer.Parse
         }
 
 
-
         #region 获取资源对象
 
+        /// 从模版页获取指定类型的资源（非泛型版本）
+        /// </summary>
+        /// <param name="templateIndex">模版页索引</param>
+        /// <param name="resourceId">资源ID</param>
+        /// <param name="resourceType">资源类型</param>
+        /// <param name="location">资源位置</param>
+        /// <returns>指定类型的资源对象，如果未找到返回null</returns>
+        public object GetTemplateResource(int templateIndex, string resourceId, ResourceType resourceType, ResourceLocation location = ResourceLocation.Auto)
+        {
+            // 获取模版页面对象
+            TemplateDocument templateDoc = TemplateDocs?.FirstOrDefault(t => t.TemplateId == templateIndex);
+            if (templateDoc == null) return null;
 
+            // 按照指定位置或自动搜索顺序查找资源
+            switch (location)
+            {
+                case ResourceLocation.Template:
+                    return GetResourceFromLocation(templateDoc.TemplateRes, resourceId, resourceType);
+
+                case ResourceLocation.Document:
+                    return GetResourceFromLocation(DocumentResource, resourceId, resourceType);
+
+                case ResourceLocation.Public:
+                    return GetResourceFromLocation(PublicResource, resourceId, resourceType);
+
+                case ResourceLocation.Auto:
+                default:
+                    // 自动搜索顺序：Template -> Document -> Public
+                    // 注意：模版页资源获取不包含Page资源
+                    object resource = GetResourceFromLocation(templateDoc.TemplateRes, resourceId, resourceType);
+                    if (resource != null) return resource;
+
+                    resource = GetResourceFromLocation(DocumentResource, resourceId, resourceType);
+                    if (resource != null) return resource;
+
+                    resource = GetResourceFromLocation(PublicResource, resourceId, resourceType);
+                    return resource;
+            }
+        }
+
+        /// <summary>
+        /// 从模版页获取指定类型的资源（泛型版本）
+        /// </summary>
+        /// <typeparam name="T">资源类型（OFDFont、ColorSpace、DrawParam等）</typeparam>
+        /// <param name="templateIndex">模版页索引</param>
+        /// <param name="resourceId">资源ID</param>
+        /// <param name="location">资源位置</param>
+        /// <returns>指定类型的资源对象，如果未找到返回default(T)</returns>
+        public T GetTemplateResource<T>(int templateIndex, string resourceId, ResourceLocation location = ResourceLocation.Auto)
+        {
+            // 获取模版页面对象
+            TemplateDocument templateDoc = TemplateDocs?.FirstOrDefault(t => t.TemplateId == templateIndex);
+            if (templateDoc == null) return default(T);
+
+            // 按照指定位置或自动搜索顺序查找资源
+            switch (location)
+            {
+                case ResourceLocation.Template:
+                    return GetResourceFromLocation<T>(templateDoc.TemplateRes, resourceId);
+
+                case ResourceLocation.Document:
+                    return GetResourceFromLocation<T>(DocumentResource, resourceId);
+
+                case ResourceLocation.Public:
+                    return GetResourceFromLocation<T>(PublicResource, resourceId);
+
+                case ResourceLocation.Auto:
+                default:
+                    // 自动搜索顺序：Template -> Document -> Public
+                    // 注意：模版页资源获取不包含Page资源
+                    T resource = GetResourceFromLocation<T>(templateDoc.TemplateRes, resourceId);
+                    if (resource != null) return resource;
+
+                    resource = GetResourceFromLocation<T>(DocumentResource, resourceId);
+                    if (resource != null) return resource;
+
+                    resource = GetResourceFromLocation<T>(PublicResource, resourceId);
+                    return resource;
+            }
+        }
+
+        /// <summary>
         /// 泛型版本：从指定位置获取指定类型的资源
         /// </summary>
         /// <typeparam name="T">资源类型（OFDFont、ColorSpace、DrawParam等）</typeparam>
@@ -426,13 +507,17 @@ namespace OFDViewer.Parse
             {
                 case ResourceLocation.Page:
                     return GetResourceFromLocation<T>(pageDoc.PageRes, resourceId);
+
                 case ResourceLocation.Document:
                     return GetResourceFromLocation<T>(DocumentResource, resourceId);
+
                 case ResourceLocation.Public:
                     return GetResourceFromLocation<T>(PublicResource, resourceId);
+
                 case ResourceLocation.Auto:
                 default:
                     // 自动搜索顺序：Page -> Document -> Public
+                    // 注意：自动搜索时不包含模版页资源
                     T resource = GetResourceFromLocation<T>(pageDoc.PageRes, resourceId);
                     if (resource != null) return resource;
 
@@ -443,44 +528,6 @@ namespace OFDViewer.Parse
                     return resource;
             }
         }
-
-        /// <summary>
-        /// 获取指定资源
-        /// </summary>
-        /// <param name="pageIndex">页面索引</param>
-        /// <param name="resourceId">资源ID</param>
-        /// <param name="resourceType">资源类型</param>
-        /// <param name="location">获取位置</param>
-        /// <returns>资源对象，如果未找到返回null</returns>
-        public object GetResource(int pageIndex, string resourceId, ResourceType resourceType = ResourceType.All, ResourceLocation location = ResourceLocation.Auto)
-        {
-            // 获取页面对象
-            PageDocument pageDoc = PageDocs?.FirstOrDefault(p => p.PageIndex == pageIndex);
-            if (pageDoc == null) return null;
-
-            // 按照指定位置或自动搜索顺序查找资源
-            switch (location)
-            {
-                case ResourceLocation.Page:
-                    return GetResourceFromLocation(pageDoc.PageRes, resourceId, resourceType);
-                case ResourceLocation.Document:
-                    return GetResourceFromLocation(DocumentResource, resourceId, resourceType);
-                case ResourceLocation.Public:
-                    return GetResourceFromLocation(PublicResource, resourceId, resourceType);
-                case ResourceLocation.Auto:
-                default:
-                    // 自动搜索顺序：Page -> Document -> Public
-                    object resource = GetResourceFromLocation(pageDoc.PageRes, resourceId, resourceType);
-                    if (resource != null) return resource;
-
-                    resource = GetResourceFromLocation(DocumentResource, resourceId, resourceType);
-                    if (resource != null) return resource;
-
-                    resource = GetResourceFromLocation(PublicResource, resourceId, resourceType);
-                    return resource;
-            }
-        }
-
 
         /// <summary>
         /// 泛型版本：从指定资源集合中获取指定类型的资源
@@ -528,6 +575,46 @@ namespace OFDViewer.Parse
 
             // 如果不是已知的资源类型，返回default(T)
             return default(T);
+        }
+
+        /// 从指定位置获取指定类型的资源
+        /// </summary>
+        /// <param name="pageIndex">页面索引</param>
+        /// <param name="resourceId">资源ID</param>
+        /// <param name="resourceType">资源类型</param>
+        /// <param name="location">资源位置</param>
+        /// <returns>资源对象，如果未找到返回null</returns>
+        public object GetResource(int pageIndex, string resourceId, ResourceType resourceType = ResourceType.All, ResourceLocation location = ResourceLocation.Auto)
+        {
+            // 获取页面对象
+            PageDocument pageDoc = PageDocs?.FirstOrDefault(p => p.PageIndex == pageIndex);
+            if (pageDoc == null) return null;
+
+            // 按照指定位置或自动搜索顺序查找资源
+            switch (location)
+            {
+                case ResourceLocation.Page:
+                    return GetResourceFromLocation(pageDoc.PageRes, resourceId, resourceType);
+
+                case ResourceLocation.Document:
+                    return GetResourceFromLocation(DocumentResource, resourceId, resourceType);
+
+                case ResourceLocation.Public:
+                    return GetResourceFromLocation(PublicResource, resourceId, resourceType);
+
+                case ResourceLocation.Auto:
+                default:
+                    // 自动搜索顺序：Page -> Document -> Public
+                    // 注意：自动搜索时不包含模版页资源
+                    object resource = GetResourceFromLocation(pageDoc.PageRes, resourceId, resourceType);
+                    if (resource != null) return resource;
+
+                    resource = GetResourceFromLocation(DocumentResource, resourceId, resourceType);
+                    if (resource != null) return resource;
+
+                    resource = GetResourceFromLocation(PublicResource, resourceId, resourceType);
+                    return resource;
+            }
         }
 
         /// <summary>
@@ -664,6 +751,88 @@ namespace OFDViewer.Parse
                     return fileContent;
             }
         }
+        
+        /// <summary>
+        /// 从模版页获取资源文件内容
+        /// </summary>
+        /// <param name="templateIndex">模版页索引</param>
+        /// <param name="filePath">文件路径</param>
+        /// <param name="location">资源位置</param>
+        /// <returns>资源文件内容，如果未找到返回null</returns>
+        public byte[] GetTemplateResourceFile(int templateIndex, string filePath, ResourceLocation location = ResourceLocation.Auto)
+        {
+            // 获取模版页面对象
+            TemplateDocument templateDoc = TemplateDocs?.FirstOrDefault(t => t.TemplateId == templateIndex);
+            if (templateDoc == null) return null;
+
+            // 构建完整的文件路径
+            string fullResFilePath = templateDoc.TemplateRes?.BaseLoc == null
+                ? filePath
+                : ST_Loc.GetAbsolutePath(filePath, templateDoc.TemplateRes.BaseLocString).Path;
+
+            // 按照指定位置或自动搜索顺序查找资源文件
+            switch (location)
+            {
+                case ResourceLocation.Template:
+                    // 构建完整的文件路径
+                    if (templateDoc.TemplateResFiles != null && templateDoc.TemplateResFiles.TryGetValue(fullResFilePath, out byte[] templateContent))
+                    {
+                        return templateContent;
+                    }
+                    return null;
+
+                case ResourceLocation.Document:
+                case ResourceLocation.Public:
+                case ResourceLocation.Auto:
+                default:
+                    // 自动搜索顺序：Template -> Document
+                    if (templateDoc.TemplateResFiles != null && templateDoc.TemplateResFiles.TryGetValue(fullResFilePath, out byte[] templateFileContent))
+                    {
+                        return templateFileContent;
+                    }
+                    // 构建完整的文件路径
+                    fullResFilePath = ST_Loc.GetAbsolutePath(filePath, ResDirectoryPath).Path;
+
+                    // 延迟加载：先检查缓存
+                    if (ResFiles != null && ResFiles.TryGetValue(fullResFilePath, out byte[] cachedContent))
+                    {
+                        return cachedContent;
+                    }
+
+                    // 缓存未命中，从归档文件加载
+                    byte[] fileContent = LoadResourceFileFromArchive(fullResFilePath);
+
+                    // 缓存结果
+                    if (fileContent != null)
+                    {
+                        lock (_cacheLock)
+                        {
+                            if (ResFiles == null)
+                            {
+                                ResFiles = new Dictionary<string, byte[]>();
+                            }
+
+                            if (!ResFiles.ContainsKey(filePath))
+                            {
+                                ResFiles[filePath] = fileContent;
+                            }
+                        }
+                    }
+
+                    return fileContent;
+            }
+        }
+
+        /// <summary>
+        /// 获取指定索引的模版页对象
+        /// </summary>
+        /// <param name="templateIndex">模版页索引</param>
+        /// <returns>模版页对象，如果未找到返回null</returns>
+        public Page GetTemplatePage(uint templateId)
+        {
+            return TemplateDocs?.FirstOrDefault(t => t.TemplateId == templateId)?.TemplatePage;
+        }
+
         #endregion
 
         #region 私有方法

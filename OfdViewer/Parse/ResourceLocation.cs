@@ -12,6 +12,10 @@ namespace OFDViewer.Parse
     public enum ResourceLocation
     {
         /// <summary>
+        /// 模板级资源
+        /// </summary>       
+        Template,
+        /// <summary>
         /// 页面级资源
         /// </summary>
         Page,

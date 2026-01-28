@@ -10,8 +10,14 @@ namespace OFDViewer.Parse
     public class TemplateDocument
     {
         /// <summary>
-        /// 模板页序号（从0开始，自动计算）
+        /// 模板页id
         /// </summary>
+        public uint TemplateId { get; internal set; }
+
+        /// <summary>
+        /// 模板页序号（从0开始）
+        /// </summary>
+
         public int TemplateIndex { get; internal set; }
 
         /// <summary>
@@ -66,7 +72,7 @@ namespace OFDViewer.Parse
             {
                 if (string.IsNullOrEmpty(_templateFilePath))
                 {
-                    _templateFilePath = Constants.GetFilePath(Constants.Template_ContentFile, BelongDocIndex, TemplateIndex);
+                    _templateFilePath = Constants.GetFilePath(Constants.Template_ContentFile, BelongDocIndex, (int)TemplateId);
                 }
                 return _templateFilePath;
             }
@@ -81,7 +87,7 @@ namespace OFDViewer.Parse
         /// 模板页目录路径（相对根目录，格式：Doc_{BelongDocIndex}/Templates/Tpl_{TemplateIndex}）
         /// </summary>
         public string TemplateDirectoryPath => string.IsNullOrEmpty(TemplateFilePath)
-            ? $"Doc_{BelongDocIndex}/Templates/Tpl_{TemplateIndex}"
+            ? $"Doc_{BelongDocIndex}/Templates/Tpl_{TemplateId}"
             : Path.GetDirectoryName(TemplateFilePath);
 
         private string _templateResFilePath;
@@ -94,7 +100,7 @@ namespace OFDViewer.Parse
             {
                 if (string.IsNullOrEmpty(_templateResFilePath))
                 {
-                    _templateResFilePath = Constants.GetFilePath(Constants.Template_TemplateResFile, BelongDocIndex, TemplateIndex);
+                    _templateResFilePath = Constants.GetFilePath(Constants.Template_TemplateResFile, BelongDocIndex, (int)TemplateId);
                 }
                 return _templateResFilePath;
             }
@@ -106,7 +112,7 @@ namespace OFDViewer.Parse
         /// </summary>
         public TemplateDocument()
         {
-            TemplateIndex = 0;
+            TemplateId = 0;
             BelongDocIndex = 0;
             TemplatePage = new Page();
         }

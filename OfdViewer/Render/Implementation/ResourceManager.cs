@@ -35,6 +35,20 @@ namespace OFDViewer.Render.Implementation
         }
 
         /// <summary>
+        /// 泛型版本：获取指定类型的模版资源
+        /// </summary>
+        /// <typeparam name="T">资源类型（OFDFont、ColorSpace、DrawParam等）</typeparam>
+        /// <param name="resourceId">资源ID</param>
+        /// <returns>指定类型的资源对象，如果未找到返回default(T)</returns>
+        public T GetTemplateResource<T>(string resourceId)
+        {
+            // 由于模版页可能有多个，这里需要遍历所有模版页
+            // 但目前我们没有模版页索引，所以暂时返回null
+            // 后续可以根据需要修改为遍历所有模版页
+            return default(T);
+        }
+
+        /// <summary>
         /// 获取资源文件内容
         /// </summary>
         /// <param name="filePath">文件路径</param>
@@ -42,6 +56,16 @@ namespace OFDViewer.Render.Implementation
         public byte[] GetResourceFile(string filePath)
         {
             return _document.GetResourceFile(_pageIndex, filePath);
+        }
+
+        /// <summary>
+        /// 获取指定索引的模版页对象
+        /// </summary>
+        /// <param name="templateIndex">模版页索引</param>
+        /// <returns>模版页对象，如果未找到返回null</returns>
+        public object GetTemplatePage(uint templateId)
+        {
+            return _document.GetTemplatePage(templateId);
         }
     }
 }

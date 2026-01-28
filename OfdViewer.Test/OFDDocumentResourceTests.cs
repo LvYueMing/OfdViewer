@@ -45,6 +45,251 @@ namespace OFDViewer.Tests
             Assert.Equal((uint)1, ((OFDFont)result).ID);
         }
 
+
+
+        /// <summary>
+        /// 测试目标：验证从模版页资源中获取字体资源
+        /// 测试场景：在 TemplateRes 中添加字体资源，调用 GetTemplateResource 方法获取
+        /// 预期结果：成功获取到字体资源对象
+        /// </summary>
+        [Fact]
+        public void GetTemplateResource_FromTemplateResource_ShouldReturnFont()
+        {
+            // 准备测试数据
+            var ofdDoc = new OFDDocument();
+            var fonts = new OFDFonts();
+            var font = new OFDFont()
+            {
+                ID = 1,
+                FontName = "TestFont",
+                FontFile = new ST_Loc("font.ttf")
+            };
+            fonts.ofdFonts = new List<OFDFont> { font };
+
+            var templateDoc = new TemplateDocument()
+            {
+                TemplateRes = new Res()
+            };
+            templateDoc.TemplateRes.AddResource(fonts);
+
+            ofdDoc.TemplateDocs = new List<TemplateDocument> { templateDoc };
+
+            // 执行测试
+            var result = ofdDoc.GetTemplateResource<OFDFont>(0, "1", ResourceLocation.Template);
+
+            // 验证结果
+            Assert.NotNull(result);
+            Assert.IsType<OFDFont>(result);
+            Assert.Equal((uint)1, result.ID);
+        }
+
+        /// <summary>
+        /// 测试目标：验证从模版页资源中获取颜色空间资源
+        /// 测试场景：在 TemplateRes 中添加颜色空间资源，调用 GetTemplateResource 方法获取
+        /// 预期结果：成功获取到颜色空间资源对象
+        /// </summary>
+        [Fact]
+        public void GetTemplateResource_FromTemplateResource_ShouldReturnColorSpace()
+        {
+            // 准备测试数据
+            var ofdDoc = new OFDDocument();
+            var colorSpaces = new ColorSpaces();
+            var colorSpace = new ColorSpace()
+            {
+                ID = 1
+            };
+            colorSpaces.colorSpaces = new List<ColorSpace> { colorSpace };
+
+            var templateDoc = new TemplateDocument()
+            {
+                TemplateRes = new Res()
+            };
+            templateDoc.TemplateRes.AddResource(colorSpaces);
+
+            ofdDoc.TemplateDocs = new List<TemplateDocument> { templateDoc };
+
+            // 执行测试
+            var result = ofdDoc.GetTemplateResource<ColorSpace>(0, "1", ResourceLocation.Template);
+
+            // 验证结果
+            Assert.NotNull(result);
+            Assert.IsType<ColorSpace>(result);
+            Assert.Equal((uint)1, result.ID);
+        }
+
+        /// <summary>
+        /// 测试目标：验证从模版页资源中获取绘制参数资源
+        /// 测试场景：在 TemplateRes 中添加绘制参数资源，调用 GetTemplateResource 方法获取
+        /// 预期结果：成功获取到绘制参数资源对象
+        /// </summary>
+        [Fact]
+        public void GetTemplateResource_FromTemplateResource_ShouldReturnDrawParam()
+        {
+            // 准备测试数据
+            var ofdDoc = new OFDDocument();
+            var drawParams = new DrawParams();
+            var drawParam = new DrawParam()
+            {
+                ID = 1,
+                LineWidth = 2.0
+            };
+            drawParams.drawParams = new List<DrawParam> { drawParam };
+
+            var templateDoc = new TemplateDocument()
+            {
+                TemplateRes = new Res()
+            };
+            templateDoc.TemplateRes.AddResource(drawParams);
+
+            ofdDoc.TemplateDocs = new List<TemplateDocument> { templateDoc };
+
+            // 执行测试
+            var result = ofdDoc.GetTemplateResource<DrawParam>(0, "1", ResourceLocation.Template);
+
+            // 验证结果
+            Assert.NotNull(result);
+            Assert.IsType<DrawParam>(result);
+            Assert.Equal((uint)1, result.ID);
+        }
+
+        /// <summary>
+        /// 测试目标：验证从模版页资源中获取文档资源
+        /// 测试场景：在 DocumentResource 中添加字体资源，调用 GetTemplateResource 方法获取
+        /// 预期结果：成功获取到字体资源对象
+        /// </summary>
+        [Fact]
+        public void GetTemplateResource_FromDocumentResource_ShouldReturnFont()
+        {
+            // 准备测试数据
+            var ofdDoc = new OFDDocument();
+            var fonts = new OFDFonts();
+            var font = new OFDFont()
+            {
+                ID = 1,
+                FontName = "TestFont",
+                FontFile = new ST_Loc("font.ttf")
+            };
+            fonts.ofdFonts = new List<OFDFont> { font };
+
+            ofdDoc.DocumentResource = new Res();
+            ofdDoc.DocumentResource.AddResource(fonts);
+
+            var templateDoc = new TemplateDocument();
+
+            ofdDoc.TemplateDocs = new List<TemplateDocument> { templateDoc };
+
+            // 执行测试
+            var result = ofdDoc.GetTemplateResource<OFDFont>(0, "1", ResourceLocation.Document);
+
+            // 验证结果
+            Assert.NotNull(result);
+            Assert.IsType<OFDFont>(result);
+            Assert.Equal((uint)1, result.ID);
+        }
+
+        /// <summary>
+        /// 测试目标：验证从模版页资源中获取公共资源
+        /// 测试场景：在 PublicResource 中添加颜色空间资源，调用 GetTemplateResource 方法获取
+        /// 预期结果：成功获取到颜色空间资源对象
+        /// </summary>
+        [Fact]
+        public void GetTemplateResource_FromPublicResource_ShouldReturnColorSpace()
+        {
+            // 准备测试数据
+            var ofdDoc = new OFDDocument();
+            var colorSpaces = new ColorSpaces();
+            var colorSpace = new ColorSpace()
+            {
+                ID = 1
+            };
+            colorSpaces.colorSpaces = new List<ColorSpace> { colorSpace };
+
+            ofdDoc.PublicResource = new Res();
+            ofdDoc.PublicResource.AddResource(colorSpaces);
+
+            var templateDoc = new TemplateDocument();
+
+            ofdDoc.TemplateDocs = new List<TemplateDocument> { templateDoc };
+
+            // 执行测试
+            var result = ofdDoc.GetTemplateResource<ColorSpace>(0, "1", ResourceLocation.Public);
+
+            // 验证结果
+            Assert.NotNull(result);
+            Assert.IsType<ColorSpace>(result);
+            Assert.Equal((uint)1, result.ID);
+        }
+
+        /// <summary>
+        /// 测试目标：验证从模版页资源中自动搜索资源
+        /// 测试场景：在 TemplateRes、DocumentResource 和 PublicResource 中添加资源，调用 GetTemplateResource 方法获取
+        /// 预期结果：成功获取到资源对象
+        /// </summary>
+        [Fact]
+        public void GetTemplateResource_FromAutoSearch_ShouldReturnResource()
+        {
+            // 准备测试数据
+            var ofdDoc = new OFDDocument();
+            var fonts = new OFDFonts();
+            var font = new OFDFont()
+            {
+                ID = 1,
+                FontName = "TestFont",
+                FontFile = new ST_Loc("font.ttf")
+            };
+            fonts.ofdFonts = new List<OFDFont> { font };
+
+            var templateDoc = new TemplateDocument()
+            {
+                TemplateRes = new Res()
+            };
+            templateDoc.TemplateRes.AddResource(fonts);
+
+            ofdDoc.TemplateDocs = new List<TemplateDocument> { templateDoc };
+
+            // 执行测试
+            var result = ofdDoc.GetTemplateResource<OFDFont>(0, "1");
+
+            // 验证结果
+            Assert.NotNull(result);
+            Assert.IsType<OFDFont>(result);
+            Assert.Equal((uint)1, result.ID);
+        }
+
+        /// <summary>
+        /// 测试目标：验证从页面资源中自动搜索资源
+        /// 测试场景：在 PageRes、DocumentResource 和 PublicResource 中添加资源，调用 GetResource 方法获取
+        /// 预期结果：成功获取到资源对象
+        /// </summary>
+        [Fact]
+        public void GetResource_FromAutoSearch_ShouldReturnResource()
+        {
+            // 准备测试数据
+            var ofdDoc = new OFDDocument();
+            var fonts = new OFDFonts();
+            var font = new OFDFont()
+            {
+                ID = 1,
+                FontName = "TestFont",
+                FontFile = new ST_Loc("font.ttf")
+            };
+            fonts.ofdFonts = new List<OFDFont> { font };
+
+            var pageDoc = new PageDocument();
+            pageDoc.PageRes = new Res();
+            pageDoc.PageRes.AddResource(fonts);
+
+            ofdDoc.PageDocs = new List<PageDocument> { pageDoc };
+
+            // 执行测试
+            var result = ofdDoc.GetResource<OFDFont>(0, "1");
+
+            // 验证结果
+            Assert.NotNull(result);
+            Assert.IsType<OFDFont>(result);
+            Assert.Equal((uint)1, result.ID);
+        }
+
         /// <summary>
         /// 测试目标：验证从公共资源中获取颜色空间资源
         /// 测试场景：在 PublicResource 中添加颜色空间资源，调用 GetResource 方法获取

@@ -205,6 +205,8 @@ namespace OFDViewer.Parse
                         // 获取模板页面对象文件 Doc_0/Templates/Tpl_0/Content.xml 绝对路径 
                         var tplFilePath = tpl.BaseLoc.GetAbsolutePath(doc.DocDirectoryPath).Path;
                         var tplDoc = ReadTemplateDoc(tplFilePath, doc.DocDirectoryPath);
+                        //模版页面ID
+                        tplDoc.TemplateId = tpl.ID;
 
                         doc.AddTemplateDoc(tplDoc);
                     }
@@ -219,6 +221,8 @@ namespace OFDViewer.Parse
                     // 获取页面对象文件 Pages/Page_0/Content.xml 绝对路径 
                     var pageFilePath = page.BaseLoc.GetAbsolutePath(doc.DocDirectoryPath).Path;
                     var pageDoc = ReadPageDoc(pageFilePath, doc.DocDirectoryPath);
+                    // 页面ID
+                    pageDoc.PageId = page.ID;
 
                     doc.AddPageDoc(pageDoc);
                 }

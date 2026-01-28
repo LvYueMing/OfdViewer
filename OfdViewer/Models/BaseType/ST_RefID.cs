@@ -96,6 +96,8 @@ namespace OFDViewer.Models.BaseType
         public static bool operator <(ST_RefID left, ST_RefID right) => left.CompareTo(right) < 0;
         public static bool operator >(ST_RefID left, ST_RefID right) => left.CompareTo(right) > 0;
 
+        public static implicit operator int(ST_RefID refId) => (int)refId._referencedId.RawValue;
+        public static implicit operator uint(ST_RefID refId) => refId._referencedId.RawValue;
         public static implicit operator ST_ID(ST_RefID refId) => refId._referencedId;
         public static explicit operator ST_RefID(ST_ID id) => new ST_RefID(id);
         public static explicit operator ST_RefID(string str) => Parse(str);

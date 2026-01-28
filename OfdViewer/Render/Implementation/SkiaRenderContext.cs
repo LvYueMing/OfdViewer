@@ -662,8 +662,8 @@ namespace OFDViewer.Render.Implementation
             lock (_reusablePaintLock)
             {
                 _reusablePaint.IsAntialias = true; // 强制启用抗锯齿，提高文字清晰度
-                _reusablePaint.Style = SKPaintStyle.StrokeAndFill;//既填充又描边
-                _reusablePaint.StrokeWidth = 0.5f;//既填充又描边
+                _reusablePaint.Style = style.Stroke ? SKPaintStyle.StrokeAndFill : SKPaintStyle.Fill;
+                _reusablePaint.StrokeWidth = style.StrokeWidth;
                 _reusablePaint.Color = ConvertToSKColor(style.Color, style.Alpha);
                 _reusablePaint.BlendMode = SKBlendMode.SrcOver; // 设置混合模式，确保文字颜色正确
                 
@@ -763,8 +763,8 @@ namespace OFDViewer.Render.Implementation
             lock (_reusablePaintLock)
             {
                 _reusablePaint.IsAntialias = _config.AntiAlias;
-                _reusablePaint.Style = SKPaintStyle.StrokeAndFill;//既填充又描边
-                _reusablePaint.StrokeWidth = 0.5f;//既填充又描边
+                _reusablePaint.Style = style.Stroke ? SKPaintStyle.StrokeAndFill : SKPaintStyle.Fill; 
+                _reusablePaint.StrokeWidth = style.StrokeWidth;
                 _reusablePaint.Color = ConvertToSKColor(style.Color, style.Alpha);
 
                 List<ushort> allGlyphs = new List<ushort>();

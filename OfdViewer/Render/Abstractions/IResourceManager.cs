@@ -15,10 +15,25 @@ namespace OFDViewer.Render.Abstractions
         T GetResource<T>(string resourceId);
 
         /// <summary>
+        /// 泛型版本：获取指定类型的模版资源
+        /// </summary>
+        /// <typeparam name="T">资源类型（OFDFont、ColorSpace、DrawParam等）</typeparam>
+        /// <param name="resourceId">资源ID</param>
+        /// <returns>指定类型的资源对象，如果未找到返回default(T)</returns>
+        T GetTemplateResource<T>(string resourceId);
+
+        /// <summary>
         /// 获取资源文件内容
         /// </summary>
         /// <param name="filePath">文件路径</param>
         /// <returns>资源文件内容，如果未找到返回null</returns>
         byte[] GetResourceFile(string filePath);
+
+        /// <summary>
+        /// 获取指定索引的模版页对象
+        /// </summary>
+        /// <param name="templateId">模版页索引</param>
+        /// <returns>模版页对象，如果未找到返回null</returns>
+        object GetTemplatePage(uint templateId);
     }
 }

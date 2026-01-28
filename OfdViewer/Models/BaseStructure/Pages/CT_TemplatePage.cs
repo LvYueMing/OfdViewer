@@ -36,7 +36,8 @@ namespace OFDViewer.Models.BaseStructure.Pages
 
         /// <summary>
         /// 模板页的默认图层类型,其类型描述和呈现顺序与 Layer 中 Type 的描述和处理一致,见表15
-        /// 如果页面引用的多个模板的此属性相同, 则应根据引用的顺序来显示,先引用者先绘制默认值为 Background
+        /// 如果页面引用的多个模板的此属性相同, 则应根据引用的顺序来显示,先引用者先绘制
+        /// 默认值为 Background
         /// 可选
         /// </summary>
         [XmlAttribute("ZOrder")]

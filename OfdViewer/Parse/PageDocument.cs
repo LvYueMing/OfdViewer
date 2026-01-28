@@ -9,6 +9,7 @@ namespace OFDViewer.Parse
     /// </summary>
     public class PageDocument
     {
+        public uint PageId { get; internal set; }
         /// <summary>
         /// 页面序号（从0开始，自动计算）
         /// </summary>
