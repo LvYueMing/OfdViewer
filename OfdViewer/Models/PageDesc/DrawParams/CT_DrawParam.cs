@@ -136,7 +136,6 @@ namespace OFDViewer.Models.PageDesc.DrawParams
         /// </summary>
         [XmlAttribute("DashPattern")]
         public string DashPatternString
-
         {
             get => DashPattern.ToString();
             set => DashPattern = ST_Array.Parse(value);

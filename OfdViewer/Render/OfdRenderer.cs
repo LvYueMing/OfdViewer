@@ -11,6 +11,8 @@ using OFDViewer.Models.BaseStructure.Resources.ResItems;
 using OFDViewer.Models.Font;
 using OFDViewer.Models.Enums;
 using OFDViewer.Models.BaseType;
+using OFDViewer.Models.PageDesc;
+using OFDViewer.Models.PageDesc.DrawParams;
 
 namespace OFDViewer.Render
 {
@@ -340,7 +342,7 @@ namespace OFDViewer.Render
                     {
                         foreach (var blockItem in layer.PageBlockItems)
                         {
-                            RenderPageBlock(renderContext, blockItem, true);
+                            RenderPageBlock(renderContext, blockItem, layer, true);
                         }
                     }
                 }
@@ -354,7 +356,7 @@ namespace OFDViewer.Render
                 {
                     foreach (var blockItem in backgroundLayer.PageBlockItems)
                     {
-                        RenderPageBlock(renderContext, blockItem);
+                        RenderPageBlock(renderContext, blockItem, backgroundLayer);
                     }
                 }
             }
@@ -378,7 +380,7 @@ namespace OFDViewer.Render
                     {
                         foreach (var blockItem in layer.PageBlockItems)
                         {
-                            RenderPageBlock(renderContext, blockItem, true);
+                            RenderPageBlock(renderContext, blockItem, layer, true);
                         }
                     }
                 }
@@ -392,7 +394,7 @@ namespace OFDViewer.Render
                 {
                     foreach (var blockItem in contentLayer.PageBlockItems)
                     {
-                        RenderPageBlock(renderContext, blockItem);
+                        RenderPageBlock(renderContext, blockItem, contentLayer);
                     }
                 }
             }
@@ -416,7 +418,7 @@ namespace OFDViewer.Render
                     {
                         foreach (var blockItem in layer.PageBlockItems)
                         {
-                            RenderPageBlock(renderContext, blockItem, true);
+                            RenderPageBlock(renderContext, blockItem, layer, true);
                         }
                     }
                 }
@@ -430,7 +432,7 @@ namespace OFDViewer.Render
                 {
                     foreach (var blockItem in foregroundLayer.PageBlockItems)
                     {
-                        RenderPageBlock(renderContext, blockItem);
+                        RenderPageBlock(renderContext, blockItem, foregroundLayer);
                     }
                 }
             }
@@ -460,8 +462,9 @@ namespace OFDViewer.Render
         /// </summary>
         /// <param name="renderContext">渲染上下文</param>
         /// <param name="blockItem">页面块对象</param>
-        /// <param name="pageIndex">页面索引</param>
-        private void RenderPageBlock(IRenderContext renderContext, object blockItem, bool isTemplate = false)
+        /// <param name="layer">图层对象</param>
+        /// <param name="isTemplate">是否为模板页</param>
+        private void RenderPageBlock(IRenderContext renderContext, object blockItem, Models.BaseStructure.Pages.CT_Layer layer, bool isTemplate = false)
         {
             if (renderContext == null || blockItem == null)
                 return;
@@ -474,30 +477,30 @@ namespace OFDViewer.Render
             {
                 case Models.BaseStructure.Pages.PageBlockItems.TextObject textObj:
                     {
-                        RenderTextObject(renderContext, textObj, isTemplate);
+                        RenderTextObject(renderContext, textObj, layer, isTemplate);
                         break;
                     }
                 case Models.BaseStructure.Pages.PageBlockItems.PathObject pathObj:
                     {
-                        RenderPathObject(renderContext, pathObj, isTemplate);
+                        RenderPathObject(renderContext, pathObj, layer, isTemplate);
                         break;
                     }
 
                 case Models.BaseStructure.Pages.PageBlockItems.ImageObject imageObj:
                     {
-                        RenderImageObject(renderContext, imageObj, isTemplate);
+                        RenderImageObject(renderContext, imageObj, layer, isTemplate);
                         break;
                     }
 
                 case Models.BaseStructure.Pages.PageBlockItems.CompositeObject compositeObj:
                     {
-                        RenderCompositeObject(renderContext, compositeObj, isTemplate);
+                        RenderCompositeObject(renderContext, compositeObj, layer, isTemplate);
                         break;
                     }
 
                 case Models.BaseStructure.Pages.PageBlockItems.PageBlock pageBlock:
                     {
-                        RenderPageBlockObject(renderContext, pageBlock, isTemplate);
+                        RenderPageBlockObject(renderContext, pageBlock, layer, isTemplate);
                         break;
                     }
                 default:
@@ -511,7 +514,7 @@ namespace OFDViewer.Render
         /// </summary>
         /// <param name="renderContext">文本渲染器</param>
         /// <param name="textObject">文本对象</param>
-        private void RenderTextObject(IRenderContext renderContext, TextObject textObject, bool isTemplate = false)
+        private void RenderTextObject(IRenderContext renderContext, TextObject textObject, Models.BaseStructure.Pages.CT_Layer layer, bool isTemplate = false)
         {
             if (renderContext == null || textObject == null)
                 return;
@@ -529,7 +532,7 @@ namespace OFDViewer.Render
             renderContext?.SetClipRect(boundaryX, boundaryY, boundaryWidth, boundaryHeight);
 
             // 转换文本样式
-            var textStyle = ConvertToTextStyle(textObject, renderContext, isTemplate);
+            var textStyle = ConvertToTextStyle(textObject, layer, renderContext, isTemplate);
             
             // 判断处理情况：
             // 1. 一个TextObject有一个或多个TextCode，但没有CGTransform - 直接按照多个TextCode处理
@@ -801,7 +804,7 @@ namespace OFDViewer.Render
         /// <param name="textObject">OFD文本对象</param>
         /// <param name="renderContext">渲染上下文</param>
         /// <returns>文本样式</returns>
-        private TextStyle ConvertToTextStyle(CT_Text textObject, IRenderContext renderContext, bool isTemplate = false)
+        private TextStyle ConvertToTextStyle(CT_Text textObject, Models.BaseStructure.Pages.CT_Layer layer, IRenderContext renderContext, bool isTemplate = false)
         {
             // 创建缓存键（基于字体ID和文本属性）
             string cacheKey = $"{textObject.FontRefID}_{textObject.Size}_{textObject.Weight}_{textObject.Italic}_{textObject.HScale}";
@@ -815,9 +818,11 @@ namespace OFDViewer.Render
                 }
             }
 
-
             // 缓存未命中，创建新的样式
             var style = new TextStyle();
+
+            // 获取绘制参数（按照就近原则）
+            var drawParam = GetDrawParam(textObject, layer, renderContext, isTemplate);
 
             OFDFont oFDFont = isTemplate ? renderContext.ResourceManager.GetTemplateResource<OFDFont>(textObject.FontRefID) 
                 : renderContext.ResourceManager.GetResource<OFDFont>(textObject.FontRefID);
@@ -843,16 +848,38 @@ namespace OFDViewer.Render
             // 水平缩放比例
             style.HScale = (float)textObject.HScale;
             
-            // 填充颜色（默认黑色）
-            style.Color = textObject.FillColor != null ? ConvertToARGB(textObject.FillColor) : 0xFF000000;
+            // 填充颜色（按照就近原则：图元属性 > 图元DrawParam > 图层DrawParam > 默认黑色）
+            if (textObject.FillColor != null)
+            {
+                style.Color = ConvertToARGB(textObject.FillColor);
+            }
+            else if (drawParam != null && drawParam.FillColor != null)
+            {
+                style.Color = ConvertToARGB(drawParam.FillColor);
+            }
+            else
+            {
+                style.Color = 0xFF000000;
+            }
 
-            // 是否描边
+            // 是否描边（使用文本对象属性）
             style.Stroke = textObject.Stroke;
 
-            // 描边颜色（默认透明）
-            style.StrokeColor =  textObject.StrokeColor != null ? ConvertToARGB(textObject.StrokeColor) : 255;
+            // 描边颜色（按照就近原则：图元属性 > 图元DrawParam > 图层DrawParam > 默认透明）
+            if (textObject.StrokeColor != null)
+            {
+                style.StrokeColor = ConvertToARGB(textObject.StrokeColor);
+            }
+            else if (drawParam != null && drawParam.StrokeColor != null)
+            {
+                style.StrokeColor = ConvertToARGB(drawParam.StrokeColor);
+            }
+            else
+            {
+                style.StrokeColor = 255;
+            }
             
-            // 透明度（默认完全不透明）
+            // 透明度（使用文本对象属性，默认完全不透明）
             style.Alpha = 255;
 
             // 缓存结果（线程安全）
@@ -898,13 +925,138 @@ namespace OFDViewer.Render
             
             return (uint)((uint)alpha << 24 | 0x000000);
         }
-        
+
+        /// <summary>
+        /// 获取绘制参数（按照就近原则）
+        /// </summary>
+        /// <param name="graphicUnit">图元对象</param>
+        /// <param name="layer">图层对象</param>
+        /// <param name="renderContext">渲染上下文</param>
+        /// <param name="isTemplate">是否为模板页</param>
+        /// <returns>合并后的绘制参数对象，包含所有有效的属性</returns>
+        /// <remarks>
+        /// 绘制参数的作用顺序应采用就近原则，针对每个属性分别判断：
+        /// 1. 图元对象（CT_GraphicUnit）已经定义该绘制属性时，使用图元定义的属性
+        /// 2. 图元未定义该属性时，检查图元的DrawParam中是否有该属性
+        /// 3. 图元的DrawParam中也没有该属性时，检查所在图层的DrawParam中是否有该属性
+        /// 4. 都没有定义该属性时，使用该属性的默认值
+        /// </remarks>
+        private CT_DrawParam GetDrawParam(CT_GraphicUnit graphicUnit, CT_Layer layer, IRenderContext renderContext, bool isTemplate = false)
+        {
+            var mergedDrawParam = new CT_DrawParam();
+
+            // 获取图元的DrawParam
+            CT_DrawParam graghicUnitDrawParam = null;
+            if (graphicUnit.DrawParam != null && graphicUnit.DrawParam != ST_RefID.Invalid)
+            {
+                graghicUnitDrawParam = isTemplate 
+                    ? renderContext.ResourceManager.GetTemplateResource<Models.BaseStructure.Resources.ResItems.DrawParam>(graphicUnit.DrawParam.ToString())
+                    : renderContext.ResourceManager.GetResource<Models.BaseStructure.Resources.ResItems.DrawParam>(graphicUnit.DrawParam.ToString());
+            }
+
+            // 获取图层的DrawParam
+            CT_DrawParam layerDrawParam = null;
+            if (layer != null && layer.DrawParam != null && layer.DrawParam != ST_RefID.Invalid)
+            {
+                layerDrawParam = isTemplate
+                    ? renderContext.ResourceManager.GetTemplateResource<Models.BaseStructure.Resources.ResItems.DrawParam>(layer.DrawParam.ToString())
+                    : renderContext.ResourceManager.GetResource<Models.BaseStructure.Resources.ResItems.DrawParam>(layer.DrawParam.ToString());
+            }
+
+            // 合并填充颜色（按照就近原则）
+            if (graghicUnitDrawParam != null && graghicUnitDrawParam.FillColor != null)
+            {
+                mergedDrawParam.FillColor = graghicUnitDrawParam.FillColor;
+            }
+            else if (layerDrawParam != null && layerDrawParam.FillColor != null)
+            {
+                mergedDrawParam.FillColor = layerDrawParam.FillColor;
+            }
+
+            // 合并勾边颜色（按照就近原则）
+            if (graghicUnitDrawParam != null && graghicUnitDrawParam.StrokeColor != null)
+            {
+                mergedDrawParam.StrokeColor = graghicUnitDrawParam.StrokeColor;
+            }
+            else if (layerDrawParam != null && layerDrawParam.StrokeColor != null)
+            {
+                mergedDrawParam.StrokeColor = layerDrawParam.StrokeColor;
+            }
+
+            // 合并线宽（按照就近原则）
+            if (graghicUnitDrawParam != null && graghicUnitDrawParam.LineWidth != 0.353)
+            {
+                mergedDrawParam.LineWidth = graghicUnitDrawParam.LineWidth;
+            }
+            else if (layerDrawParam != null && layerDrawParam.LineWidth != 0.353)
+            {
+                mergedDrawParam.LineWidth = layerDrawParam.LineWidth;
+            }
+
+            // 合并线条连接样式（按照就近原则）
+            if (graghicUnitDrawParam != null && graghicUnitDrawParam.Join != DrawParamJoinType.Miter)
+            {
+                mergedDrawParam.Join = graghicUnitDrawParam.Join;
+            }
+            else if (layerDrawParam != null && layerDrawParam.Join != DrawParamJoinType.Miter)
+            {
+                mergedDrawParam.Join = layerDrawParam.Join;
+            }
+
+            // 合并线端点样式（按照就近原则）
+            if (graghicUnitDrawParam != null && graghicUnitDrawParam.Cap != DrawParamCapType.Butt)
+            {
+                mergedDrawParam.Cap = graghicUnitDrawParam.Cap;
+            }
+            else if (layerDrawParam != null && layerDrawParam.Cap != DrawParamCapType.Butt)
+            {
+                mergedDrawParam.Cap = layerDrawParam.Cap;
+            }
+
+            // 合并虚线偏移（按照就近原则）
+            if (graghicUnitDrawParam != null && graghicUnitDrawParam.DashOffset != 0)
+            {
+                mergedDrawParam.DashOffset = graghicUnitDrawParam.DashOffset;
+            }
+            else if (layerDrawParam != null && layerDrawParam.DashOffset != 0)
+            {
+                mergedDrawParam.DashOffset = layerDrawParam.DashOffset;
+            }
+
+            // 合并虚线样式（按照就近原则）
+            if (graghicUnitDrawParam != null && graghicUnitDrawParam.DashPattern != null)
+            {
+                mergedDrawParam.DashPattern = graghicUnitDrawParam.DashPattern;
+            }
+            else if (layerDrawParam != null && layerDrawParam.DashPattern != null)
+            {
+                mergedDrawParam.DashPattern = layerDrawParam.DashPattern;
+            }
+
+            // 合并MiterLimit（按照就近原则）
+            if (graghicUnitDrawParam != null && graghicUnitDrawParam.MiterLimit != 4.234)
+            {
+                mergedDrawParam.MiterLimit = graghicUnitDrawParam.MiterLimit;
+            }
+            else if (layerDrawParam != null && layerDrawParam.MiterLimit != 4.234)
+            {
+                mergedDrawParam.MiterLimit = layerDrawParam.MiterLimit;
+            }
+
+            return mergedDrawParam;
+        }
+
+        /// <summary>
+        /// 检查图元对象是否定义了绘制属性
+        /// </summary>
+        /// <param name="graphicUnit">图元对象</param>
+        /// <returns>如果定义了绘制属性返回true，否则返回false</returns>
         /// <summary>
         /// 渲染路径对象
         /// </summary>
         /// <param name="pathRenderer">路径渲染器</param>
         /// <param name="pathObj">路径对象</param>
-        private void RenderPathObject(IRenderContext renderContext, object pathObj, bool isTemplate = false)
+        private void RenderPathObject(IRenderContext renderContext, object pathObj, Models.BaseStructure.Pages.CT_Layer layer, bool isTemplate = false)
         {
             if (renderContext == null || pathObj == null)
                 return;
@@ -936,7 +1088,7 @@ namespace OFDViewer.Render
             renderContext?.SetClipRect(boundaryX, boundaryY, boundaryWidth, boundaryHeight);
             
             // 转换图形样式
-            var graphStyle = ConvertToGraphStyle(pathObject, renderContext, isTemplate);
+            var graphStyle = ConvertToGraphStyle(pathObject, layer, renderContext, isTemplate);
             
             // 开始绘制路径
             pathRenderer.BeginPath();
@@ -1084,30 +1236,92 @@ namespace OFDViewer.Render
         /// 将OFD路径对象转换为图形样式
         /// </summary>
         /// <param name="pathObject">OFD路径对象</param>
+        /// <param name="layer">图层对象</param>
+        /// <param name="renderContext">渲染上下文</param>
+        /// <param name="isTemplate">是否为模板页</param>
         /// <returns>图形样式</returns>
-        private GraphStyle ConvertToGraphStyle(Models.Graph.CT_Path pathObject, IRenderContext renderContext, bool isTemplate = false)
+        private GraphStyle ConvertToGraphStyle(Models.Graph.CT_Path pathObject, Models.BaseStructure.Pages.CT_Layer layer, IRenderContext renderContext, bool isTemplate = false)
         {
-            var style = new GraphStyle
+            var style = new GraphStyle();
+
+            // 获取绘制参数（按照就近原则）
+            var drawParam = GetDrawParam(pathObject, layer, renderContext, isTemplate) as CT_DrawParam;
+
+            // 填充颜色（按照就近原则：图元属性 > 图元DrawParam > 图层DrawParam > 默认透明色）
+            if (pathObject.FillColor != null)
             {
-                // 填充颜色 默认透明色
-                Color = ConvertToARGB(pathObject.FillColor),
-                Alpha = (byte)pathObject.Alpha,
+                style.Color = ConvertToARGB(pathObject.FillColor);
+            }
+            else if (drawParam != null && drawParam.FillColor != null)
+            {
+                style.Color = ConvertToARGB(drawParam.FillColor);
+            }
+            else
+            {
+                style.Color = 0x00000000;
+            }
 
-                // 描边颜色 默认黑色
-                StrokeColor = ConvertToARGB(pathObject.StrokeColor),
-                StrokeAlpha = 255,
+            // 透明度（使用路径对象属性，默认完全不透明）
+            style.Alpha = (byte)pathObject.Alpha;
 
-                // 描边宽度
-                StrokeWidth = (float)pathObject.LineWidth,
+            // 描边颜色（按照就近原则：图元属性 > 图元DrawParam > 图层DrawParam > 默认黑色）
+            if (pathObject.StrokeColor != null)
+            {
+                style.StrokeColor = ConvertToARGB(pathObject.StrokeColor);
+            }
+            else if (drawParam != null && drawParam.StrokeColor != null)
+            {
+                style.StrokeColor = ConvertToARGB(drawParam.StrokeColor);
+            }
+            else
+            {
+                style.StrokeColor = 0xFF000000;
+            }
 
-                // 是否填充和描边
-                // Fill = pathObject.Fill,
-                Fill = true,
-                Stroke = pathObject.Stroke,
+            // 描边透明度（默认完全不透明）
+            style.StrokeAlpha = 255;
 
-                // 虚线样式（暂时不支持）
-                DashPattern = null
-            };
+            // 描边宽度（按照就近原则：图元属性 > 图元DrawParam > 图层DrawParam > 默认0）
+            if (pathObject.LineWidth != 0)
+            {
+                style.StrokeWidth = (float)pathObject.LineWidth;
+            }
+            else if (drawParam != null && drawParam.LineWidth != 0.353)
+            {
+                style.StrokeWidth = (float)drawParam.LineWidth;
+            }
+            else
+            {
+                style.StrokeWidth = 0;
+            }
+
+            // 是否填充（默认填充）
+            style.Fill = true;
+
+            // 是否描边（使用路径对象属性）
+            style.Stroke = pathObject.Stroke;
+
+            // 虚线样式（按照就近原则：图元DrawParam > 图层DrawParam）
+            if (drawParam != null && drawParam.DashPattern != null)
+            {
+                var dashArray = drawParam.DashPattern.ToDoubleArray();
+                if (dashArray != null)
+                {
+                    style.DashPattern = new float[dashArray.Length];
+                    for (int i = 0; i < dashArray.Length; i++)
+                    {
+                        style.DashPattern[i] = (float)dashArray[i];
+                    }
+                }
+                else
+                {
+                    style.DashPattern = null;
+                }
+            }
+            else
+            {
+                style.DashPattern = null;
+            }
 
             return style;
         }
@@ -1118,7 +1332,7 @@ namespace OFDViewer.Render
         /// <param name="imageRenderer">图像渲染器</param>
         /// <param name="imageObj">图像对象</param>
         /// <param name="pageIndex">页面索引</param>
-        private void RenderImageObject(IRenderContext renderContext, object imageObj, bool isTemplate = false)
+        private void RenderImageObject(IRenderContext renderContext, object imageObj, Models.BaseStructure.Pages.CT_Layer layer, bool isTemplate = false)
         {
             if (renderContext == null || imageObj == null)
                 return;
@@ -1134,7 +1348,7 @@ namespace OFDViewer.Render
 
 
             // 转换图像样式
-            var imageStyle = ConvertToImageStyle(imageObject, renderContext, isTemplate);
+            var imageStyle = ConvertToImageStyle(imageObject, layer, renderContext, isTemplate);
 
 
             // 获取图像位置和大小（OFD坐标，单位：毫米）
@@ -1253,19 +1467,26 @@ namespace OFDViewer.Render
         /// 将OFD图像对象转换为图像样式
         /// </summary>
         /// <param name="imageObject">OFD图像对象</param>
+        /// <param name="layer">图层对象</param>
+        /// <param name="renderContext">渲染上下文</param>
+        /// <param name="isTemplate">是否为模板页</param>
         /// <returns>图像样式</returns>
-        private ImageStyle ConvertToImageStyle(Models.Image.CT_Image imageObject, IRenderContext renderContext, bool isTemplate = false)
+        private ImageStyle ConvertToImageStyle(Models.Image.CT_Image imageObject, Models.BaseStructure.Pages.CT_Layer layer, IRenderContext renderContext, bool isTemplate = false)
         {
             var style = new ImageStyle
             {
                 // 图像插值模式
                 InterpolationMode = ImageInterpolationMode.HighQuality,
                 // 保持纵横比
-                PreserveAspectRatio = true,
-                // 透明度（默认完全不透明）
-                Alpha = 255
+                PreserveAspectRatio = true
             };
-            
+
+            // 获取绘制参数（按照就近原则）
+            var drawParam = GetDrawParam(imageObject, null, renderContext, isTemplate) as CT_DrawParam;
+
+            // 透明度（使用图像对象属性，默认完全不透明）
+            style.Alpha = 255;
+
             return style;
         }
         
@@ -1275,7 +1496,7 @@ namespace OFDViewer.Render
         /// <param name="renderContext">渲染上下文</param>
         /// <param name="compositeObj">复合对象</param>
         /// <param name="pageIndex">页面索引</param>
-        private void RenderCompositeObject(IRenderContext renderContext, object compositeObj, bool isTemplate = false)
+        private void RenderCompositeObject(IRenderContext renderContext, object compositeObj, Models.BaseStructure.Pages.CT_Layer layer, bool isTemplate = false)
         {
             if (renderContext == null || compositeObj == null)
                 return;
@@ -1309,7 +1530,7 @@ namespace OFDViewer.Render
                     {
                         foreach (var childBlock in vectorGraphic.Content.PageBlockItems)
                         {
-                            RenderPageBlock(renderContext, childBlock, isTemplate);
+                            RenderPageBlock(renderContext, childBlock, layer, isTemplate);
                         }
                     }
 
@@ -1325,7 +1546,7 @@ namespace OFDViewer.Render
         /// <param name="renderContext">渲染上下文</param>
         /// <param name="pageBlock">页面块对象</param>
         /// <param name="pageIndex">页面索引</param>
-        private void RenderPageBlockObject(IRenderContext renderContext, object pageBlock, bool isTemplate = false)
+        private void RenderPageBlockObject(IRenderContext renderContext, object pageBlock, Models.BaseStructure.Pages.CT_Layer layer, bool isTemplate = false)
         {
             if (renderContext == null || pageBlock == null)
                 return;
@@ -1342,7 +1563,7 @@ namespace OFDViewer.Render
             {
                 foreach (var childBlock in pageBlockObj.PageBlockItems)
                 {
-                    RenderPageBlock(renderContext, childBlock, isTemplate);
+                    RenderPageBlock(renderContext, childBlock, layer, isTemplate);
                 }
             }
 
