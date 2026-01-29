@@ -42,7 +42,7 @@ namespace OFDViewer.Tests
             // 验证结果
             Assert.NotNull(result);
             Assert.IsType<OFDFont>(result);
-            Assert.Equal((uint)1, ((OFDFont)result).ID);
+            Assert.Equal(1, ((OFDFont)result).ID);
         }
 
 
@@ -80,7 +80,7 @@ namespace OFDViewer.Tests
             // 验证结果
             Assert.NotNull(result);
             Assert.IsType<OFDFont>(result);
-            Assert.Equal((uint)1, result.ID);
+            Assert.Equal(1, result.ID);
         }
 
         /// <summary>
@@ -114,7 +114,7 @@ namespace OFDViewer.Tests
             // 验证结果
             Assert.NotNull(result);
             Assert.IsType<ColorSpace>(result);
-            Assert.Equal((uint)1, result.ID);
+            Assert.Equal(1, result.ID);
         }
 
         /// <summary>
@@ -149,7 +149,7 @@ namespace OFDViewer.Tests
             // 验证结果
             Assert.NotNull(result);
             Assert.IsType<DrawParam>(result);
-            Assert.Equal((uint)1, result.ID);
+            Assert.Equal(1, result.ID);
         }
 
         /// <summary>
@@ -184,7 +184,7 @@ namespace OFDViewer.Tests
             // 验证结果
             Assert.NotNull(result);
             Assert.IsType<OFDFont>(result);
-            Assert.Equal((uint)1, result.ID);
+            Assert.Equal(1, result.ID);
         }
 
         /// <summary>
@@ -217,7 +217,7 @@ namespace OFDViewer.Tests
             // 验证结果
             Assert.NotNull(result);
             Assert.IsType<ColorSpace>(result);
-            Assert.Equal((uint)1, result.ID);
+            Assert.Equal(1, result.ID);
         }
 
         /// <summary>
@@ -253,7 +253,7 @@ namespace OFDViewer.Tests
             // 验证结果
             Assert.NotNull(result);
             Assert.IsType<OFDFont>(result);
-            Assert.Equal((uint)1, result.ID);
+            Assert.Equal(1, result.ID);
         }
 
         /// <summary>
@@ -287,7 +287,7 @@ namespace OFDViewer.Tests
             // 验证结果
             Assert.NotNull(result);
             Assert.IsType<OFDFont>(result);
-            Assert.Equal((uint)1, result.ID);
+            Assert.Equal(1, result.ID);
         }
 
         /// <summary>
@@ -319,7 +319,7 @@ namespace OFDViewer.Tests
             // 验证结果
             Assert.NotNull(result);
             Assert.IsType<ColorSpace>(result);
-            Assert.Equal((uint)1, ((ColorSpace)result).ID);
+            Assert.Equal(1, ((ColorSpace)result).ID);
         }
 
         /// <summary>
@@ -352,7 +352,7 @@ namespace OFDViewer.Tests
             // 验证结果
             Assert.NotNull(result);
             Assert.IsType<DrawParam>(result);
-            Assert.Equal((uint)1, ((DrawParam)result).ID);
+            Assert.Equal(1, ((DrawParam)result).ID);
         }
 
         /// <summary>
@@ -383,7 +383,7 @@ namespace OFDViewer.Tests
             // 验证结果
             Assert.NotNull(result);
             Assert.IsType<CompositeGraphicUnit>(result);
-            Assert.Equal((uint)1, ((CompositeGraphicUnit)result).ID);
+            Assert.Equal(1, ((CompositeGraphicUnit)result).ID);
         }
 
         /// <summary>
@@ -416,7 +416,7 @@ namespace OFDViewer.Tests
             // 验证结果
             Assert.NotNull(result);
             Assert.IsType<MultiMedia>(result);
-            Assert.Equal((uint)1, ((MultiMedia)result).ID);
+            Assert.Equal( 1, ((MultiMedia)result).ID);
         }
 
         /// <summary>
@@ -537,7 +537,7 @@ namespace OFDViewer.Tests
             // 验证结果
             Assert.NotNull(result);
             Assert.IsType<OFDFont>(result);
-            Assert.Equal((uint)2, ((OFDFont)result).ID);
+            Assert.Equal(2, ((OFDFont)result).ID);
             Assert.Equal("Font2", ((OFDFont)result).FontName);
         }
 
@@ -578,7 +578,7 @@ namespace OFDViewer.Tests
             // 验证结果：应该返回页面级的资源
             Assert.NotNull(result);
             Assert.IsType<OFDFont>(result);
-            Assert.Equal((uint)1, ((OFDFont)result).ID);
+            Assert.Equal( 1, ((OFDFont)result).ID);
             Assert.Equal("PageFont", ((OFDFont)result).FontName);
         }
 
@@ -615,7 +615,7 @@ namespace OFDViewer.Tests
             // 验证结果
             Assert.NotNull(result);
             Assert.IsType<OFDFont>(result);
-            Assert.Equal((uint)1, result.ID);
+            Assert.Equal(1, result.ID);
             Assert.Equal("TestFont", result.FontName);
         }
 
@@ -648,7 +648,7 @@ namespace OFDViewer.Tests
             // 验证结果
             Assert.NotNull(result);
             Assert.IsType<ColorSpace>(result);
-            Assert.Equal((uint)1, result.ID);
+            Assert.Equal(1, result.ID);
         }
 
         /// <summary>
@@ -681,7 +681,7 @@ namespace OFDViewer.Tests
             // 验证结果
             Assert.NotNull(result);
             Assert.IsType<DrawParam>(result);
-            Assert.Equal((uint)1, result.ID);
+            Assert.Equal(1, result.ID);
             Assert.Equal(1.0, result.LineWidth);
         }
 
@@ -715,7 +715,7 @@ namespace OFDViewer.Tests
             // 验证结果
             Assert.NotNull(result);
             Assert.IsType<MultiMedia>(result);
-            Assert.Equal((uint)1, result.ID);
+            Assert.Equal(1, result.ID);
             Assert.Equal("image.png", result.MediaFile.Path);
         }
 
@@ -747,7 +747,7 @@ namespace OFDViewer.Tests
             // 验证结果
             Assert.NotNull(result);
             Assert.IsType<CompositeGraphicUnit>(result);
-            Assert.Equal((uint)1, result.ID);
+            Assert.Equal(1, result.ID);
         }
 
         /// <summary>
@@ -817,7 +817,7 @@ namespace OFDViewer.Tests
             // 验证结果
             Assert.NotNull(result);
             Assert.IsType<OFDFont>(result);
-            Assert.Equal((uint)2, result.ID);
+            Assert.Equal(2, result.ID);
             Assert.Equal("Font2", result.FontName);
         }
 
