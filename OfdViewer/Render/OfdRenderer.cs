@@ -14,6 +14,7 @@ using OFDViewer.Models.BaseType;
 using OFDViewer.Models.PageDesc;
 using OFDViewer.Models.PageDesc.DrawParams;
 using OFDViewer.Models.PageDesc.Colors;
+using OFDViewer.Models.Graph;
 
 namespace OFDViewer.Render
 {
@@ -468,7 +469,7 @@ namespace OFDViewer.Render
         /// <param name="blockItem">页面块对象</param>
         /// <param name="layer">图层对象</param>
         /// <param name="isTemplate">是否为模板页</param>
-        private void RenderPageBlock(IRenderContext renderContext, object blockItem, Models.BaseStructure.Pages.CT_Layer layer, bool isTemplate = false)
+        private void RenderPageBlock(IRenderContext renderContext, object blockItem, CT_Layer layer, bool isTemplate = false)
         {
             if (renderContext == null || blockItem == null)
                 return;
@@ -916,7 +917,7 @@ namespace OFDViewer.Render
         /// </summary>
         /// <param name="pathRenderer">路径渲染器</param>
         /// <param name="pathObj">路径对象</param>
-        private void RenderPathObject(IRenderContext renderContext, object pathObj, Models.BaseStructure.Pages.CT_Layer layer, bool isTemplate = false)
+        private void RenderPathObject(IRenderContext renderContext, object pathObj, CT_Layer layer, bool isTemplate = false)
         {
             if (renderContext == null || pathObj == null)
                 return;
@@ -926,7 +927,7 @@ namespace OFDViewer.Render
             if (renderContext == null)
                 return;
 
-            var pathObject = pathObj as Models.BaseStructure.Pages.PageBlockItems.PathObject;
+            var pathObject = pathObj as PathObject;
             if (pathObject == null)
                 return;
 
@@ -941,20 +942,39 @@ namespace OFDViewer.Render
             float boundaryWidth = renderContext.MillimetersToPixels((float)pathObject.Boundary.Width);
             float boundaryHeight = renderContext.MillimetersToPixels((float)pathObject.Boundary.Height);
 
-            // 保存当前渲染状态
-            renderContext?.SaveState();
-
-            // 设置裁剪区（使用图元的外接矩形作为默认裁剪区）
-            renderContext?.SetClipRect(boundaryX, boundaryY, boundaryWidth, boundaryHeight);
-
             // 转换图形样式
             var graphStyle = ConvertToGraphStyle(pathObject, layer, renderContext, isTemplate);
 
-            // 开始绘制路径
-            pathRenderer.BeginPath();
+            // 保存当前渲染状态
+            renderContext?.SaveState();
+             
+            // 绘制边界矩形（用于调试，实际渲染时可以注释掉）
+            // ((SkiaRenderContext)renderContext).DrawRectangle(boundaryX, boundaryY, boundaryWidth, boundaryHeight, graphStyle);
+            // 设置裁剪区（在变换后的坐标系中，使用单位矩形作为裁剪区）
+            renderContext?.SetClipRect(boundaryX, boundaryY, boundaryWidth, boundaryHeight);
 
-            // 解析并绘制路径（将图形平移到页面空间）
-            ParseAndRenderPath(pathRenderer, renderContext, pathObject.AbbreviatedData, boundaryX, boundaryY);
+            // 应用CTM变换矩阵（使用SKMatrix进行2D仿射变换）
+            if (pathObject.CTM != null && pathObject.CTM.Count >= 6)
+            {
+                // 先通过 Boundary 平移到页面空间，再通过 CTM 变换到对象空间
+                // Skia 中矩阵变换是 "反向作用"，因此代码中先平移再乘 CTM，效果等价于 OFD 的先 CTM 再平移
+                renderContext.Translate(boundaryX, boundaryY);
+                // 应用变换矩阵
+                ApplyTransformMatrix1(renderContext, pathObject.CTM);
+
+                // 开始绘制路径
+                pathRenderer.BeginPath();
+                // 解析并绘制路径
+                ParseAndRenderPath(pathRenderer, renderContext, pathObject.AbbreviatedData, 0, 0);
+
+            }
+            else
+            {
+                // 开始绘制路径
+                pathRenderer.BeginPath();
+                // 解析并绘制路径
+                ParseAndRenderPath(pathRenderer, renderContext, pathObject.AbbreviatedData, boundaryX, boundaryY);
+            }
 
             // 根据样式绘制路径
             if (graphStyle.Fill && graphStyle.Stroke)
@@ -1092,6 +1112,109 @@ namespace OFDViewer.Render
             }
         }
 
+
+        private void ParseAndRenderPath1(IPathRenderer pathRenderer, IRenderContext renderContext, string abbreviatedData, float boundaryX = 0, float boundaryY = 0)
+        {
+            if (string.IsNullOrEmpty(abbreviatedData))
+                return;
+
+            // OFD路径数据格式：操作符+空格+参数+空格+...
+            // 例如："M 100 100 L 200 200 C"
+            var tokens = abbreviatedData.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+            if (tokens.Length == 0)
+                return;
+
+            int index = 0;
+            while (index < tokens.Length)
+            {
+                string command = tokens[index++];
+
+                switch (command.ToUpper())
+                {
+                    case "S":// 定义子绘制图形边线的起始点坐标
+                        if (index + 1 < tokens.Length)
+                        {
+                            float x = float.Parse(tokens[index]) + boundaryX;
+                            float y = float.Parse(tokens[index + 1]) + boundaryY;
+                            pathRenderer.MoveTo(x, y);
+                            index += 2;
+                        }
+                        break;
+
+                    case "M":// 将当前点移动到指定点
+                        if (index + 1 < tokens.Length)
+                        {
+                            float x = float.Parse(tokens[index]) + boundaryX;
+                            float y = float.Parse(tokens[index + 1]) + boundaryY;
+                            pathRenderer.MoveTo(x, y);
+                            index += 2;
+                        }
+                        break;
+
+                    case "L":// 绘制线段到指定点
+                        if (index + 1 < tokens.Length)
+                        {
+                            float x = float.Parse(tokens[index]) + boundaryX;
+                            float y = float.Parse(tokens[index + 1]) + boundaryY;
+                            pathRenderer.LineTo(x, y);
+                            index += 2;
+                        }
+                        break;
+
+                    case "Q":// 二次贝塞尔曲线
+                        if (index + 3 < tokens.Length)
+                        {
+                            float x1 = float.Parse(tokens[index]) + boundaryX;
+                            float y1 = float.Parse(tokens[index + 1]) + boundaryY;
+                            float x2 = float.Parse(tokens[index + 2])+ boundaryX;
+                            float y2 = float.Parse(tokens[index + 3]) + boundaryY;
+                            pathRenderer.QuadTo(x1, y1, x2, y2);
+                            index += 4;
+                        }
+                        break;
+
+                    case "B":// 三次贝塞尔曲线
+                        if (index + 5 < tokens.Length)
+                        {
+                            float x1 = float.Parse(tokens[index]) + boundaryX;
+                            float y1 = float.Parse(tokens[index + 1]) + boundaryY;
+                            float x2 = float.Parse(tokens[index + 2]) + boundaryX;
+                            float y2 = float.Parse(tokens[index + 3]) + boundaryY;
+                            float x3 = float.Parse(tokens[index + 4]) + boundaryX;
+                            float y3 = float.Parse(tokens[index + 5]) + boundaryY;
+                            pathRenderer.CubicTo(x1, y1, x2, y2, x3, y3);
+                            index += 6;
+                        }
+                        break;
+
+                    case "A":// 圆弧
+                        if (index + 6 < tokens.Length)
+                        {
+                            float rx = float.Parse(tokens[index]);
+                            float ry = float.Parse(tokens[index + 1]);
+                            float angle = float.Parse(tokens[index + 2]);
+                            int large = (int)int.Parse(tokens[index + 3]);
+                            int sweep = (int)int.Parse(tokens[index + 4]);
+                            float x = float.Parse(tokens[index + 5]) + boundaryX;
+                            float y = float.Parse(tokens[index + 6]) + boundaryY;
+
+                            pathRenderer.ArcTo(rx, ry, angle, large == 1, sweep == 1, x, y);
+                            index += 7;
+                        }
+                        break;
+
+                    case "C":// 自动闭合子路径
+                        pathRenderer.ClosePath();
+                        break;
+
+                    default:
+                        // 未知命令，跳过
+                        System.Diagnostics.Debug.WriteLine($"未知的路径命令: {command}");
+                        break;
+                }
+            }
+        }
+
         /// <summary>
         /// 将OFD路径对象转换为图形样式
         /// </summary>
@@ -1100,12 +1223,12 @@ namespace OFDViewer.Render
         /// <param name="renderContext">渲染上下文</param>
         /// <param name="isTemplate">是否为模板页</param>
         /// <returns>图形样式</returns>
-        private GraphStyle ConvertToGraphStyle(Models.Graph.CT_Path pathObject, Models.BaseStructure.Pages.CT_Layer layer, IRenderContext renderContext, bool isTemplate = false)
+        private GraphStyle ConvertToGraphStyle(CT_Path pathObject, CT_Layer layer, IRenderContext renderContext, bool isTemplate = false)
         {
             var style = new GraphStyle();
 
             // 获取绘制参数（按照就近原则）
-            var drawParam = GetDrawParam(pathObject, layer, renderContext, isTemplate) as CT_DrawParam;
+            var drawParam = GetDrawParam(pathObject, layer, renderContext, isTemplate);
 
             // 填充颜色（按照就近原则：图元属性 > 图元DrawParam > 图层DrawParam > 默认透明色）
             if (pathObject.FillColor != null)
@@ -1155,8 +1278,8 @@ namespace OFDViewer.Render
                 style.StrokeWidth = 0;
             }
 
-            // 是否填充（默认填充）
-            style.Fill = true;
+            // 是否填充（使用路径对象属性）
+            style.Fill = pathObject.Fill;
 
             // 是否描边（使用路径对象属性）
             style.Stroke = pathObject.Stroke;
@@ -1210,10 +1333,8 @@ namespace OFDViewer.Render
             if (imageObject == null)
                 return;
 
-
             // 转换图像样式
             var imageStyle = ConvertToImageStyle(imageObject, layer, renderContext, isTemplate);
-
 
             // 获取图像位置和大小（OFD坐标，单位：毫米）
             // 将毫米转换为像素
@@ -1228,68 +1349,14 @@ namespace OFDViewer.Render
             // 设置裁剪区（使用图元的外接矩形作为默认裁剪区）
             renderContext?.SetClipRect(boundaryX, boundaryY, width, height);
 
-            // 先平移到 Boundary 位置（页面空间），再应用 CTM 矩阵（对象空间）
-            // 先通过 Boundary 平移到页面空间，再通过 CTM 变换到对象空间（Skia 中矩阵变换是 “反向作用”，因此代码中先平移再乘 CTM，效果等价于 OFD 的先 CTM 再平移
-            renderContext.Translate(boundaryX, boundaryY);
-
             // 应用CTM变换矩阵（使用SKMatrix进行2D仿射变换）
             if (imageObject.CTM != null && imageObject.CTM.Count >= 6)
             {
-                // OFD中的CTM矩阵形式（3x3仿射变换矩阵）最后一列为[0, 0, 1]：
-                // | scaleX  skewX  0 |
-                // | skewY   scaleY 0 |
-                // | transX  transY 1 |
-
-                // 其中：
-                // scaleX: X轴缩放因子
-                // skewX: X轴倾斜因子（Y轴方向的倾斜）
-                // skewY: Y轴倾斜因子（X轴方向的倾斜）
-                // scaleY: Y轴缩放因子
-                // transX: X轴平移量
-                // transY: Y轴平移量
-
-                var ctm = imageObject.CTM.ToDoubleArray();
-                // 获取CTM矩阵参数
-                float scaleX = renderContext.MillimetersToPixels((float)ctm[0]);
-                float skewX = renderContext.MillimetersToPixels((float)ctm[1]);
-                float skewY = renderContext.MillimetersToPixels((float)ctm[2]);
-                float scaleY = renderContext.MillimetersToPixels((float)ctm[3]);
-                float transX = renderContext.MillimetersToPixels((float)ctm[4]);
-                float transY = renderContext.MillimetersToPixels((float)ctm[5]);
-
-                // 创建SKMatrix（注意：SKMatrix的顺序与OFD矩阵不同）
-                // SKMatrix的形式：
-                // | ScaleX  SkewX  TransX |
-                // | SkewY   ScaleY TransY |
-                // | 0       0      1      |
-
-                // 对应关系：
-                // ScaleX = scaleX (X轴缩放)
-                // SkewX = skewX (X轴倾斜)
-                // SkewY = skewY (Y轴倾斜)
-                // ScaleY = scaleY (Y轴缩放)
-                // TransX = transX (X轴平移)
-                // TransY = transY (Y轴平移)
-
-                var matrix = new SkiaSharp.SKMatrix
-                {
-                    ScaleX = scaleX,
-                    SkewX = skewX,
-                    SkewY = skewY,
-                    ScaleY = scaleY,
-                    TransX = transX,
-                    TransY = transY,
-                    Persp0 = 0,
-                    Persp1 = 0,
-                    Persp2 = 1
-                };
-
-                // 直接获取SkiaRenderContext并应用矩阵变换
-                var skiaContext = renderContext as SkiaRenderContext;
-                if (skiaContext != null)
-                {
-                    skiaContext.ConcatMatrix(matrix);
-                }
+                // 先通过 Boundary 平移到页面空间，再通过 CTM 变换到对象空间
+                // Skia 中矩阵变换是 "反向作用"，因此代码中先平移再乘 CTM，效果等价于 OFD 的先 CTM 再平移
+                renderContext.Translate(boundaryX, boundaryY);
+                // 应用变换矩阵
+                ApplyTransformMatrix1(renderContext, imageObject.CTM);
             }
 
             // 从资源管理器获取图像数据
@@ -1320,8 +1387,17 @@ namespace OFDViewer.Render
                 return;
             }
 
-            // 图元原始坐标：(0,0) 到 (1,1)（归一化尺寸），Skia 会自动应用矩阵变换
-            imageRenderer.DrawImage(0, 0, 1, 1, imageData, imageStyle);
+
+            if (imageObject.CTM != null && imageObject.CTM.Count >= 6)
+            {
+                // 图元原始坐标：(0,0) 到 (1,1)（归一化尺寸），Skia 会自动应用矩阵变换
+                imageRenderer.DrawImage(0, 0, 1, 1, imageData, imageStyle);
+            }
+            else
+            {
+                imageRenderer.DrawImage(boundaryX, boundaryY, width, height, imageData, imageStyle);
+            }
+
 
             // 恢复渲染状态
             renderContext?.RestoreState();
@@ -1670,6 +1746,145 @@ namespace OFDViewer.Render
             
             return (r, g, b);
         }
+
+        #endregion
+
+        #region 变换矩阵处理
+
+        /// <summary>
+        /// 应用变换矩阵到渲染上下文
+        /// </summary>
+        /// <param name="renderContext">渲染上下文</param>
+        /// <param name="boundaryX">边界X坐标（页面坐标系，像素）</param>
+        /// <param name="boundaryY">边界Y坐标（页面坐标系，像素）</param>
+        /// <param name="ctm">CTM变换矩阵</param>
+        private void ApplyTransformMatrix(IRenderContext renderContext, ST_Array ctm)
+        {
+            // 应用CTM变换矩阵（使用SKMatrix进行2D仿射变换）
+            if (ctm != null && ctm.Count >= 6)
+            {
+                // OFD中的CTM矩阵形式（3x3仿射变换矩阵）最后一列为[0, 0, 1]：
+                // | scaleX  skewX  0 |
+                // | skewY   scaleY 0 |
+                // | transX  transY 1 |
+
+                // 其中：
+                // scaleX: X轴缩放因子
+                // skewX: X轴倾斜因子（Y轴方向的倾斜）
+                // skewY: Y轴倾斜因子（X轴方向的倾斜）
+                // scaleY: Y轴缩放因子
+                // transX: X轴平移量
+                // transY: Y轴平移量
+
+                var ctmArray = ctm.ToDoubleArray();
+                // 获取CTM矩阵参数
+                float scaleX = renderContext.MillimetersToPixels((float)ctmArray[0]);
+                float skewX = renderContext.MillimetersToPixels((float)ctmArray[1]);
+                float skewY = renderContext.MillimetersToPixels((float)ctmArray[2]);
+                float scaleY = renderContext.MillimetersToPixels((float)ctmArray[3]);
+                float transX = renderContext.MillimetersToPixels((float)ctmArray[4]);
+                float transY = renderContext.MillimetersToPixels((float)ctmArray[5]);
+
+                // 创建SKMatrix（注意：SKMatrix的顺序与OFD矩阵不同）
+                // SKMatrix的形式：
+                // | ScaleX  SkewX  TransX |
+                // | SkewY   ScaleY TransY |
+                // | 0       0      1      |
+
+                // 对应关系：
+                // ScaleX = scaleX (X轴缩放)
+                // SkewX = skewX (X轴倾斜)
+                // SkewY = skewY (Y轴倾斜)
+                // ScaleY = scaleY (Y轴缩放)
+                // TransX = transX (X轴平移)
+                // TransY = transY (Y轴平移)
+
+                var matrix = new SkiaSharp.SKMatrix
+                {
+                    ScaleX = scaleX,
+                    SkewX = skewX,
+                    SkewY = skewY,
+                    ScaleY = scaleY,
+                    TransX = transX,
+                    TransY = transY,
+                    Persp0 = 0,
+                    Persp1 = 0,
+                    Persp2 = 1
+                };
+
+                // 直接获取SkiaRenderContext并应用矩阵变换
+                var skiaContext = renderContext as SkiaRenderContext;
+                if (skiaContext != null)
+                {
+                    skiaContext.ConcatMatrix(matrix);
+                }
+            }
+        }
+
+
+        private void ApplyTransformMatrix1(IRenderContext renderContext, ST_Array ctm)
+        {
+            // 应用CTM变换矩阵（使用SKMatrix进行2D仿射变换）
+            if (ctm != null && ctm.Count >= 6)
+            {
+                // OFD中的CTM矩阵形式（3x3仿射变换矩阵）最后一列为[0, 0, 1]：
+                // | scaleX  skewX  0 |
+                // | skewY   scaleY 0 |
+                // | transX  transY 1 |
+
+                // 其中：
+                // scaleX: X轴缩放因子
+                // skewX: X轴倾斜因子（Y轴方向的倾斜）
+                // skewY: Y轴倾斜因子（X轴方向的倾斜）
+                // scaleY: Y轴缩放因子
+                // transX: X轴平移量
+                // transY: Y轴平移量
+
+                var ctmArray = ctm.ToDoubleArray();
+                // 获取CTM矩阵参数
+                float scaleX = (float)ctmArray[0];
+                float skewX = (float)ctmArray[1];
+                float skewY = (float)ctmArray[2];
+                float scaleY = (float)ctmArray[3];
+                float transX = (float)ctmArray[4];
+                float transY = (float)ctmArray[5];
+
+                // 创建SKMatrix（注意：SKMatrix的顺序与OFD矩阵不同）
+                // SKMatrix的形式：
+                // | ScaleX  SkewX  TransX |
+                // | SkewY   ScaleY TransY |
+                // | 0       0      1      |
+
+                // 对应关系：
+                // ScaleX = scaleX (X轴缩放)
+                // SkewX = skewX (X轴倾斜)
+                // SkewY = skewY (Y轴倾斜)
+                // ScaleY = scaleY (Y轴缩放)
+                // TransX = transX (X轴平移)
+                // TransY = transY (Y轴平移)
+
+                var matrix = new SkiaSharp.SKMatrix
+                {
+                    ScaleX = scaleX,
+                    SkewX = skewX,
+                    SkewY = skewY,
+                    ScaleY = scaleY,
+                    TransX = transX,
+                    TransY = transY,
+                    Persp0 = 0,
+                    Persp1 = 0,
+                    Persp2 = 1
+                };
+
+                // 直接获取SkiaRenderContext并应用矩阵变换
+                var skiaContext = renderContext as SkiaRenderContext;
+                if (skiaContext != null)
+                {
+                    skiaContext.ConcatMatrix(matrix);
+                }
+            }
+        }
+
 
         #endregion
 
