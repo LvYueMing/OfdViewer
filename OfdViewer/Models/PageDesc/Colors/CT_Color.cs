@@ -9,6 +9,11 @@ namespace OFDViewer.Models.PageDesc.Colors
         /// <summary>
         /// 颜色定义, 渐变和填充被看作颜色的一种
         /// xs:choice minOccurs="0" maxOccurs="1"
+        /// Pattern：底纹填充, 复杂颜色的一种。 描述见8.3.3 可选
+        /// AxialShd：轴向渐变, 复杂颜色的一种。 描述见8.3.4.2 可选
+        /// RadialShd：径向渐变, 复杂颜色的一种。 描述见8.3.4.3 可选
+        /// GouraudShd：高洛德渐变, 复杂颜色的一种。 描述见8.3.4.4 可选
+        /// LaGouraudShd：格构高洛德渐变, 复杂颜色的一种。 描述见8.3.4.5 可选
         /// </summary>
         [XmlElement("Pattern", Type = typeof(CT_Pattern))]
         [XmlElement("AxialShd", Type = typeof(CT_AxialShd))]
@@ -61,9 +66,6 @@ namespace OFDViewer.Models.PageDesc.Colors
         /// </summary>
         [XmlAttribute("Alpha")]
         public int Alpha { get; set; } = 255;
-
-
-
 
     }
 }

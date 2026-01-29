@@ -36,7 +36,7 @@ namespace OFDViewer.Models.PageDesc.DrawParams
             get => Relative.ToString(); 
             set => Relative = ST_RefID.Parse(value);
         }
-            [XmlIgnore]
+        [XmlIgnore]
         public ST_RefID Relative { get; set; }
 
         /// <summary>

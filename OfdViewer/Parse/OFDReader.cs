@@ -172,9 +172,7 @@ namespace OFDViewer.Parse
                         doc.PublicResource = XmlHelper.DeserializeFromStream<Res>(stream);
                         doc.PublicResourceFilePath = pubResFilePath;
 
-                        // 保存归档引用，用于延迟加载资源文件
-                        // 不立即加载资源文件，等待使用时再从归档读取
-                        // doc.ResourceArchive = _archive;
+                        // 不立即加载资源文件，等待使用时再从归档读取 doc.ResourceArchive = _archive;
                     }
                 }
 
@@ -191,9 +189,7 @@ namespace OFDViewer.Parse
                         doc.DocumentResource = XmlHelper.DeserializeFromStream<Res>(stream);
                         doc.DocumentResourceFilePath = docResFilePath;
 
-                        // 保存归档引用，用于延迟加载资源文件
-                        // 不立即加载资源文件，等待使用时再从归档读取
-                        // doc.ResourceArchive = _archive;
+                        // 不立即加载资源文件，等待使用时再从归档读取 doc.ResourceArchive = _archive;
                     }
                 }
 
@@ -340,9 +336,7 @@ namespace OFDViewer.Parse
                         pageDoc.PageRes = XmlHelper.DeserializeFromStream<Res>(stream);
                         pageDoc.PageResFilePath = pubResFilePath;
 
-                        // 保存归档引用，用于延迟加载资源文件
-                        // 不立即加载资源文件，等待使用时再从归档读取
-                        // doc.ResourceArchive = _archive;
+                        // 不立即加载资源文件，等待使用时再从归档读取 doc.ResourceArchive = _archive;
                     }
                 }
             }
@@ -385,9 +379,7 @@ namespace OFDViewer.Parse
                         templateDoc.TemplateResFilePath = templateResFilePath;
 
                         // 读取 TemplateRes.xml 中的资源文件
-                        // 保存归档引用，用于延迟加载资源文件
-                        // 不立即加载资源文件，等待使用时再从归档读取
-                        // doc.ResourceArchive = _archive;
+                        // 不立即加载资源文件，等待使用时再从归档读取 doc.ResourceArchive = _archive;
                     }
                 }
             }

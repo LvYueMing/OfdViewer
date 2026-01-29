@@ -13,6 +13,7 @@ using OFDViewer.Models.Enums;
 using OFDViewer.Models.BaseType;
 using OFDViewer.Models.PageDesc;
 using OFDViewer.Models.PageDesc.DrawParams;
+using OFDViewer.Models.PageDesc.Colors;
 
 namespace OFDViewer.Render
 {
@@ -851,11 +852,11 @@ namespace OFDViewer.Render
             // 填充颜色（按照就近原则：图元属性 > 图元DrawParam > 图层DrawParam > 默认黑色）
             if (textObject.FillColor != null)
             {
-                style.Color = ConvertToARGB(textObject.FillColor);
+                style.Color = ConvertToARGB(textObject.FillColor, renderContext, isTemplate);
             }
             else if (drawParam != null && drawParam.FillColor != null)
             {
-                style.Color = ConvertToARGB(drawParam.FillColor);
+                style.Color = ConvertToARGB(drawParam.FillColor, renderContext, isTemplate);
             }
             else
             {
@@ -868,15 +869,15 @@ namespace OFDViewer.Render
             // 描边颜色（按照就近原则：图元属性 > 图元DrawParam > 图层DrawParam > 默认透明）
             if (textObject.StrokeColor != null)
             {
-                style.StrokeColor = ConvertToARGB(textObject.StrokeColor);
+                style.StrokeColor = ConvertToARGB(textObject.StrokeColor, renderContext, isTemplate);
             }
             else if (drawParam != null && drawParam.StrokeColor != null)
             {
-                style.StrokeColor = ConvertToARGB(drawParam.StrokeColor);
+                style.StrokeColor = ConvertToARGB(drawParam.StrokeColor, renderContext, isTemplate);
             }
             else
             {
-                style.StrokeColor = 255;
+                style.StrokeColor = 0x00000000;
             }
             
             // 透明度（使用文本对象属性，默认完全不透明）
@@ -898,8 +899,10 @@ namespace OFDViewer.Render
         /// 将OFD颜色转换为ARGB格式
         /// </summary>
         /// <param name="ofdColor">OFD颜色对象</param>
+        /// <param name="renderContext">渲染上下文</param>
+        /// <param name="isTemplate">是否为模板页</param>
         /// <returns>ARGB格式颜色值</returns>
-        private uint ConvertToARGB(Models.PageDesc.Colors.CT_Color ofdColor)
+        private uint ConvertToARGB(CT_Color ofdColor, IRenderContext renderContext = null, bool isTemplate = false)
         {
             // 默认颜色为黑色
             if (ofdColor == null)
@@ -908,22 +911,274 @@ namespace OFDViewer.Render
             // 获取透明度（0-255）
             byte alpha = (byte)(ofdColor.Alpha >= 0 && ofdColor.Alpha <= 255 ? ofdColor.Alpha : 255);
             
-            // 简单处理RGB颜色（后续需要支持更多颜色空间）
-            if (ofdColor.Value != null && ofdColor.Value.Count >= 3)
+            // 获取颜色空间
+            CT_ColorSpace colorSpace = GetColorSpace(ofdColor, renderContext, isTemplate);
+            
+            // 获取颜色值
+            ST_Array colorValue = ofdColor.Value;
+            if (colorValue == null || colorValue.Count == 0)
             {
-                // 将object类型转换为double类型
-                double rValue = Convert.ToDouble(ofdColor.Value[0]);
-                double gValue = Convert.ToDouble(ofdColor.Value[1]);
-                double bValue = Convert.ToDouble(ofdColor.Value[2]);
-                
-                // 计算RGB值（0-255）
-                byte r = (byte)(rValue * 255);
-                byte g = (byte)(gValue * 255);
-                byte b = (byte)(bValue * 255);
-                return (uint)((uint)alpha << 24 | ((uint)r << 16) | ((uint)g << 8) | b);
+                // 如果没有颜色值，使用黑色
+                // todo:此属性不出现时, 应采用Index属性从颜色空间的调色板中的取值。 当二者都不出现时, 该颜色各通道的值全部为0
+                return (uint)((uint)alpha << 24 | 0x000000);
             }
             
-            return (uint)((uint)alpha << 24 | 0x000000);
+            // 根据颜色空间类型转换颜色
+            byte r = 0, g = 0, b = 0;
+            switch (colorSpace.Type)
+            {
+                case ColorSpaceType.GRAY:
+                    // 处理灰度颜色
+                    r = g = b = ParseGrayColor(colorValue);
+                    break;
+                
+                case ColorSpaceType.RGB:
+                    // 处理RGB颜色
+                    var rgb = ParseRGBColor(colorValue);
+                    r = rgb[0];
+                    g = rgb[1];
+                    b = rgb[2];
+                    break;
+                
+                case ColorSpaceType.CMYK:    
+                    // 处理CMYK颜色
+                    var cmyk = ParseCMYKColor(colorValue);
+                    // CMYK转RGB
+                    (r, g, b) = CMYKToRGB(cmyk[0], cmyk[1], cmyk[2], cmyk[3]);
+                    break;
+                
+                default:
+                    // 默认使用RGB
+                    if (colorValue.Count >= 3)
+                    {
+                        r = ParseColorComponent(colorValue[0]);
+                        g = ParseColorComponent(colorValue[1]);
+                        b = ParseColorComponent(colorValue[2]);
+                    }
+                    break;
+            }
+            
+            return (uint)((uint)alpha << 24 | ((uint)r << 16) | ((uint)g << 8) | b);
+        }
+        
+        /// <summary>
+        /// 获取颜色空间
+        /// </summary>
+        /// <param name="ofdColor">OFD颜色对象</param>
+        /// <param name="renderContext">渲染上下文</param>
+        /// <param name="isTemplate">是否为模板页</param>
+        /// <returns>颜色空间对象</returns>
+        private CT_ColorSpace GetColorSpace(CT_Color ofdColor, IRenderContext renderContext = null, bool isTemplate = false)
+        {
+            // 1. 首先尝试从ofdColor.ColorSpace获取颜色空间资源
+            if (ofdColor.ColorSpace != null && ofdColor.ColorSpace != ST_RefID.Invalid && renderContext != null)
+            {
+                var colorSpace = isTemplate
+                    ? renderContext.ResourceManager.GetTemplateResource<CT_ColorSpace>(ofdColor.ColorSpace.ToString())
+                    : renderContext.ResourceManager.GetResource<CT_ColorSpace>(ofdColor.ColorSpace.ToString());
+                
+                if (colorSpace != null)
+                {
+                    return colorSpace;
+                }
+            }
+            
+            // 2. 尝试从文档的DefaultCS获取默认颜色空间
+            if (RootDocument != null && RootDocument.DefaultOFDDocument != null 
+                && RootDocument.DefaultOFDDocument.Document != null 
+                && RootDocument.DefaultOFDDocument.Document.CommonData != null 
+                && RootDocument.DefaultOFDDocument.Document.CommonData.DefaultCS != null 
+                && RootDocument.DefaultOFDDocument.Document.CommonData.DefaultCS != ST_RefID.Invalid 
+                && renderContext != null)
+            {
+                var defaultCSId = RootDocument.DefaultOFDDocument.Document.CommonData.DefaultCS.ToString();
+                var colorSpace = isTemplate
+                    ? renderContext.ResourceManager.GetTemplateResource<CT_ColorSpace>(defaultCSId)
+                    : renderContext.ResourceManager.GetResource<CT_ColorSpace>(defaultCSId);
+                
+                if (colorSpace != null)
+                {
+                    return colorSpace;
+                }
+            }
+            
+            // 3. 如果为空，使用RGB作为默认颜色空间
+            return new CT_ColorSpace { Type = ColorSpaceType.RGB };
+        }
+        
+        /// <summary>
+        /// 解析灰度颜色
+        /// </summary>
+        /// <param name="colorValue">颜色值</param>
+        /// <returns>灰度值（0-255）</returns>
+        private byte ParseGrayColor(ST_Array colorValue)
+        {
+            if (colorValue.Count == 0)
+                return 0;
+            
+            return ParseColorComponent(colorValue[0]);
+        }
+        
+        /// <summary>
+        /// 解析RGB颜色
+        /// </summary>
+        /// <param name="colorValue">颜色值</param>
+        /// <returns>RGB颜色数组（0-255）</returns>
+        private byte[] ParseRGBColor(ST_Array colorValue)
+        {
+            byte[] rgb = new byte[3] { 0, 0, 0 };
+            
+            if (colorValue.Count >= 1)
+                rgb[0] = ParseColorComponent(colorValue[0]);
+            if (colorValue.Count >= 2)
+                rgb[1] = ParseColorComponent(colorValue[1]);
+            if (colorValue.Count >= 3)
+                rgb[2] = ParseColorComponent(colorValue[2]);
+            
+            return rgb;
+        }
+        
+        /// <summary>
+        /// 解析CMYK颜色
+        /// </summary>
+        /// <param name="colorValue">颜色值</param>
+        /// <returns>CMYK颜色数组（0-255）</returns>
+        private byte[] ParseCMYKColor(ST_Array colorValue)
+        {
+            byte[] cmyk = new byte[4] { 0, 0, 0, 0 };
+            
+            if (colorValue.Count >= 1)
+                cmyk[0] = ParseColorComponent(colorValue[0]);
+            if (colorValue.Count >= 2)
+                cmyk[1] = ParseColorComponent(colorValue[1]);
+            if (colorValue.Count >= 3)
+                cmyk[2] = ParseColorComponent(colorValue[2]);
+            if (colorValue.Count >= 4)
+                cmyk[3] = ParseColorComponent(colorValue[3]);
+            
+            return cmyk;
+        }
+        
+        /// <summary>
+        /// 解析颜色分量
+        /// 支持十六进制（如 "#FF"）和十进制（如 "255"）格式
+        /// </summary>
+        /// <param name="component">颜色分量</param>
+        /// <returns>颜色分量值（0-255）</returns>
+        private byte ParseColorComponent(object component)
+        {
+            if (component == null)
+                return 0;
+            
+            string value = component.ToString().Trim();
+            
+            // 处理十六进制格式
+            if (value.StartsWith("#"))
+            {
+                // 移除 # 前缀
+                value = value.Substring(1);
+                
+                // 解析十六进制值
+                if (byte.TryParse(value, System.Globalization.NumberStyles.HexNumber, null, out byte result))
+                {
+                    return result;
+                }
+            }
+            
+            // 处理十进制格式
+            if (byte.TryParse(value, out byte decimalResult))
+            {
+                return decimalResult;
+            }
+            
+            return 0;
+        }
+        
+        /// <summary>
+        /// CMYK转RGB
+        /// </summary>
+        /// <param name="c">青（0-255）</param>
+        /// <param name="m">品红（0-255）</param>
+        /// <param name="y">黄（0-255）</param>
+        /// <param name="k">黑（0-255）</param>
+        /// <returns>RGB颜色（0-255）</returns>
+        private (byte, byte, byte) CMYKToRGB(byte c, byte m, byte y, byte k)
+        {
+            // 将CMYK值转换为0-1范围
+            double c1 = c / 255.0;
+            double m1 = m / 255.0;
+            double y1 = y / 255.0;
+            double k1 = k / 255.0;
+            
+            // CMYK转RGB公式
+            double r1 = 1 - Math.Min(1, c1 * (1 - k1) + k1);
+            double g1 = 1 - Math.Min(1, m1 * (1 - k1) + k1);
+            double b1 = 1 - Math.Min(1, y1 * (1 - k1) + k1);
+            
+            // 将RGB值转换为0-255范围
+            byte r = (byte)(r1 * 255);
+            byte g = (byte)(g1 * 255);
+            byte b = (byte)(b1 * 255);
+            
+            return (r, g, b);
+        }
+
+        /// <summary>
+        /// 解析绘制参数的基础绘制参数
+        /// 递归处理Relative属性，合并基础绘制参数的属性
+        /// </summary>
+        /// <param name="drawParam">绘制参数对象</param>
+        /// <param name="renderContext">渲染上下文</param>
+        /// <param name="isTemplate">是否为模板页</param>
+        /// <returns>合并后的绘制参数对象</returns>
+        private CT_DrawParam ResolveDrawParamWithRelative(CT_DrawParam drawParam, IRenderContext renderContext, bool isTemplate = false)
+        {
+            if (drawParam == null)
+                return null;
+
+            // 如果没有Relative属性，直接返回
+            if (drawParam.Relative == null || drawParam.Relative == ST_RefID.Invalid)
+                return drawParam;
+
+            // 递归获取基础绘制参数
+            CT_DrawParam baseDrawParam = isTemplate
+                ? renderContext.ResourceManager.GetTemplateResource<CT_DrawParam>(drawParam.Relative.ToString())
+                : renderContext.ResourceManager.GetResource<CT_DrawParam>(drawParam.Relative.ToString());
+
+            if (baseDrawParam == null)
+                return drawParam;
+
+            // 递归处理基础绘制参数的基础绘制参数
+            baseDrawParam = ResolveDrawParamWithRelative(baseDrawParam, renderContext, isTemplate);
+
+            // 创建合并后的绘制参数
+            var mergedDrawParam = new CT_DrawParam();
+
+            // 合并填充颜色（基础绘制参数的属性会被当前绘制参数覆盖）
+            mergedDrawParam.FillColor = drawParam.FillColor ?? baseDrawParam.FillColor;
+
+            // 合并勾边颜色
+            mergedDrawParam.StrokeColor = drawParam.StrokeColor ?? baseDrawParam.StrokeColor;
+
+            // 合并线宽
+            mergedDrawParam.LineWidth = drawParam.LineWidth != 0.353 ? drawParam.LineWidth : baseDrawParam.LineWidth;
+
+            // 合并线条连接样式
+            mergedDrawParam.Join = drawParam.Join != DrawParamJoinType.Miter ? drawParam.Join : baseDrawParam.Join;
+
+            // 合并线端点样式
+            mergedDrawParam.Cap = drawParam.Cap != DrawParamCapType.Butt ? drawParam.Cap : baseDrawParam.Cap;
+
+            // 合并虚线偏移
+            mergedDrawParam.DashOffset = drawParam.DashOffset != 0 ? drawParam.DashOffset : baseDrawParam.DashOffset;
+
+            // 合并虚线样式
+            mergedDrawParam.DashPattern = drawParam.DashPattern.Count > 0 ? drawParam.DashPattern : baseDrawParam.DashPattern;
+
+            // 合并MiterLimit
+            mergedDrawParam.MiterLimit = drawParam.MiterLimit != 4.234 ? drawParam.MiterLimit : baseDrawParam.MiterLimit;
+
+            return mergedDrawParam;
         }
 
         /// <summary>
@@ -940,6 +1195,9 @@ namespace OFDViewer.Render
         /// 2. 图元未定义该属性时，检查图元的DrawParam中是否有该属性
         /// 3. 图元的DrawParam中也没有该属性时，检查所在图层的DrawParam中是否有该属性
         /// 4. 都没有定义该属性时，使用该属性的默认值
+        /// 
+        /// 基础绘制参数处理：
+        /// 如果绘制参数有Relative属性，需要递归获取基础绘制参数并合并属性
         /// </remarks>
         private CT_DrawParam GetDrawParam(CT_GraphicUnit graphicUnit, CT_Layer layer, IRenderContext renderContext, bool isTemplate = false)
         {
@@ -950,8 +1208,14 @@ namespace OFDViewer.Render
             if (graphicUnit.DrawParam != null && graphicUnit.DrawParam != ST_RefID.Invalid)
             {
                 graghicUnitDrawParam = isTemplate 
-                    ? renderContext.ResourceManager.GetTemplateResource<Models.BaseStructure.Resources.ResItems.DrawParam>(graphicUnit.DrawParam.ToString())
-                    : renderContext.ResourceManager.GetResource<Models.BaseStructure.Resources.ResItems.DrawParam>(graphicUnit.DrawParam.ToString());
+                    ? renderContext.ResourceManager.GetTemplateResource<CT_DrawParam>(graphicUnit.DrawParam.ToString())
+                    : renderContext.ResourceManager.GetResource<CT_DrawParam>(graphicUnit.DrawParam.ToString());
+                
+                // 处理基础绘制参数
+                if (graghicUnitDrawParam != null)
+                {
+                    graghicUnitDrawParam = ResolveDrawParamWithRelative(graghicUnitDrawParam, renderContext, isTemplate);
+                }
             }
 
             // 获取图层的DrawParam
@@ -961,6 +1225,12 @@ namespace OFDViewer.Render
                 layerDrawParam = isTemplate
                     ? renderContext.ResourceManager.GetTemplateResource<Models.BaseStructure.Resources.ResItems.DrawParam>(layer.DrawParam.ToString())
                     : renderContext.ResourceManager.GetResource<Models.BaseStructure.Resources.ResItems.DrawParam>(layer.DrawParam.ToString());
+                
+                // 处理基础绘制参数
+                if (layerDrawParam != null)
+                {
+                    layerDrawParam = ResolveDrawParamWithRelative(layerDrawParam, renderContext, isTemplate);
+                }
             }
 
             // 合并填充颜色（按照就近原则）
@@ -1250,11 +1520,11 @@ namespace OFDViewer.Render
             // 填充颜色（按照就近原则：图元属性 > 图元DrawParam > 图层DrawParam > 默认透明色）
             if (pathObject.FillColor != null)
             {
-                style.Color = ConvertToARGB(pathObject.FillColor);
+                style.Color = ConvertToARGB(pathObject.FillColor, renderContext, isTemplate);
             }
             else if (drawParam != null && drawParam.FillColor != null)
             {
-                style.Color = ConvertToARGB(drawParam.FillColor);
+                style.Color = ConvertToARGB(drawParam.FillColor, renderContext, isTemplate);
             }
             else
             {
@@ -1267,11 +1537,11 @@ namespace OFDViewer.Render
             // 描边颜色（按照就近原则：图元属性 > 图元DrawParam > 图层DrawParam > 默认黑色）
             if (pathObject.StrokeColor != null)
             {
-                style.StrokeColor = ConvertToARGB(pathObject.StrokeColor);
+                style.StrokeColor = ConvertToARGB(pathObject.StrokeColor, renderContext, isTemplate);
             }
             else if (drawParam != null && drawParam.StrokeColor != null)
             {
-                style.StrokeColor = ConvertToARGB(drawParam.StrokeColor);
+                style.StrokeColor = ConvertToARGB(drawParam.StrokeColor, renderContext, isTemplate);
             }
             else
             {
