@@ -15,6 +15,7 @@ using OFDViewer.Models.PageDesc;
 using OFDViewer.Models.PageDesc.DrawParams;
 using OFDViewer.Models.PageDesc.Colors;
 using OFDViewer.Models.Graph;
+using SkiaSharp;
 
 namespace OFDViewer.Render
 {
@@ -951,17 +952,16 @@ namespace OFDViewer.Render
             // 绘制边界矩形（用于调试，实际渲染时可以注释掉）
             // ((SkiaRenderContext)renderContext).DrawRectangle(boundaryX, boundaryY, boundaryWidth, boundaryHeight, graphStyle);
             // 设置裁剪区（在变换后的坐标系中，使用单位矩形作为裁剪区）
-            renderContext?.SetClipRect(boundaryX, boundaryY, boundaryWidth, boundaryHeight);
+            // renderContext?.SetClipRect(boundaryX, boundaryY, boundaryWidth, boundaryHeight);
 
             // 应用CTM变换矩阵（使用SKMatrix进行2D仿射变换）
             if (pathObject.CTM != null && pathObject.CTM.Count >= 6)
-            {
+            {               
                 // 先通过 Boundary 平移到页面空间，再通过 CTM 变换到对象空间
                 // Skia 中矩阵变换是 "反向作用"，因此代码中先平移再乘 CTM，效果等价于 OFD 的先 CTM 再平移
                 renderContext.Translate(boundaryX, boundaryY);
                 // 应用变换矩阵
-                ApplyTransformMatrix1(renderContext, pathObject.CTM);
-
+                ApplyVectorSpaceTransformMatrix(renderContext, pathObject.CTM);
                 // 开始绘制路径
                 pathRenderer.BeginPath();
                 // 解析并绘制路径
@@ -1004,19 +1004,11 @@ namespace OFDViewer.Render
         /// B x1 y1 x2 y2 x3 y3 - 三次贝塞尔曲线
         /// A rx ry angle large sweep x y - 圆弧
         /// C - 自动闭合子路径
-        /// </summary>
-        /// <param name="pathRenderer">路径渲染器</param>
-        /// <param name="renderContext">渲染上下文</param>
-        /// <param name="abbreviatedData">OFD路径数据</param>
-        /// <param name="boundaryX">图元外接矩形X坐标（页面坐标系，像素）</param>
-        /// <param name="boundaryY">图元外接矩形Y坐标（页面坐标系，像素）</param>
         private void ParseAndRenderPath(IPathRenderer pathRenderer, IRenderContext renderContext, string abbreviatedData, float boundaryX = 0, float boundaryY = 0)
         {
             if (string.IsNullOrEmpty(abbreviatedData))
                 return;
 
-            // OFD路径数据格式：操作符+空格+参数+空格+...
-            // 例如："M 100 100 L 200 200 C"
             var tokens = abbreviatedData.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
             if (tokens.Length == 0)
                 return;
@@ -1028,7 +1020,7 @@ namespace OFDViewer.Render
 
                 switch (command.ToUpper())
                 {
-                    case "S":// 定义子绘制图形边线的起始点坐标
+                    case "S":
                         if (index + 1 < tokens.Length)
                         {
                             float x = renderContext.MillimetersToPixels(float.Parse(tokens[index])) + boundaryX;
@@ -1037,8 +1029,7 @@ namespace OFDViewer.Render
                             index += 2;
                         }
                         break;
-
-                    case "M":// 将当前点移动到指定点
+                    case "M":
                         if (index + 1 < tokens.Length)
                         {
                             float x = renderContext.MillimetersToPixels(float.Parse(tokens[index])) + boundaryX;
@@ -1047,8 +1038,7 @@ namespace OFDViewer.Render
                             index += 2;
                         }
                         break;
-
-                    case "L":// 绘制线段到指定点
+                    case "L":
                         if (index + 1 < tokens.Length)
                         {
                             float x = renderContext.MillimetersToPixels(float.Parse(tokens[index])) + boundaryX;
@@ -1057,8 +1047,7 @@ namespace OFDViewer.Render
                             index += 2;
                         }
                         break;
-
-                    case "Q":// 二次贝塞尔曲线
+                    case "Q":
                         if (index + 3 < tokens.Length)
                         {
                             float x1 = renderContext.MillimetersToPixels(float.Parse(tokens[index])) + boundaryX;
@@ -1069,8 +1058,7 @@ namespace OFDViewer.Render
                             index += 4;
                         }
                         break;
-
-                    case "B":// 三次贝塞尔曲线
+                    case "B":
                         if (index + 5 < tokens.Length)
                         {
                             float x1 = renderContext.MillimetersToPixels(float.Parse(tokens[index])) + boundaryX;
@@ -1083,136 +1071,27 @@ namespace OFDViewer.Render
                             index += 6;
                         }
                         break;
-
-                    case "A":// 圆弧
+                    case "A":
                         if (index + 6 < tokens.Length)
                         {
                             float rx = renderContext.MillimetersToPixels(float.Parse(tokens[index]));
                             float ry = renderContext.MillimetersToPixels(float.Parse(tokens[index + 1]));
-                            float angle = renderContext.MillimetersToPixels(float.Parse(tokens[index + 2]));
-                            int large = (int)renderContext.MillimetersToPixels(int.Parse(tokens[index + 3]));
-                            int sweep = (int)renderContext.MillimetersToPixels(int.Parse(tokens[index + 4]));
+                            float angle = float.Parse(tokens[index + 2]);
+                            bool largeArc = int.Parse(tokens[index + 3]) == 1;
+                            bool sweep = int.Parse(tokens[index + 4]) == 1;
                             float x = renderContext.MillimetersToPixels(float.Parse(tokens[index + 5])) + boundaryX;
                             float y = renderContext.MillimetersToPixels(float.Parse(tokens[index + 6])) + boundaryY;
-
-                            pathRenderer.ArcTo(rx, ry, angle, large == 1, sweep == 1, x, y);
+                            pathRenderer.ArcTo(rx, ry, angle, largeArc, sweep, x, y);
                             index += 7;
                         }
                         break;
-
-                    case "C":// 自动闭合子路径
+                    case "C":
                         pathRenderer.ClosePath();
-                        break;
-
-                    default:
-                        // 未知命令，跳过
-                        System.Diagnostics.Debug.WriteLine($"未知的路径命令: {command}");
                         break;
                 }
             }
-        }
-
-
-        private void ParseAndRenderPath1(IPathRenderer pathRenderer, IRenderContext renderContext, string abbreviatedData, float boundaryX = 0, float boundaryY = 0)
-        {
-            if (string.IsNullOrEmpty(abbreviatedData))
-                return;
-
-            // OFD路径数据格式：操作符+空格+参数+空格+...
-            // 例如："M 100 100 L 200 200 C"
-            var tokens = abbreviatedData.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-            if (tokens.Length == 0)
-                return;
-
-            int index = 0;
-            while (index < tokens.Length)
-            {
-                string command = tokens[index++];
-
-                switch (command.ToUpper())
-                {
-                    case "S":// 定义子绘制图形边线的起始点坐标
-                        if (index + 1 < tokens.Length)
-                        {
-                            float x = float.Parse(tokens[index]) + boundaryX;
-                            float y = float.Parse(tokens[index + 1]) + boundaryY;
-                            pathRenderer.MoveTo(x, y);
-                            index += 2;
-                        }
-                        break;
-
-                    case "M":// 将当前点移动到指定点
-                        if (index + 1 < tokens.Length)
-                        {
-                            float x = float.Parse(tokens[index]) + boundaryX;
-                            float y = float.Parse(tokens[index + 1]) + boundaryY;
-                            pathRenderer.MoveTo(x, y);
-                            index += 2;
-                        }
-                        break;
-
-                    case "L":// 绘制线段到指定点
-                        if (index + 1 < tokens.Length)
-                        {
-                            float x = float.Parse(tokens[index]) + boundaryX;
-                            float y = float.Parse(tokens[index + 1]) + boundaryY;
-                            pathRenderer.LineTo(x, y);
-                            index += 2;
-                        }
-                        break;
-
-                    case "Q":// 二次贝塞尔曲线
-                        if (index + 3 < tokens.Length)
-                        {
-                            float x1 = float.Parse(tokens[index]) + boundaryX;
-                            float y1 = float.Parse(tokens[index + 1]) + boundaryY;
-                            float x2 = float.Parse(tokens[index + 2])+ boundaryX;
-                            float y2 = float.Parse(tokens[index + 3]) + boundaryY;
-                            pathRenderer.QuadTo(x1, y1, x2, y2);
-                            index += 4;
-                        }
-                        break;
-
-                    case "B":// 三次贝塞尔曲线
-                        if (index + 5 < tokens.Length)
-                        {
-                            float x1 = float.Parse(tokens[index]) + boundaryX;
-                            float y1 = float.Parse(tokens[index + 1]) + boundaryY;
-                            float x2 = float.Parse(tokens[index + 2]) + boundaryX;
-                            float y2 = float.Parse(tokens[index + 3]) + boundaryY;
-                            float x3 = float.Parse(tokens[index + 4]) + boundaryX;
-                            float y3 = float.Parse(tokens[index + 5]) + boundaryY;
-                            pathRenderer.CubicTo(x1, y1, x2, y2, x3, y3);
-                            index += 6;
-                        }
-                        break;
-
-                    case "A":// 圆弧
-                        if (index + 6 < tokens.Length)
-                        {
-                            float rx = float.Parse(tokens[index]);
-                            float ry = float.Parse(tokens[index + 1]);
-                            float angle = float.Parse(tokens[index + 2]);
-                            int large = (int)int.Parse(tokens[index + 3]);
-                            int sweep = (int)int.Parse(tokens[index + 4]);
-                            float x = float.Parse(tokens[index + 5]) + boundaryX;
-                            float y = float.Parse(tokens[index + 6]) + boundaryY;
-
-                            pathRenderer.ArcTo(rx, ry, angle, large == 1, sweep == 1, x, y);
-                            index += 7;
-                        }
-                        break;
-
-                    case "C":// 自动闭合子路径
-                        pathRenderer.ClosePath();
-                        break;
-
-                    default:
-                        // 未知命令，跳过
-                        System.Diagnostics.Debug.WriteLine($"未知的路径命令: {command}");
-                        break;
-                }
-            }
+            // 对路径进行归一化处理
+            //pathRenderer.NormalizePath();
         }
 
         /// <summary>
@@ -1356,7 +1235,7 @@ namespace OFDViewer.Render
                 // Skia 中矩阵变换是 "反向作用"，因此代码中先平移再乘 CTM，效果等价于 OFD 的先 CTM 再平移
                 renderContext.Translate(boundaryX, boundaryY);
                 // 应用变换矩阵
-                ApplyTransformMatrix1(renderContext, imageObject.CTM);
+                ApplyDeviceSpaceTransformMatrix(renderContext, imageObject.CTM);
             }
 
             // 从资源管理器获取图像数据
@@ -1397,7 +1276,6 @@ namespace OFDViewer.Render
             {
                 imageRenderer.DrawImage(boundaryX, boundaryY, width, height, imageData, imageStyle);
             }
-
 
             // 恢复渲染状态
             renderContext?.RestoreState();
@@ -1752,13 +1630,11 @@ namespace OFDViewer.Render
         #region 变换矩阵处理
 
         /// <summary>
-        /// 应用变换矩阵到渲染上下文
+        /// 应用变换矩阵到渲染上下文（设备空间）
         /// </summary>
         /// <param name="renderContext">渲染上下文</param>
-        /// <param name="boundaryX">边界X坐标（页面坐标系，像素）</param>
-        /// <param name="boundaryY">边界Y坐标（页面坐标系，像素）</param>
-        /// <param name="ctm">CTM变换矩阵</param>
-        private void ApplyTransformMatrix(IRenderContext renderContext, ST_Array ctm)
+        /// <param name="ctm">CTM变换矩阵（OFD坐标系，单位：毫米）</param>
+        private void ApplyDeviceSpaceTransformMatrix(IRenderContext renderContext, ST_Array ctm)
         {
             // 应用CTM变换矩阵（使用SKMatrix进行2D仿射变换）
             if (ctm != null && ctm.Count >= 6)
@@ -1822,7 +1698,12 @@ namespace OFDViewer.Render
         }
 
 
-        private void ApplyTransformMatrix1(IRenderContext renderContext, ST_Array ctm)
+        /// <summary>
+        /// 应用变换矩阵到渲染上下文（矢量空间）
+        /// </summary>
+        /// <param name="renderContext">渲染上下文</param>
+        /// <param name="ctm">CTM变换矩阵（OFD坐标系，单位：毫米）</param>
+        private void ApplyVectorSpaceTransformMatrix(IRenderContext renderContext, ST_Array ctm)
         {
             // 应用CTM变换矩阵（使用SKMatrix进行2D仿射变换）
             if (ctm != null && ctm.Count >= 6)

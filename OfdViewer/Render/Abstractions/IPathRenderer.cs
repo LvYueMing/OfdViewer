@@ -81,5 +81,10 @@ namespace OFDViewer.Render.Abstractions
         /// </summary>
         /// <param name="style">图形样式</param>
         void FillAndStrokePath(GraphStyle style);
+
+        /// <summary>
+        /// 对当前路径进行归一化处理
+        /// </summary>
+        void NormalizePath();
     }
 }

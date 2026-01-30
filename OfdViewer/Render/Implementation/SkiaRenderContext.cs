@@ -1027,6 +1027,41 @@ namespace OFDViewer.Render.Implementation
 
         }
 
+        /// <summary>
+        /// 对当前路径进行归一化处理
+        /// </summary>
+        public void NormalizePath()
+        {
+            if (_currentPath == null)
+                return;
+
+            // 获取路径边界
+            SKRect pathRect = new SKRect();
+            _currentPath.GetBounds(out pathRect);
+            
+            // 检查边界是否有效
+            if (pathRect.Width <= 0 || pathRect.Height <= 0)
+                return;
+
+            // 计算归一化矩阵
+            float translateX = -pathRect.Left;
+            float translateY = -pathRect.Top;
+            float scaleX = 1.0f / pathRect.Width;
+            float scaleY = 1.0f / pathRect.Height;
+            SKMatrix normalizeMatrix = new SKMatrix {
+                ScaleX = scaleX,
+                ScaleY = scaleY,
+                TransX = translateX * scaleX,
+                TransY = translateY * scaleY,
+                Persp0 = 0,
+                Persp1 = 0,
+                Persp2 = 1
+            };
+
+            // 应用归一化矩阵到路径
+            _currentPath.Transform(normalizeMatrix);
+        }
+
         #endregion
 
         #region 私有辅助方法
