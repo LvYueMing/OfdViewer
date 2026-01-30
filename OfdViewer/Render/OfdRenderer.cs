@@ -1,21 +1,22 @@
-using System;
-using System.IO;
-using System.Collections.Generic;
+using JBig2Decoder.NETStandard;
+using OFDViewer.Models.BaseStructure.Pages;
+using OFDViewer.Models.BaseStructure.Pages.PageBlockItems;
+using OFDViewer.Models.BaseStructure.Resources.ResItems;
+using OFDViewer.Models.BaseType;
+using OFDViewer.Models.Enums;
+using OFDViewer.Models.Font;
+using OFDViewer.Models.Graph;
+using OFDViewer.Models.PageDesc;
+using OFDViewer.Models.PageDesc.Colors;
+using OFDViewer.Models.PageDesc.DrawParams;
 using OFDViewer.Parse;
 using OFDViewer.Render.Abstractions;
 using OFDViewer.Render.DataModels;
 using OFDViewer.Render.Implementation;
-using OFDViewer.Models.BaseStructure.Pages;
-using OFDViewer.Models.BaseStructure.Pages.PageBlockItems;
-using OFDViewer.Models.BaseStructure.Resources.ResItems;
-using OFDViewer.Models.Font;
-using OFDViewer.Models.Enums;
-using OFDViewer.Models.BaseType;
-using OFDViewer.Models.PageDesc;
-using OFDViewer.Models.PageDesc.DrawParams;
-using OFDViewer.Models.PageDesc.Colors;
-using OFDViewer.Models.Graph;
 using SkiaSharp;
+using System;
+using System.Collections.Generic;
+using System.IO;
 
 namespace OFDViewer.Render
 {
@@ -952,7 +953,7 @@ namespace OFDViewer.Render
             // 绘制边界矩形（用于调试，实际渲染时可以注释掉）
             // ((SkiaRenderContext)renderContext).DrawRectangle(boundaryX, boundaryY, boundaryWidth, boundaryHeight, graphStyle);
             // 设置裁剪区（在变换后的坐标系中，使用单位矩形作为裁剪区）
-            // renderContext?.SetClipRect(boundaryX, boundaryY, boundaryWidth, boundaryHeight);
+            renderContext?.SetClipRect(boundaryX, boundaryY, boundaryWidth, boundaryHeight);
 
             // 应用CTM变换矩阵（使用SKMatrix进行2D仿射变换）
             if (pathObject.CTM != null && pathObject.CTM.Count >= 6)
@@ -966,7 +967,6 @@ namespace OFDViewer.Render
                 pathRenderer.BeginPath();
                 // 解析并绘制路径
                 ParseAndRenderPath(pathRenderer, renderContext, pathObject.AbbreviatedData, 0, 0);
-
             }
             else
             {
@@ -1198,7 +1198,7 @@ namespace OFDViewer.Render
         /// <param name="imageRenderer">图像渲染器</param>
         /// <param name="imageObj">图像对象</param>
         /// <param name="pageIndex">页面索引</param>
-        private void RenderImageObject(IRenderContext renderContext, object imageObj, Models.BaseStructure.Pages.CT_Layer layer, bool isTemplate = false)
+        private void RenderImageObject(IRenderContext renderContext, object imageObj, CT_Layer layer, bool isTemplate = false)
         {
             if (renderContext == null || imageObj == null)
                 return;
@@ -1208,7 +1208,7 @@ namespace OFDViewer.Render
             if (renderContext == null)
                 return;
 
-            var imageObject = imageObj as Models.BaseStructure.Pages.PageBlockItems.ImageObject;
+            var imageObject = imageObj as ImageObject;
             if (imageObject == null)
                 return;
 
@@ -1254,6 +1254,18 @@ namespace OFDViewer.Render
                     {
                         // 转换为 PNG 格式
                         imageData = ConvertTIFF2PNG(imageData);
+                    }
+                    // 处理 JB2 格式图片
+                    else if (multiMedia.FormatString == "GBIG2" || multiMedia.MediaFile.Path.ToUpper().Contains(".JB2"))
+                    {
+                        // 转换为 PNG 格式
+                        imageData = ConvertJB2ToPNG(imageData);
+                    }
+                    else
+                    {
+                        // 其他格式，直接使用原始数据
+                        // 转换为 PNG 格式
+                        imageData = ConvertJB2ToPNG(imageData);
                     }
                 }
             }
@@ -2085,6 +2097,55 @@ namespace OFDViewer.Render
             catch (Exception ex)
             {
                 throw new InvalidOperationException($"图像格式转换失败：{ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// 将JB2格式图像转换为PNG格式
+        /// </summary>
+        /// <param name="imageData">JB2格式的图像数据</param>
+        /// <returns>转换后的PNG格式图像数据</returns>
+        /// <exception cref="ArgumentNullException">当imageData为null或空时抛出</exception>
+        /// <exception cref="InvalidOperationException">当无法打开或读取JB2图像时抛出</exception>
+        private byte[] ConvertJB2ToPNG(byte[] imageData)
+        {
+            // 验证输入参数
+            if (imageData == null || imageData.Length == 0)
+                throw new ArgumentNullException(nameof(imageData), "图像数据不能为空");
+
+            try
+            {
+                // 使用JBig2Decoder.NETStandard库解析JBIG2数据
+                var jbig = new JBIG2StreamDecoder();
+                int width = 0;
+                int height = 0;
+                // the resulting 'byte[] rgbBuffer' is a RGB array
+                byte[] rgbBuffer = jbig.DecodeJBIG2(imageData, out width, out height);
+
+
+                // Then the bytes can be converted to an image using your favorite image processing library.
+                // To convert to a png using ImageSharp:
+                // 创建SkiaSharp位图
+                using var bitmap = new SkiaSharp.SKBitmap(width, height,
+                    SkiaSharp.SKColorType.Rgb888x, SkiaSharp.SKAlphaType.Opaque);
+
+                // 将RGBA数据拷贝到位图
+                IntPtr pixels = bitmap.GetPixels();
+                System.Runtime.InteropServices.Marshal.Copy(rgbBuffer, 0, pixels, rgbBuffer.Length);
+
+                // 编码为PNG格式
+                using var pngStream = new MemoryStream();
+                bitmap.Encode(pngStream, SkiaSharp.SKEncodedImageFormat.Png, 100);
+
+                // 返回PNG数据
+                return pngStream.ToArray();
+
+            }
+            catch (Exception ex)
+            {
+                // 记录错误并返回原始数据，避免整个渲染过程失败
+                System.Diagnostics.Debug.WriteLine($"JB2转换失败: {ex.Message}");
+                return imageData;
             }
         }
 
