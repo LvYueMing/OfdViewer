@@ -10,6 +10,16 @@ namespace OFDViewer.Render.Abstractions
     public interface IRenderContext : IDisposable
     {
         /// <summary>
+        /// 获取渲染结果宽度
+        /// </summary>
+        int Width { get; }
+
+        /// <summary>
+        /// 获取渲染结果高度
+        /// </summary>
+        int Height { get; }
+
+        /// <summary>
         /// 资源管理器
         /// </summary>
         IResourceManager ResourceManager { get; set; }
@@ -74,15 +84,6 @@ namespace OFDViewer.Render.Abstractions
         /// <returns>位图数据</returns>
         byte[] GetRenderResult();
 
-        /// <summary>
-        /// 获取渲染结果宽度
-        /// </summary>
-        int Width { get; }
-
-        /// <summary>
-        /// 获取渲染结果高度
-        /// </summary>
-        int Height { get; }
 
         /// <summary>
         /// 渲染配置

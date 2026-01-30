@@ -350,49 +350,6 @@ namespace OFDViewer.Render.Implementation
         }
 
         /// <summary>
-        /// 获取渲染结果（位图数据）
-        /// </summary>
-        /// <returns>位图数据（PNG格式）</returns>
-        public byte[] GetRenderResult()
-        {
-            if (_bitmap == null) return null;
-
-            using (var ms = new MemoryStream())
-            {
-                //_bitmap.Encode(ms, SKEncodedImageFormat.Png, 100);
-                _bitmap.Encode(ms, SKEncodedImageFormat.Bmp, 100);
-                //_bitmap.Encode(ms, SKEncodedImageFormat.Webp, 100);
-                var result = ms.ToArray();
-
-                // 调试：仅在调试环境下保存渲染结果到本地文件，查看图片质量
-#if DEBUG_SAVE
-                try
-                {
-                    string debugDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "OFD_Debug");
-                    if (!Directory.Exists(debugDir))
-                    {
-                        Directory.CreateDirectory(debugDir);
-                    }
-
-                    string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
-                    string debugFilePath = Path.Combine(debugDir, $"ofd_render_{timestamp}.png");
-                    File.WriteAllBytes(debugFilePath, result);
-
-                    // 输出调试信息
-                    System.Diagnostics.Debug.WriteLine($"渲染结果已保存到: {debugFilePath}");
-                }
-                catch (Exception ex)
-                {
-                    // 忽略保存错误，避免影响正常渲染
-                    System.Diagnostics.Debug.WriteLine($"保存调试图片失败: {ex.Message}");
-                }
-#endif
-
-                return result;
-            }
-        }
-
-        /// <summary>
         /// 设置矩形裁剪区
         /// </summary>
         /// <param name="x">左上角X坐标</param>
@@ -420,6 +377,51 @@ namespace OFDViewer.Render.Implementation
             // 重置裁剪区为整个画布
             _canvas.ClipRect(new SKRect(0, 0, Width, Height), SKClipOperation.Difference, true);
         }
+
+        /// <summary>
+        /// 获取渲染结果（位图数据）
+        /// </summary>
+        /// <returns>位图数据（PNG格式）</returns>
+        public byte[] GetRenderResult()
+        {
+            if (_bitmap == null) return null;
+
+            using (var ms = new MemoryStream())
+            {
+                _bitmap.Encode(ms, SKEncodedImageFormat.Png, 100);
+                // System.Drawing.Bitmap 不支持 WebP
+                //_bitmap.Encode(ms, SKEncodedImageFormat.Webp, 100);
+                var result = ms.ToArray();
+
+                // 调试：仅在调试环境下保存渲染结果到本地文件，查看图片质量
+#if DEBUG_SAVE
+                try
+                {
+                    string debugDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "OFD_Debug");
+                    if (!Directory.Exists(debugDir))
+                    { 
+                        Directory.CreateDirectory(debugDir);
+                    }
+
+                    string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
+                    string debugFilePath = Path.Combine(debugDir, $"ofd_render_{timestamp}.png");
+                    File.WriteAllBytes(debugFilePath, result);
+
+                    // 输出调试信息
+                    System.Diagnostics.Debug.WriteLine($"渲染结果已保存到: {debugFilePath}");
+                }
+                catch (Exception ex)
+                {
+                    // 忽略保存错误，避免影响正常渲染
+                    System.Diagnostics.Debug.WriteLine($"保存调试图片失败: {ex.Message}");
+                }
+#endif
+
+                return result;
+            }
+        }
+
+
 
         #endregion
 
@@ -1194,24 +1196,6 @@ namespace OFDViewer.Render.Implementation
             }
             return SKPathEffect.CreateDash(dashPattern, 0);
         }
-
-        #endregion
-
-        #region 文档模型映射
-
-        /// <summary>
-        /// 将OFD页面元素转换为SkiaSharp绘制指令
-        /// </summary>
-        /// <param name="pageElement">OFD页面元素</param>
-        /// <remarks>
-        /// 这里可以添加将OFD页面元素转换为SkiaSharp绘制指令的逻辑
-        /// 例如：遍历PageBlockItems，根据元素类型调用不同的绘制方法
-        /// </remarks>
-        // public void RenderOfdPageElement(object pageElement)
-        // {
-        //     // 实现OFD页面元素到SkiaSharp绘制指令的转换逻辑
-        //     // 这需要根据OFD文档模型的具体结构来实现
-        // }
 
         #endregion
 

@@ -6,6 +6,7 @@ using OFDViewer.Models.BaseType;
 using OFDViewer.Models.Enums;
 using OFDViewer.Models.Font;
 using OFDViewer.Models.Graph;
+using OFDViewer.Models.Image;
 using OFDViewer.Models.PageDesc;
 using OFDViewer.Models.PageDesc.Colors;
 using OFDViewer.Models.PageDesc.DrawParams;
@@ -192,7 +193,43 @@ namespace OFDViewer.Render
             }
             return totalPages;
         }
-        
+
+        /// <summary>
+        /// 渲染指定页面到内存位图（按全局页面索引）
+        /// </summary>
+        /// <param name="pageIndex">全局页面索引，默认为第1页</param>
+        /// <returns>渲染结果（PNG格式字节数组）</returns>
+        public byte[] RenderPageToBitmap(int pageIndex = 0)
+        {
+            CheckDisposed();
+
+            if (RootDocument == null || RootDocument.Docs == null || RootDocument.Docs.Count == 0)
+                throw new InvalidOperationException("OFD文档未加载或为空");
+
+            // 验证全局页面索引
+            if (pageIndex < 0 || pageIndex >= PageCount)
+                throw new ArgumentOutOfRangeException(nameof(pageIndex), "页面索引超出范围");
+
+            // 查找页面所在的文档和文档内的页面索引
+            int cumulativePages = 0;
+            int targetDocIndex = 0;
+            int targetPageIndex = pageIndex;
+
+            foreach (var doc in RootDocument.Docs)
+            {
+                int docPageCount = doc.PageDocs?.Count ?? 0;
+                if (pageIndex < cumulativePages + docPageCount)
+                {
+                    targetPageIndex = pageIndex - cumulativePages;
+                    break;
+                }
+                cumulativePages += docPageCount;
+                targetDocIndex++;
+            }
+
+            return RenderPageToBitmap(targetDocIndex, targetPageIndex);
+        }
+
         /// <summary>
         /// 渲染指定文档中的指定页面到内存位图
         /// </summary>
@@ -247,8 +284,19 @@ namespace OFDViewer.Render
                 var pageDoc = ofdDoc.PageDocs[pageIndex];
                 if (pageDoc != null && pageDoc.Page != null)
                 {
+                    // 创建渲染上下文对象，封装共性参数
+                    var renderCtxObj = new RenderContextObject
+                    {
+                        RenderContext = renderContext,
+                        OfdDocument = ofdDoc,
+                        CurrentPage = pageDoc.Page,
+                        PageIndex = pageIndex,
+                        DocumentIndex = docIndex,
+                        IsTemplate = false
+                    };
+
                     // 渲染页面内容
-                    RenderPageContent(renderContext, pageDoc.Page);
+                    RenderPageContent(renderCtxObj);
                 }
             }
             
@@ -257,49 +305,11 @@ namespace OFDViewer.Render
         }
 
         
-        /// <summary>
-        /// 渲染指定页面到内存位图（按全局页面索引）
-        /// </summary>
-        /// <param name="pageIndex">全局页面索引，默认为第1页</param>
-        /// <returns>渲染结果（PNG格式字节数组）</returns>
-        public byte[] RenderPageToBitmap(int pageIndex = 0)
-        {
-            CheckDisposed();
-            
-            if (RootDocument == null || RootDocument.Docs == null || RootDocument.Docs.Count == 0)
-                throw new InvalidOperationException("OFD文档未加载或为空");
-            
-            // 验证全局页面索引
-            if (pageIndex < 0 || pageIndex >= PageCount)
-                throw new ArgumentOutOfRangeException(nameof(pageIndex), "页面索引超出范围");
-            
-            // 查找页面所在的文档和文档内的页面索引
-            int cumulativePages = 0;
-            int targetDocIndex = 0;
-            int targetPageIndex = pageIndex;
-            
-            foreach (var doc in RootDocument.Docs)
-            {
-                int docPageCount = doc.PageDocs?.Count ?? 0;
-                if (pageIndex < cumulativePages + docPageCount)
-                {
-                    targetPageIndex = pageIndex - cumulativePages;
-                    break;
-                }
-                cumulativePages += docPageCount;
-                targetDocIndex++;
-            }
-            
-            return RenderPageToBitmap(targetDocIndex, targetPageIndex);
-        }
-        
-        /// <summary>
-        /// 渲染页面内容
-        /// 遍历页面元素并调用渲染上下文的绘制方法
-        /// </summary>
-        /// <param name="renderContext">渲染上下文</param>
-        /// <param name="page">页面对象</param>
-        /// <param name="pageIndex">页面索引</param>
+
+        #endregion
+
+        #region 页面块渲染
+
         /// <summary>
         /// 渲染页面内容，包括模版页
         /// 渲染顺序：
@@ -319,16 +329,14 @@ namespace OFDViewer.Render
         ///    ───────────
         /// 最下层
         /// </summary>
-        /// <param name="renderContext">渲染上下文</param>
-        /// <param name="page">页面对象</param>
-        #endregion
-
-        #region 页面块渲染
-
-        private void RenderPageContent(IRenderContext renderContext, Page page)
+        /// <param name="renderCtxObj">渲染上下文对象</param>
+        private void RenderPageContent(RenderContextObject renderCtxObj)
         {
-            if (page == null || page.Content == null)
+            if (renderCtxObj?.CurrentPage?.Content == null)
                 return;
+
+            var page = renderCtxObj.CurrentPage;
+            var renderContext = renderCtxObj.RenderContext;
 
             // 1. 渲染背景层（最下层）
             // 1.1 渲染 Template 背景层（最先渲染）
@@ -347,9 +355,11 @@ namespace OFDViewer.Render
                     // 渲染模版背景层
                     foreach (var layer in templatePage.Content)
                     {
+                        renderCtxObj.CurrentLayer = layer;
+                        renderCtxObj.IsTemplate = true;
                         foreach (var blockItem in layer.PageBlockItems)
                         {
-                            RenderPageBlock(renderContext, blockItem, layer, true);
+                            RenderPageBlock(renderCtxObj, blockItem);
                         }
                     }
                 }
@@ -361,9 +371,11 @@ namespace OFDViewer.Render
             {
                 if (backgroundLayer != null && backgroundLayer.PageBlockItems != null)
                 {
+                    renderCtxObj.CurrentLayer = backgroundLayer;
+                    renderCtxObj.IsTemplate = false;
                     foreach (var blockItem in backgroundLayer.PageBlockItems)
                     {
-                        RenderPageBlock(renderContext, blockItem, backgroundLayer);
+                        RenderPageBlock(renderCtxObj, blockItem);
                     }
                 }
             }
@@ -385,9 +397,11 @@ namespace OFDViewer.Render
                     // 渲染模版正文层
                     foreach (var layer in templatePage.Content)
                     {
+                        renderCtxObj.CurrentLayer = layer;
+                        renderCtxObj.IsTemplate = true;
                         foreach (var blockItem in layer.PageBlockItems)
                         {
-                            RenderPageBlock(renderContext, blockItem, layer, true);
+                            RenderPageBlock(renderCtxObj, blockItem);
                         }
                     }
                 }
@@ -399,9 +413,11 @@ namespace OFDViewer.Render
             {
                 if (contentLayer != null && contentLayer.PageBlockItems != null)
                 {
+                    renderCtxObj.CurrentLayer = contentLayer;
+                    renderCtxObj.IsTemplate = false;
                     foreach (var blockItem in contentLayer.PageBlockItems)
                     {
-                        RenderPageBlock(renderContext, blockItem, contentLayer);
+                        RenderPageBlock(renderCtxObj, blockItem);
                     }
                 }
             }
@@ -423,9 +439,11 @@ namespace OFDViewer.Render
                     // 渲染模版前景层
                     foreach (var layer in templatePage.Content)
                     {
+                        renderCtxObj.CurrentLayer = layer;
+                        renderCtxObj.IsTemplate = true;
                         foreach (var blockItem in layer.PageBlockItems)
                         {
-                            RenderPageBlock(renderContext, blockItem, layer, true);
+                            RenderPageBlock(renderCtxObj, blockItem);
                         }
                     }
                 }
@@ -437,9 +455,11 @@ namespace OFDViewer.Render
             {
                 if (foregroundLayer != null && foregroundLayer.PageBlockItems != null)
                 {
+                    renderCtxObj.CurrentLayer = foregroundLayer;
+                    renderCtxObj.IsTemplate = false;
                     foreach (var blockItem in foregroundLayer.PageBlockItems)
                     {
-                        RenderPageBlock(renderContext, blockItem, foregroundLayer);
+                        RenderPageBlock(renderCtxObj, blockItem);
                     }
                 }
             }
@@ -467,47 +487,42 @@ namespace OFDViewer.Render
         /// 渲染页面块
         /// 根据页面块类型调用相应的渲染方法
         /// </summary>
-        /// <param name="renderContext">渲染上下文</param>
+        /// <param name="renderCtxObj">渲染上下文对象</param>
         /// <param name="blockItem">页面块对象</param>
-        /// <param name="layer">图层对象</param>
-        /// <param name="isTemplate">是否为模板页</param>
-        private void RenderPageBlock(IRenderContext renderContext, object blockItem, CT_Layer layer, bool isTemplate = false)
+        private void RenderPageBlock(RenderContextObject renderCtxObj, object blockItem)
         {
-            if (renderContext == null || blockItem == null)
+            if (renderCtxObj?.RenderContext == null || blockItem == null)
                 return;
-
-            // 检查渲染上下文是否实现了相应的渲染接口
-            var graphicRenderer = renderContext as IGraphicRenderer;           
 
             // 根据页面块类型调用相应的渲染方法
             switch (blockItem)
             {
                 case Models.BaseStructure.Pages.PageBlockItems.TextObject textObj:
                     {
-                        RenderTextObject(renderContext, textObj, layer, isTemplate);
+                        RenderTextObject(renderCtxObj, textObj);
                         break;
                     }
                 case Models.BaseStructure.Pages.PageBlockItems.PathObject pathObj:
                     {
-                        RenderPathObject(renderContext, pathObj, layer, isTemplate);
+                        RenderPathObject(renderCtxObj, pathObj);
                         break;
                     }
 
                 case Models.BaseStructure.Pages.PageBlockItems.ImageObject imageObj:
                     {
-                        RenderImageObject(renderContext, imageObj, layer, isTemplate);
+                        RenderImageObject(renderCtxObj, imageObj);
                         break;
                     }
 
                 case Models.BaseStructure.Pages.PageBlockItems.CompositeObject compositeObj:
                     {
-                        RenderCompositeObject(renderContext, compositeObj, layer, isTemplate);
+                        RenderCompositeObject(renderCtxObj, compositeObj);
                         break;
                     }
 
                 case Models.BaseStructure.Pages.PageBlockItems.PageBlock pageBlock:
                     {
-                        RenderPageBlockObject(renderContext, pageBlock, layer, isTemplate);
+                        RenderPageBlockObject(renderCtxObj, pageBlock);
                         break;
                     }
                 default:
@@ -519,46 +534,48 @@ namespace OFDViewer.Render
         /// <summary>
         /// 渲染文本对象
         /// </summary>
-        /// <param name="renderContext">文本渲染器</param>
+        /// <param name="renderCtxObj">渲染上下文对象</param>
         /// <param name="textObject">文本对象</param>
         #endregion
 
         #region 文本渲染
 
-        private void RenderTextObject(IRenderContext renderContext, TextObject textObject, Models.BaseStructure.Pages.CT_Layer layer, bool isTemplate = false)
+        private void RenderTextObject(RenderContextObject renderCtxObj, TextObject textObject)
         {
-            if (renderContext == null || textObject == null)
+            if (renderCtxObj?.RenderContext == null || textObject == null)
                 return;
-                       
+
+            var renderContext = renderCtxObj.RenderContext;
+
             // 获取图元外接矩形位置（页面坐标系，毫米转换为像素）
             float boundaryX = renderContext.MillimetersToPixels((float)textObject.Boundary.X);
             float boundaryY = renderContext.MillimetersToPixels((float)textObject.Boundary.Y);
             float boundaryWidth = renderContext.MillimetersToPixels((float)textObject.Boundary.Width);
             float boundaryHeight = renderContext.MillimetersToPixels((float)textObject.Boundary.Height);
-            
+
             // 保存当前渲染状态
-            renderContext?.SaveState();
-            
+            renderContext.SaveState();
+
             // 设置裁剪区（使用图元的外接矩形作为默认裁剪区）
-            renderContext?.SetClipRect(boundaryX, boundaryY, boundaryWidth, boundaryHeight);
+            renderContext.SetClipRect(boundaryX, boundaryY, boundaryWidth, boundaryHeight);
 
             // 转换文本样式
-            var textStyle = ConvertToTextStyle(textObject, layer, renderContext, isTemplate);
-            
+            var textStyle = ConvertToTextStyle(renderCtxObj, textObject);
+
             // 判断处理情况：
             // 1. 一个TextObject有一个或多个TextCode，但没有CGTransform - 直接按照多个TextCode处理
             // 2. 一个TextObject有一个TextCode，有一个或多个CGTransform - 使用CGTransform处理
             // 3. 一个TextObject有多个TextCode，并且有一个或多个CGTransform - 不处理CGTransform，直接按照多个TextCode处理
             bool hasCGTransforms = textObject.CGTransforms != null && textObject.CGTransforms.Count > 0;
             bool hasMultipleTextCodes = textObject.TextCodes != null && textObject.TextCodes.Count > 1;
-            
+
             // 情况2：只有一个TextCode且有CGTransform，使用CGTransform处理
             if (!hasMultipleTextCodes && textObject.TextCodes.Count == 1 && hasCGTransforms)
             {
                 var textCode = textObject.TextCodes[0];
                 if (!string.IsNullOrEmpty(textCode.Text))
                 {
-                    RenderSingleTextCodeWithCGTransforms(renderContext, textObject, textCode, boundaryX, boundaryY, textStyle);
+                    RenderSingleTextCodeWithCGTransforms(renderCtxObj, textObject, textCode, boundaryX, boundaryY, textStyle);
                 }
             }
             else
@@ -568,31 +585,31 @@ namespace OFDViewer.Render
                 {
                     if (string.IsNullOrEmpty(textCode.Text))
                         continue;
-                    
-                    RenderTextCodeWithoutCGTransforms(renderContext, textCode, boundaryX, boundaryY, textStyle);
+
+                    RenderTextCodeWithoutCGTransforms(renderCtxObj, textCode, boundaryX, boundaryY, textStyle);
                 }
             }
-            
+
             // 恢复渲染状态
-            renderContext?.RestoreState();
+            renderContext.RestoreState();
         }
 
         /// <summary>
         /// 渲染单个TextCode带字符变换的文本（情况2）
         /// 优化：使用批量绘制提高性能，确保编码和字型一一对应，不要遗漏编码
         /// </summary>
-        /// <param name="textRenderer">文本渲染器</param>
+        /// <param name="renderCtxObj">渲染上下文对象</param>
         /// <param name="textObject">文本对象</param>
         /// <param name="textCode">文本代码</param>
         /// <param name="boundaryX">边界X坐标</param>
         /// <param name="boundaryY">边界Y坐标</param>
         /// <param name="textStyle">文本样式</param>
-        /// <param name="renderContext">渲染上下文</param>
-        private void RenderSingleTextCodeWithCGTransforms(IRenderContext renderContext, TextObject textObject, TextCode textCode, float boundaryX, float boundaryY, TextStyle textStyle)
+        private void RenderSingleTextCodeWithCGTransforms(RenderContextObject renderCtxObj, TextObject textObject, TextCode textCode, float boundaryX, float boundaryY, TextStyle textStyle)
         {
-            if (renderContext == null || textObject == null)
+            if (renderCtxObj?.RenderContext == null || textObject == null)
                 return;
 
+            var renderContext = renderCtxObj.RenderContext;
             var textRenderer = renderContext as ITextRenderer;
             if (textRenderer == null)
                 return;
@@ -736,17 +753,17 @@ namespace OFDViewer.Render
         /// 渲染TextCode不带字符变换的文本（情况1和3）
         /// 优化：使用批量绘制提高性能
         /// </summary>
-        /// <param name="textRenderer">文本渲染器</param>
+        /// <param name="renderCtxObj">渲染上下文对象</param>
         /// <param name="textCode">文本代码</param>
         /// <param name="boundaryX">边界X坐标</param>
         /// <param name="boundaryY">边界Y坐标</param>
         /// <param name="textStyle">文本样式</param>
-        /// <param name="renderContext">渲染上下文</param>
-        private void RenderTextCodeWithoutCGTransforms(IRenderContext renderContext, TextCode textCode, float boundaryX, float boundaryY, TextStyle textStyle)
+        private void RenderTextCodeWithoutCGTransforms(RenderContextObject renderCtxObj, TextCode textCode, float boundaryX, float boundaryY, TextStyle textStyle)
         {
-            if (renderContext == null || textCode == null)
+            if (renderCtxObj?.RenderContext == null || textCode == null)
                 return;
 
+            var renderContext = renderCtxObj.RenderContext;
             var textRenderer = renderContext as ITextRenderer;
             if (textRenderer == null)
                 return;
@@ -815,11 +832,18 @@ namespace OFDViewer.Render
         /// <param name="textObject">OFD文本对象</param>
         /// <param name="renderContext">渲染上下文</param>
         /// <returns>文本样式</returns>
-        private TextStyle ConvertToTextStyle(CT_Text textObject, Models.BaseStructure.Pages.CT_Layer layer, IRenderContext renderContext, bool isTemplate = false)
+        private TextStyle ConvertToTextStyle(RenderContextObject renderCtxObj, CT_Text textObject)
         {
+            if (renderCtxObj?.RenderContext == null || textObject == null)
+                return null;
+
+            CT_Layer layer = renderCtxObj.CurrentLayer;
+            IRenderContext renderContext = renderCtxObj.RenderContext;
+            bool isTemplate = renderCtxObj.IsTemplate;
+
             // 创建缓存键（基于字体ID和文本属性）
             string cacheKey = $"{textObject.FontRefID}_{textObject.Size}_{textObject.Weight}_{textObject.Italic}_{textObject.HScale}";
-            
+
             // 检查缓存
             lock (_styleCacheLock)
             {
@@ -835,7 +859,7 @@ namespace OFDViewer.Render
             // 获取绘制参数（按照就近原则）
             var drawParam = GetDrawParam(textObject, layer, renderContext, isTemplate);
 
-            OFDFont oFDFont = isTemplate ? renderContext.ResourceManager.GetTemplateResource<OFDFont>(textObject.FontRefID) 
+            OFDFont oFDFont = isTemplate ? renderContext.ResourceManager.GetTemplateResource<OFDFont>(textObject.FontRefID)
                 : renderContext.ResourceManager.GetResource<OFDFont>(textObject.FontRefID);
             if (oFDFont != null)
             {
@@ -844,21 +868,21 @@ namespace OFDViewer.Render
                 // 字体名称（使用更通用的中文字体，确保能正确显示中文和英文）
                 style.FontFamily = oFDFont.FontName ?? oFDFont.FamilyName ?? "宋体";
             }
-            
+
             // 字号转换：使用SkiaRenderContext的只读属性（避免重复计算除法）
             var skiaRenderContext = renderContext as SkiaRenderContext;
             float dpiScaleFactor = skiaRenderContext?.MmToPixel ?? (_renderConfig.Dpi / 25.4f);
             style.FontSize = (float)(textObject.Size * dpiScaleFactor);
-            
+
             // 字体粗细
             style.FontWeight = textObject.Weight;
-            
+
             // 是否斜体
             style.Italic = textObject.Italic;
-            
+
             // 水平缩放比例
             style.HScale = (float)textObject.HScale;
-            
+
             // 填充颜色（按照就近原则：图元属性 > 图元DrawParam > 图层DrawParam > 默认黑色）
             if (textObject.FillColor != null)
             {
@@ -889,7 +913,7 @@ namespace OFDViewer.Render
             {
                 style.StrokeColor = 0x00000000;
             }
-            
+
             // 透明度（使用文本对象属性，默认完全不透明）
             style.Alpha = 255;
 
@@ -901,7 +925,7 @@ namespace OFDViewer.Render
                     _textStyleCache[cacheKey] = style;
                 }
             }
-            
+
             return style;
         }
 
@@ -917,16 +941,20 @@ namespace OFDViewer.Render
         /// <summary>
         /// 渲染路径对象
         /// </summary>
-        /// <param name="pathRenderer">路径渲染器</param>
+        /// <param name="renderCtxObj">渲染上下文对象</param>
         /// <param name="pathObj">路径对象</param>
-        private void RenderPathObject(IRenderContext renderContext, object pathObj, CT_Layer layer, bool isTemplate = false)
+        private void RenderPathObject(RenderContextObject renderCtxObj, object pathObj)
         {
-            if (renderContext == null || pathObj == null)
+            if (renderCtxObj?.RenderContext == null || pathObj == null)
                 return;
+
+            var renderContext = renderCtxObj.RenderContext;
+            var layer = renderCtxObj.CurrentLayer;
+            var isTemplate = renderCtxObj.IsTemplate;
 
             // 获取渲染上下文
             var pathRenderer = renderContext as IPathRenderer;
-            if (renderContext == null)
+            if (pathRenderer == null)
                 return;
 
             var pathObject = pathObj as PathObject;
@@ -945,19 +973,19 @@ namespace OFDViewer.Render
             float boundaryHeight = renderContext.MillimetersToPixels((float)pathObject.Boundary.Height);
 
             // 转换图形样式
-            var graphStyle = ConvertToGraphStyle(pathObject, layer, renderContext, isTemplate);
+            var graphStyle = ConvertToGraphStyle(renderCtxObj, pathObject);
 
             // 保存当前渲染状态
-            renderContext?.SaveState();
-             
+            renderContext.SaveState();
+
             // 绘制边界矩形（用于调试，实际渲染时可以注释掉）
             // ((SkiaRenderContext)renderContext).DrawRectangle(boundaryX, boundaryY, boundaryWidth, boundaryHeight, graphStyle);
             // 设置裁剪区（在变换后的坐标系中，使用单位矩形作为裁剪区）
-            renderContext?.SetClipRect(boundaryX, boundaryY, boundaryWidth, boundaryHeight);
+            renderContext.SetClipRect(boundaryX, boundaryY, boundaryWidth, boundaryHeight);
 
             // 应用CTM变换矩阵（使用SKMatrix进行2D仿射变换）
             if (pathObject.CTM != null && pathObject.CTM.Count >= 6)
-            {               
+            {
                 // 先通过 Boundary 平移到页面空间，再通过 CTM 变换到对象空间
                 // Skia 中矩阵变换是 "反向作用"，因此代码中先平移再乘 CTM，效果等价于 OFD 的先 CTM 再平移
                 renderContext.Translate(boundaryX, boundaryY);
@@ -991,7 +1019,7 @@ namespace OFDViewer.Render
             }
 
             // 恢复渲染状态
-            renderContext?.RestoreState();
+            renderContext.RestoreState();
         }
 
         /// <summary>
@@ -1102,8 +1130,15 @@ namespace OFDViewer.Render
         /// <param name="renderContext">渲染上下文</param>
         /// <param name="isTemplate">是否为模板页</param>
         /// <returns>图形样式</returns>
-        private GraphStyle ConvertToGraphStyle(CT_Path pathObject, CT_Layer layer, IRenderContext renderContext, bool isTemplate = false)
+        private GraphStyle ConvertToGraphStyle(RenderContextObject renderCtxObj, CT_Path pathObject)
         {
+            if (renderCtxObj?.RenderContext == null || pathObject == null)
+                return null;
+
+            CT_Layer layer = renderCtxObj.CurrentLayer;
+            IRenderContext renderContext= renderCtxObj.RenderContext;
+            bool isTemplate = renderCtxObj.IsTemplate;
+
             var style = new GraphStyle();
 
             // 获取绘制参数（按照就近原则）
@@ -1195,17 +1230,20 @@ namespace OFDViewer.Render
         /// <summary>
         /// 渲染图像对象
         /// </summary>
-        /// <param name="imageRenderer">图像渲染器</param>
+        /// <param name="renderCtxObj">渲染上下文对象</param>
         /// <param name="imageObj">图像对象</param>
-        /// <param name="pageIndex">页面索引</param>
-        private void RenderImageObject(IRenderContext renderContext, object imageObj, CT_Layer layer, bool isTemplate = false)
+        private void RenderImageObject(RenderContextObject renderCtxObj, object imageObj)
         {
-            if (renderContext == null || imageObj == null)
+            if (renderCtxObj?.RenderContext == null || imageObj == null)
                 return;
+
+            var renderContext = renderCtxObj.RenderContext;
+            var layer = renderCtxObj.CurrentLayer;
+            var isTemplate = renderCtxObj.IsTemplate;
 
             // 获取渲染上下文
             var imageRenderer = renderContext as IImageRenderer;
-            if (renderContext == null)
+            if (imageRenderer == null)
                 return;
 
             var imageObject = imageObj as ImageObject;
@@ -1213,7 +1251,7 @@ namespace OFDViewer.Render
                 return;
 
             // 转换图像样式
-            var imageStyle = ConvertToImageStyle(imageObject, layer, renderContext, isTemplate);
+            var imageStyle = ConvertToImageStyle(renderCtxObj, imageObject);
 
             // 获取图像位置和大小（OFD坐标，单位：毫米）
             // 将毫米转换为像素
@@ -1223,10 +1261,10 @@ namespace OFDViewer.Render
             float height = renderContext.MillimetersToPixels((float)imageObject.Boundary.Height);
 
             // 保存当前渲染状态
-            renderContext?.SaveState();
+            renderContext.SaveState();
 
             // 设置裁剪区（使用图元的外接矩形作为默认裁剪区）
-            renderContext?.SetClipRect(boundaryX, boundaryY, width, height);
+            renderContext.SetClipRect(boundaryX, boundaryY, width, height);
 
             // 应用CTM变换矩阵（使用SKMatrix进行2D仿射变换）
             if (imageObject.CTM != null && imageObject.CTM.Count >= 6)
@@ -1262,11 +1300,7 @@ namespace OFDViewer.Render
                         imageData = ConvertJB2ToPNG(imageData);
                     }
                     else
-                    {
-                        // 其他格式，直接使用原始数据
-                        // 转换为 PNG 格式
-                        imageData = ConvertJB2ToPNG(imageData);
-                    }
+                    { }
                 }
             }
 
@@ -1274,7 +1308,7 @@ namespace OFDViewer.Render
             if (imageData == null || imageData.Length == 0)
             {
                 // 恢复渲染状态
-                renderContext?.RestoreState();
+                renderContext.RestoreState();
                 return;
             }
 
@@ -1290,7 +1324,7 @@ namespace OFDViewer.Render
             }
 
             // 恢复渲染状态
-            renderContext?.RestoreState();
+            renderContext.RestoreState();
         }
 
         /// <summary>
@@ -1301,8 +1335,14 @@ namespace OFDViewer.Render
         /// <param name="renderContext">渲染上下文</param>
         /// <param name="isTemplate">是否为模板页</param>
         /// <returns>图像样式</returns>
-        private ImageStyle ConvertToImageStyle(Models.Image.CT_Image imageObject, Models.BaseStructure.Pages.CT_Layer layer, IRenderContext renderContext, bool isTemplate = false)
+        private ImageStyle ConvertToImageStyle(RenderContextObject renderCtxObj, CT_Image imageObject)
         {
+            if (renderCtxObj?.RenderContext == null || imageObject == null)
+                return null;
+
+            IRenderContext renderContext = renderCtxObj.RenderContext; 
+            bool isTemplate = renderCtxObj.IsTemplate;
+
             var style = new ImageStyle
             {
                 // 图像插值模式
@@ -1327,15 +1367,18 @@ namespace OFDViewer.Render
         /// <summary>
         /// 渲染复合对象
         /// </summary>
-        /// <param name="renderContext">渲染上下文</param>
+        /// <param name="renderCtxObj">渲染上下文对象</param>
         /// <param name="compositeObj">复合对象</param>
-        /// <param name="pageIndex">页面索引</param>
-        private void RenderCompositeObject(IRenderContext renderContext, object compositeObj, Models.BaseStructure.Pages.CT_Layer layer, bool isTemplate = false)
+        private void RenderCompositeObject(RenderContextObject renderCtxObj, object compositeObj)
         {
-            if (renderContext == null || compositeObj == null)
+            if (renderCtxObj?.RenderContext == null || compositeObj == null)
                 return;
 
-            var compositeObject = compositeObj as Models.BaseStructure.Pages.PageBlockItems.CompositeObject;
+            var renderContext = renderCtxObj.RenderContext;
+            var layer = renderCtxObj.CurrentLayer;
+            var isTemplate = renderCtxObj.IsTemplate;
+
+            var compositeObject = compositeObj as CompositeObject;
             if (compositeObject == null)
                 return;
 
@@ -1364,7 +1407,7 @@ namespace OFDViewer.Render
                     {
                         foreach (var childBlock in vectorGraphic.Content.PageBlockItems)
                         {
-                            RenderPageBlock(renderContext, childBlock, layer, isTemplate);
+                            RenderPageBlock(renderCtxObj, childBlock);
                         }
                     }
 
@@ -1377,15 +1420,18 @@ namespace OFDViewer.Render
         /// <summary>
         /// 渲染页面块对象
         /// </summary>
-        /// <param name="renderContext">渲染上下文</param>
+        /// <param name="renderCtxObj">渲染上下文对象</param>
         /// <param name="pageBlock">页面块对象</param>
-        /// <param name="pageIndex">页面索引</param>
-        private void RenderPageBlockObject(IRenderContext renderContext, object pageBlock, Models.BaseStructure.Pages.CT_Layer layer, bool isTemplate = false)
+        private void RenderPageBlockObject(RenderContextObject renderCtxObj, object pageBlock)
         {
-            if (renderContext == null || pageBlock == null)
+            if (renderCtxObj?.RenderContext == null || pageBlock == null)
                 return;
 
-            var pageBlockObj = pageBlock as Models.BaseStructure.Pages.PageBlockItems.PageBlock;
+            var renderContext = renderCtxObj.RenderContext;
+            var layer = renderCtxObj.CurrentLayer;
+            var isTemplate = renderCtxObj.IsTemplate;
+
+            var pageBlockObj = pageBlock as PageBlock;
             if (pageBlockObj == null)
                 return;
 
@@ -1397,7 +1443,7 @@ namespace OFDViewer.Render
             {
                 foreach (var childBlock in pageBlockObj.PageBlockItems)
                 {
-                    RenderPageBlock(renderContext, childBlock, layer, isTemplate);
+                    RenderPageBlock(renderCtxObj, childBlock);
                 }
             }
 
@@ -1416,7 +1462,7 @@ namespace OFDViewer.Render
         /// <param name="renderContext">渲染上下文</param>
         /// <param name="isTemplate">是否为模板页</param>
         /// <returns>ColorARGB颜色值</returns>
-        private ColorARGB ConvertToARGB(CT_Color ofdColor, IRenderContext renderContext = null, bool isTemplate = false)
+        private ColorARGB ConvertToARGB(CT_Color ofdColor, IRenderContext renderContext, bool isTemplate = false)
         {
             // 默认颜色为黑色
             if (ofdColor == null)
