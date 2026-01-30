@@ -9,7 +9,7 @@ namespace OFDViewer.Render.DataModels
         /// <summary>
         /// 颜色（ARGB格式）
         /// </summary>
-        public uint Color { get; set; } = 0xFF000000; // 默认黑色
+        public ColorARGB Color { get; set; } = ColorARGB.Black; // 默认黑色
 
         /// <summary>
         /// 透明度（0-255，0表示完全透明，255表示完全不透明）
@@ -37,7 +37,7 @@ namespace OFDViewer.Render.DataModels
         /// <summary>
         /// 描边颜色（ARGB格式）
         /// </summary>
-        public uint StrokeColor { get; set; } = 0xFF000000; // 默认黑色
+        public ColorARGB StrokeColor { get; set; } = ColorARGB.Black; // 默认黑色
 
         /// <summary>
         /// 描边透明度
@@ -120,7 +120,7 @@ namespace OFDViewer.Render.DataModels
         /// 描边颜色（ARGB格式）
         /// 默认透明
         /// </summary>
-        public uint StrokeColor { get; set; } = 255;
+        public ColorARGB StrokeColor { get; set; } = ColorARGB.Transparent;
 
     }
 

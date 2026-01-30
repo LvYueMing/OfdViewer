@@ -6,6 +6,10 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DefineConstants>$(DefineConstants);DEBUG_SAVE</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="JBig2Decoder.NETStandard" Version="1.5.2" />
     <PackageReference Include="SkiaSharp" Version="3.119.1" />

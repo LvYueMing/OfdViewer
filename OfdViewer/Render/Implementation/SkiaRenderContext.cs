@@ -359,7 +359,9 @@ namespace OFDViewer.Render.Implementation
 
             using (var ms = new MemoryStream())
             {
-                _bitmap.Encode(ms, SKEncodedImageFormat.Png, 100);
+                //_bitmap.Encode(ms, SKEncodedImageFormat.Png, 100);
+                _bitmap.Encode(ms, SKEncodedImageFormat.Bmp, 100);
+                //_bitmap.Encode(ms, SKEncodedImageFormat.Webp, 100);
                 var result = ms.ToArray();
 
                 // 调试：仅在调试环境下保存渲染结果到本地文件，查看图片质量
@@ -1150,21 +1152,16 @@ namespace OFDViewer.Render.Implementation
         /// <param name="color">ARGB颜色值</param>
         /// <param name="alpha">透明度</param>
         /// <returns>SKColor对象</returns>
-        private SKColor ConvertToSKColor(uint color, byte alpha)
+        private SKColor ConvertToSKColor(ColorARGB color, byte alpha)
         {
-            byte a = (byte)((color >> 24) & 0xFF);
-            byte r = (byte)((color >> 16) & 0xFF);
-            byte g = (byte)((color >> 8) & 0xFF);
-            byte b = (byte)(color & 0xFF);
-
             // 使用传入的alpha值（如果alpha为255则使用颜色中的alpha）
             if (alpha == 255)
             {
-                return new SKColor(r, g, b, a);
+                return new SKColor(color.R, color.G, color.B, color.A);
             }
             else
             {
-                return new SKColor(r, g, b, alpha);
+                return new SKColor(color.R, color.G, color.B, alpha);
             }
         }
 

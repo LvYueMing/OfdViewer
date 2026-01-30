@@ -1410,17 +1410,17 @@ namespace OFDViewer.Render
         #region 颜色处理
 
         /// <summary>
-        /// 将OFD颜色转换为ARGB格式
+        /// 将OFD颜色转换为ColorARGB格式
         /// </summary>
         /// <param name="ofdColor">OFD颜色对象</param>
         /// <param name="renderContext">渲染上下文</param>
         /// <param name="isTemplate">是否为模板页</param>
-        /// <returns>ARGB格式颜色值</returns>
-        private uint ConvertToARGB(CT_Color ofdColor, IRenderContext renderContext = null, bool isTemplate = false)
+        /// <returns>ColorARGB颜色值</returns>
+        private ColorARGB ConvertToARGB(CT_Color ofdColor, IRenderContext renderContext = null, bool isTemplate = false)
         {
             // 默认颜色为黑色
             if (ofdColor == null)
-                return 0xFF000000;
+                return ColorARGB.Black;
             
             // 获取透明度（0-255）
             byte alpha = (byte)(ofdColor.Alpha >= 0 && ofdColor.Alpha <= 255 ? ofdColor.Alpha : 255);
@@ -1434,7 +1434,7 @@ namespace OFDViewer.Render
             {
                 // 如果没有颜色值，使用黑色
                 // todo:此属性不出现时, 应采用Index属性从颜色空间的调色板中的取值。 当二者都不出现时, 该颜色各通道的值全部为0
-                return (uint)((uint)alpha << 24 | 0x000000);
+                return new ColorARGB(alpha, 0, 0, 0);
             }
             
             // 根据颜色空间类型转换颜色
@@ -1472,7 +1472,7 @@ namespace OFDViewer.Render
                     break;
             }
             
-            return (uint)((uint)alpha << 24 | ((uint)r << 16) | ((uint)g << 8) | b);
+            return new ColorARGB(alpha, r, g, b);
         }
         
         /// <summary>
