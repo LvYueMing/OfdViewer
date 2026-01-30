@@ -1,6 +1,8 @@
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Forms;
+using JBig2Decoder.NETStandard;
 using SkiaSharp;
 
 namespace SkiaSharpExperiment;
@@ -48,8 +50,9 @@ public partial class MainForm : Form
         //DrawPaths();
         //DrawImages();
 
-       //DrawPaths1();
-        DrawBmpImage();
+        //DrawPaths1();
+        //DrawBmpImage();
+        ConvertJB2ToPNG();
 
         _surface.Canvas.Flush();
         
@@ -342,6 +345,67 @@ public partial class MainForm : Form
         _canvas.DrawBitmap(bitmap, new SKRect(0, 0, 1, 1));
 
         _canvas.Restore();
+    }
+
+
+    private void ConvertJB2ToPNG()
+    {
+        byte[] imageData = File.ReadAllBytes(@"d:\MySoft\GitHub\OfdViewer\OFD-File\Res\image_80.jb2");
+
+        try
+        {
+            // 使用JBig2Decoder.NETStandard库解析JBIG2数据
+            var jbig = new JBIG2StreamDecoder();
+            int width = 0;
+            int height = 0;
+            // the resulting 'byte[] rgbBuffer' is a RGB array
+            byte[] rgbBuffer = jbig.DecodeJBIG2(imageData, out width, out height);
+            int i = jbig.GetNumberOfPages();
+
+            MessageBox.Show($"rgbBuffer.Length({rgbBuffer.Length})  = width * height * 3 ({width * height * 3}):({rgbBuffer.Length == width * height * 3})" );
+           
+           //再此处添加转换代码
+           // 使用System.Drawing.Bitmap创建位图
+           using var systemBitmap = new System.Drawing.Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+           
+           // 锁定位图数据
+           var bmpData = systemBitmap.LockBits(
+               new System.Drawing.Rectangle(0, 0, width, height),
+               System.Drawing.Imaging.ImageLockMode.WriteOnly,
+               System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+           
+           try
+           {
+               // 将RGB数据拷贝到位图
+               System.Runtime.InteropServices.Marshal.Copy(rgbBuffer, 0, bmpData.Scan0, rgbBuffer.Length);
+           }
+           finally
+           {
+               // 解锁位图数据
+               systemBitmap.UnlockBits(bmpData);
+           }
+           
+           // 保存为PNG格式
+           systemBitmap.Save(@"d:\MySoft\GitHub\OfdViewer\OFD-File\Res\image_80.png", System.Drawing.Imaging.ImageFormat.Png);
+           
+           // 在SkiaSharp画布上绘制转换后的图片
+           if (_canvas != null)
+           {
+               // 将System.Drawing.Bitmap转换为SkiaSharp位图
+               using var skiaBitmap = SKBitmap.Decode(@"d:\MySoft\GitHub\OfdViewer\OFD-File\Res\image_80.png");
+               if (skiaBitmap != null)
+               {
+                   _canvas.DrawBitmap(skiaBitmap, 10, 10);
+               }
+           }
+           
+
+        }
+        catch (Exception ex)
+        {
+            // 记录错误并返回原始数据，避免整个渲染过程失败
+            System.Diagnostics.Debug.WriteLine($"JB2转换失败: {ex.Message}");
+        }
     }
 
     /// <summary>

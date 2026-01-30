@@ -363,7 +363,7 @@ namespace OFDViewer.Render.Implementation
                 var result = ms.ToArray();
 
                 // 调试：仅在调试环境下保存渲染结果到本地文件，查看图片质量
-#if DEBUG
+#if DEBUG_SAVE
                 try
                 {
                     string debugDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "OFD_Debug");

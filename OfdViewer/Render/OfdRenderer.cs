@@ -2122,20 +2122,36 @@ namespace OFDViewer.Render
                 // the resulting 'byte[] rgbBuffer' is a RGB array
                 byte[] rgbBuffer = jbig.DecodeJBIG2(imageData, out width, out height);
 
+                // 使用System.Drawing.Bitmap创建位图
+                using var bitmap = new System.Drawing.Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
 
-                // Then the bytes can be converted to an image using your favorite image processing library.
-                // To convert to a png using ImageSharp:
-                // 创建SkiaSharp位图
-                using var bitmap = new SkiaSharp.SKBitmap(width, height,
-                    SkiaSharp.SKColorType.Rgb888x, SkiaSharp.SKAlphaType.Opaque);
+                // 锁定位图数据
+                var bmpData = bitmap.LockBits(new System.Drawing.Rectangle(0, 0, width, height),
+                    System.Drawing.Imaging.ImageLockMode.WriteOnly,
+                    System.Drawing.Imaging.PixelFormat.Format24bppRgb);
 
-                // 将RGBA数据拷贝到位图
-                IntPtr pixels = bitmap.GetPixels();
-                System.Runtime.InteropServices.Marshal.Copy(rgbBuffer, 0, pixels, rgbBuffer.Length);
+                try
+                {
+                    // 将RGB数据拷贝到位图
+                    System.Runtime.InteropServices.Marshal.Copy(rgbBuffer, 0, bmpData.Scan0, rgbBuffer.Length);
+                }
+                finally
+                {
+                    // 解锁位图数据
+                    bitmap.UnlockBits(bmpData);
+                }
+
+                // 创建SkiaSharp位图 SKColorType.Rgb888x 每个像素占用 4 字节 (R,G,B,X)，而rgbBuffer 是 3 字节/像素 的 RGB 数据
+                //using var bitmap = new SkiaSharp.SKBitmap(width, height,
+                //    SkiaSharp.SKColorType.Rgb888x, SkiaSharp.SKAlphaType.Opaque);
+
+                //// 将RGBA数据拷贝到位图
+                //IntPtr pixels = bitmap.GetPixels();
+                //System.Runtime.InteropServices.Marshal.Copy(rgbBuffer, 0, pixels, rgbBuffer.Length);
 
                 // 编码为PNG格式
                 using var pngStream = new MemoryStream();
-                bitmap.Encode(pngStream, SkiaSharp.SKEncodedImageFormat.Png, 100);
+                bitmap.Save(pngStream, System.Drawing.Imaging.ImageFormat.Png);
 
                 // 返回PNG数据
                 return pngStream.ToArray();
