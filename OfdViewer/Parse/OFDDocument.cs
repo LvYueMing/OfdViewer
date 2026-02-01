@@ -1,11 +1,14 @@
 using System.Text.RegularExpressions;
 using System.Xml.Serialization;
 using OFDViewer.Models.Annotation;
+using OFDViewer.Models.Attachment;
 using OFDViewer.Models.BaseStructure.DocumentRoot;
 using OFDViewer.Models.BaseStructure.Pages;
 using OFDViewer.Models.BaseStructure.Resources;
 using OFDViewer.Models.BaseStructure.Resources.ResItems;
 using OFDViewer.Models.BaseType;
+using OFDViewer.Models.CustomTag;
+using OFDViewer.Models.Extension;
 using OFDViewer.Models.Signature;
 
 namespace OFDViewer.Parse
@@ -92,6 +95,21 @@ namespace OFDViewer.Parse
         /// 页面注释对象集合（对应Annot_N目录，一个文档可包含多个页面注释）
         /// </summary>
         public List<PageAnnotDocument> PageAnnotDocs { get; set; }
+
+        /// <summary>
+        /// 自定义标引列表对象（对应Tags/CustomTags.xml）
+        /// </summary>
+        public CustomTags CustomTags { get; set; }
+
+        /// <summary>
+        /// 扩展信息列表对象（对应Exts/Extensions.xml）
+        /// </summary>
+        public Extensions Extensions { get; set; }
+
+        /// <summary>
+        /// 附件列表对象（对应Attachs/Attachments.xml）
+        /// </summary>
+        public Attachments Attachments { get; set; }
 
         /// <summary>
         /// 文档级资源文件集合（存储Res目录下的字体、图片等资源）
@@ -284,6 +302,159 @@ namespace OFDViewer.Parse
                 return Path.Combine(DocDirectoryPath, "Annots");
             }
             set => _annotsDirectoryPath = value;
+        }
+
+        private string _customTagsFilePath;
+        /// <summary>
+        /// 获取自定义标引列表文件路径
+        /// Doc_0/Tags/CustomTags.xml
+        /// </summary>
+        public string CustomTagsFilePath
+        {
+            get
+            {
+                // 优先返回已设置的路径
+                if (!string.IsNullOrEmpty(_customTagsFilePath))
+                    return _customTagsFilePath;
+
+                // 解析时：从 Document.CustomTags 读取
+                if (Document?.CustomTags != null)
+                    return Document.CustomTags.GetAbsolutePath(DocDirectoryPath).Path;
+
+                // 新建时：使用默认路径
+                if (string.IsNullOrEmpty(DocDirectoryPath))
+                    return Constants.GetFilePath(Constants.Tags_CustomTagsFile, DocIndex);
+
+                return Path.Combine(TagsDirectoryPath, "CustomTags.xml");
+            }
+            set => _customTagsFilePath = value;
+        }
+
+        private string _tagsDirectoryPath;
+        /// <summary>
+        /// 自定义标引对象集合目录(Doc_{0}/Tags)
+        /// </summary>
+        public string TagsDirectoryPath
+        {
+            get
+            {
+                // 优先返回已设置的目录路径
+                if (!string.IsNullOrEmpty(_tagsDirectoryPath))
+                    return _tagsDirectoryPath;
+
+                // 解析时：从 CustomTagsFilePath 推断目录
+                if (!string.IsNullOrEmpty(CustomTagsFilePath))
+                    return Path.GetDirectoryName(CustomTagsFilePath) ?? string.Empty;
+
+                // 新建时：使用默认路径
+                if (string.IsNullOrEmpty(DocDirectoryPath))
+                    return Constants.GetFilePath(Constants.Tags_BaseDirectory, DocIndex);
+
+                return Path.Combine(DocDirectoryPath, "Tags");
+            }
+            set => _tagsDirectoryPath = value;
+        }
+
+        private string _extensionsFilePath;
+        /// <summary>
+        /// 获取扩展信息列表文件路径
+        /// Doc_0/Exts/Extensions.xml
+        /// </summary>
+        public string ExtensionsFilePath
+        {
+            get
+            {
+                // 优先返回已设置的路径
+                if (!string.IsNullOrEmpty(_extensionsFilePath))
+                    return _extensionsFilePath;
+
+                // 解析时：从 Document.Extensions 读取
+                if (Document?.Extensions != null)
+                    return Document.Extensions.GetAbsolutePath(DocDirectoryPath).Path;
+
+                // 新建时：使用默认路径
+                if (string.IsNullOrEmpty(DocDirectoryPath))
+                    return Constants.GetFilePath(Constants.Exts_ExtensionsFile, DocIndex);
+
+                return Path.Combine(ExtsDirectoryPath, "Extensions.xml");
+            }
+            set => _extensionsFilePath = value;
+        }
+
+        private string _extsDirectoryPath;
+        /// <summary>
+        /// 扩展信息对象集合目录(Doc_{0}/Exts)
+        /// </summary>
+        public string ExtsDirectoryPath
+        {
+            get
+            {
+                // 优先返回已设置的目录路径
+                if (!string.IsNullOrEmpty(_extsDirectoryPath))
+                    return _extsDirectoryPath;
+
+                // 解析时：从 ExtensionsFilePath 推断目录
+                if (!string.IsNullOrEmpty(ExtensionsFilePath))
+                    return Path.GetDirectoryName(ExtensionsFilePath) ?? string.Empty;
+
+                // 新建时：使用默认路径
+                if (string.IsNullOrEmpty(DocDirectoryPath))
+                    return Constants.GetFilePath(Constants.Exts_BaseDirectory, DocIndex);
+
+                return Path.Combine(DocDirectoryPath, "Exts");
+            }
+            set => _extsDirectoryPath = value;
+        }
+
+        private string _attachmentsFilePath;
+        /// <summary>
+        /// 获取附件列表文件路径
+        /// Doc_0/Attachs/Attachments.xml
+        /// </summary>
+        public string AttachmentsFilePath
+        {
+            get
+            {
+                // 优先返回已设置的路径
+                if (!string.IsNullOrEmpty(_attachmentsFilePath))
+                    return _attachmentsFilePath;
+
+                // 解析时：从 Document.Attachments 读取
+                if (Document?.Attachments != null)
+                    return Document.Attachments.GetAbsolutePath(DocDirectoryPath).Path;
+
+                // 新建时：使用默认路径
+                if (string.IsNullOrEmpty(DocDirectoryPath))
+                    return Constants.GetFilePath(Constants.Attachs_AttachmentsFile, DocIndex);
+
+                return Path.Combine(AttachsDirectoryPath, "Attachments.xml");
+            }
+            set => _attachmentsFilePath = value;
+        }
+
+        private string _attachsDirectoryPath;
+        /// <summary>
+        /// 附件对象集合目录(Doc_{0}/Attachs)
+        /// </summary>
+        public string AttachsDirectoryPath
+        {
+            get
+            {
+                // 优先返回已设置的目录路径
+                if (!string.IsNullOrEmpty(_attachsDirectoryPath))
+                    return _attachsDirectoryPath;
+
+                // 解析时：从 AttachmentsFilePath 推断目录
+                if (!string.IsNullOrEmpty(AttachmentsFilePath))
+                    return Path.GetDirectoryName(AttachmentsFilePath) ?? string.Empty;
+
+                // 新建时：使用默认路径
+                if (string.IsNullOrEmpty(DocDirectoryPath))
+                    return Constants.GetFilePath(Constants.Attachs_BaseDirectory, DocIndex);
+
+                return Path.Combine(DocDirectoryPath, "Attachs");
+            }
+            set => _attachsDirectoryPath = value;
         }
 
         private string _resDirectoryPath;

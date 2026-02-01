@@ -104,6 +104,51 @@ namespace OFDViewer
 
         #endregion
 
+        #region 自定义标引（Tags）层级
+        /// <summary>
+        /// 自定义标引总目录（对应某个Doc_N目录下）
+        /// 相对根目录路径：Doc_{0}/Tags
+        /// </summary>
+        public const string Tags_BaseDirectory = "Doc_{0}/Tags";
+
+        /// <summary>
+        /// 自定义标引列表文件（对应某个Doc_N/Tags目录下）
+        /// 相对根目录路径：Doc_{0}/Tags/CustomTags.xml
+        /// </summary>
+        public const string Tags_CustomTagsFile = "Doc_{0}/Tags/CustomTags.xml";
+
+        #endregion
+
+        #region 扩展信息（Exts）层级
+        /// <summary>
+        /// 扩展信息总目录（对应某个Doc_N目录下）
+        /// 相对根目录路径：Doc_{0}/Exts
+        /// </summary>
+        public const string Exts_BaseDirectory = "Doc_{0}/Exts";
+
+        /// <summary>
+        /// 扩展信息列表文件（对应某个Doc_N/Exts目录下）
+        /// 相对根目录路径：Doc_{0}/Exts/Extensions.xml
+        /// </summary>
+        public const string Exts_ExtensionsFile = "Doc_{0}/Exts/Extensions.xml";
+
+        #endregion
+
+        #region 附件（Attachs）层级
+        /// <summary>
+        /// 附件总目录（对应某个Doc_N目录下）
+        /// 相对根目录路径：Doc_{0}/Attachs
+        /// </summary>
+        public const string Attachs_BaseDirectory = "Doc_{0}/Attachs";
+
+        /// <summary>
+        /// 附件列表文件（对应某个Doc_N/Attachs目录下）
+        /// 相对根目录路径：Doc_{0}/Attachs/Attachments.xml
+        /// </summary>
+        public const string Attachs_AttachmentsFile = "Doc_{0}/Attachs/Attachments.xml";
+
+        #endregion
+
         #region 页面（Pages）层级
         /// <summary>
         /// 页面总目录（对应某个Doc_N目录下）

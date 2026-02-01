@@ -1,7 +1,10 @@
 using OFDViewer.Models.Annotation;
+using OFDViewer.Models.Attachment;
 using OFDViewer.Models.BaseStructure.MainEntry;
 using OFDViewer.Models.BaseStructure.Pages;
 using OFDViewer.Models.BaseStructure.Resources;
+using OFDViewer.Models.CustomTag;
+using OFDViewer.Models.Extension;
 using OFDViewer.Models.Signature;
 using OFDViewer.Utils;
 
@@ -273,6 +276,36 @@ namespace OFDViewer.Parse
 
                     doc.AddPageAnnotDoc(pageAnnotDoc);
                 }
+            }
+
+            // 读取页面自定义标引（Tags/CustomTags.xml）
+            var customTagsFilePath = doc.CustomTagsFilePath;
+            if (_archive.FileExists(customTagsFilePath))
+            {
+                // 获取自定义标引列表索引文件 Doc_0/Tags/CustomTags.xml
+                using var customTagsStream = _archive.OpenFileStream(customTagsFilePath);
+                doc.CustomTags = XmlHelper.DeserializeFromStream<CustomTags>(customTagsStream);
+                doc.CustomTagsFilePath = customTagsFilePath;
+            }
+
+            // 读取页面扩展信息（Exts/Extensions.xml）
+            var extensionsFilePath = doc.ExtensionsFilePath;
+            if (_archive.FileExists(extensionsFilePath))
+            {
+                // 获取扩展信息列表索引文件 Doc_0/Exts/Extensions.xml
+                using var extensionsStream = _archive.OpenFileStream(extensionsFilePath);
+                doc.Extensions = XmlHelper.DeserializeFromStream<Extensions>(extensionsStream);
+                doc.ExtensionsFilePath = extensionsFilePath;
+            }
+
+            // 读取页面附件(Attachs/Attachments.xml)
+            var attachmentsFilePath = doc.AttachmentsFilePath;
+            if (_archive.FileExists(attachmentsFilePath))
+            {
+                // 获取附件列表索引文件 Doc_0/Attachs/Attachments.xml
+                using var attachmentsStream = _archive.OpenFileStream(attachmentsFilePath);
+                doc.Attachments = XmlHelper.DeserializeFromStream<Attachments>(attachmentsStream);
+                doc.AttachmentsFilePath = attachmentsFilePath;
             }
 
             return doc;
