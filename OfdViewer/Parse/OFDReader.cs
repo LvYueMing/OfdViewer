@@ -1,8 +1,11 @@
+using OFDViewer.Models.Annotation;
 using OFDViewer.Models.BaseStructure.MainEntry;
 using OFDViewer.Models.BaseStructure.Pages;
 using OFDViewer.Models.BaseStructure.Resources;
 using OFDViewer.Models.Signature;
 using OFDViewer.Utils;
+
+using Page = OFDViewer.Models.BaseStructure.Pages.Page;
 
 namespace OFDViewer.Parse
 {
@@ -156,7 +159,7 @@ namespace OFDViewer.Parse
                 doc.Document = XmlHelper.DeserializeFromStream<Models.BaseStructure.DocumentRoot.Document>(stream);
             }
 
-            // 读取公共资源、文档资源
+            // 读取公共资源(PublicRes.xml)、文档资源(DocumentRes.xml)
             if (doc.Document != null && doc.Document.CommonData != null)
             {
                 // 读取 PublicRes.xml 等
@@ -209,7 +212,7 @@ namespace OFDViewer.Parse
                 }
             }
 
-            // 读取页面对象
+            // 读取页面对象(Pages/Page_0/Content.xml)
             if (doc.Document != null && doc.Document.Pages != null)
             {
                 foreach (var page in doc.Document.Pages)
@@ -225,7 +228,7 @@ namespace OFDViewer.Parse
             }
 
 
-            // 读取签章描述文件
+            // 读取签章描述文件(Doc_0/Signs/Signatures.xml)
             if (_archive.FileExists(signsFilePath))
             {
                 // 获取签章描述文件 Doc_0/Signs/Signatures.xml 
@@ -244,6 +247,31 @@ namespace OFDViewer.Parse
                     var signDoc = ReadSignDocument(signFilePath);
 
                     doc.AddSignDoc(signDoc);
+                }
+            }
+
+            // 读取页面注释（Annots/Annotations.xml）
+            var annotsFilePath = doc.Document.Annotations.GetAbsolutePath(doc.DocDirectoryPath).Path;
+            if (_archive.FileExists(annotsFilePath))
+            {
+                // 获取注释列表索引文件 Doc_0/Annots/Annotations.xml
+                using var stream = _archive.OpenFileStream(annotsFilePath);
+                doc.Annotations = XmlHelper.DeserializeFromStream<Annotations>(stream);
+                doc.AnnotationsFilePath = annotsFilePath;
+            }
+
+            // 读取页面注释对象
+            if (doc.Annotations != null && doc.Annotations.Pages != null)
+            {
+                foreach (var page in doc.Annotations.Pages)
+                {
+                    // 获取页面注释文件 Doc_0/Annots/Page_{PageID}/Annotation.xml 绝对路径
+                    var pageAnnotFilePath = page.FileLoc.GetAbsolutePath(doc.AnnotsDirectoryPath).Path;
+                    var pageAnnotDoc = ReadPageAnnotDocument(pageAnnotFilePath);
+                    // 页面ID
+                    pageAnnotDoc.PageId = page.PageID;
+
+                    doc.AddPageAnnotDoc(pageAnnotDoc);
                 }
             }
 
@@ -302,6 +330,30 @@ namespace OFDViewer.Parse
             return signDoc;
         }
 
+        /// <summary>
+        /// 读取页面注释对象（根据路径）
+        /// </summary>
+        /// <param name="pageAnnotFilePath">页面注释文件路径</param>
+        /// <returns>页面注释对象</returns>
+        private PageAnnotDocument ReadPageAnnotDocument(string pageAnnotFilePath)
+        {
+            if (string.IsNullOrEmpty(pageAnnotFilePath))
+                return null;
+
+            EnsureNotDisposed();
+
+            var pageAnnotDoc = new PageAnnotDocument();
+
+            // Doc_{0}/Annots/Annot_{PageID}.xml
+            if (_archive.FileExists(pageAnnotFilePath))
+            {
+                using var stream = _archive.OpenFileStream(pageAnnotFilePath);
+                pageAnnotDoc.PageAnnot = XmlHelper.DeserializeFromStream<PageAnnot>(stream);
+                pageAnnotDoc.PageAnnotFilePath = pageAnnotFilePath;
+            }
+
+            return pageAnnotDoc;
+        }
 
         /// <summary>
         /// 读取指定索引的页面对象（根据路径）

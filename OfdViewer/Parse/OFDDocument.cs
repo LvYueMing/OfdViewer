@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using System.Xml.Serialization;
+using OFDViewer.Models.Annotation;
 using OFDViewer.Models.BaseStructure.DocumentRoot;
 using OFDViewer.Models.BaseStructure.Pages;
 using OFDViewer.Models.BaseStructure.Resources;
@@ -18,7 +19,8 @@ namespace OFDViewer.Parse
     /// 3. 页面集合
     /// 4. 签章集合
     /// 5. 模板页集合
-    /// 6. 其他资源文件
+    /// 6. 页面注释集合（对应PageAnnot_N目录，记录页面上的注释）
+    /// 7. 其他资源文件
     /// </remarks>
     /// </summary>
     public class OFDDocument
@@ -82,6 +84,16 @@ namespace OFDViewer.Parse
         public List<SignDocument> SignDocs { get; set; }
 
         /// <summary>
+        /// 注释列表索引对象（对应Annots/Annotations.xml，记录所有注释信息）
+        /// </summary>
+        public Annotations Annotations { get; set; }
+
+        /// <summary>
+        /// 页面注释对象集合（对应Annot_N目录，一个文档可包含多个页面注释）
+        /// </summary>
+        public List<PageAnnotDocument> PageAnnotDocs { get; set; }
+
+        /// <summary>
         /// 文档级资源文件集合（存储Res目录下的字体、图片等资源）
         /// 延迟加载缓存：首次使用时从归档文件加载，之后缓存在此处
         /// </summary>
@@ -111,10 +123,18 @@ namespace OFDViewer.Parse
         /// </summary>
         public string DocumentFilePath
         {
-            get => _documentFilePath ?? 
-                (string.IsNullOrEmpty(DocDirectoryPath)
-                ? Constants.GetFilePath(Constants.Doc_DocumentFile, DocIndex)
-                : Path.Combine(DocDirectoryPath, "DocumentRes.xml"));
+            get
+            {
+                // 优先返回已设置的路径
+                if (!string.IsNullOrEmpty(_documentFilePath))
+                    return _documentFilePath;
+
+                // 新建时：使用默认路径
+                if (string.IsNullOrEmpty(DocDirectoryPath))
+                    return Constants.GetFilePath(Constants.Doc_DocumentFile, DocIndex);
+
+                return Path.Combine(DocDirectoryPath, "Document.xml");
+            }
             set => _documentFilePath = value;
         }
 
@@ -124,10 +144,22 @@ namespace OFDViewer.Parse
         /// </summary>
         public string PublicResourceFilePath
         {
-            get => _publicResourceFilePath ?? 
-                (string.IsNullOrEmpty(DocDirectoryPath) 
-                ? Constants.GetFilePath(Constants.Doc_PublicResFile, DocIndex)
-                : Path.Combine(DocDirectoryPath, "PublicRes.xml"));
+            get
+            {
+                // 优先返回已设置的路径
+                if (!string.IsNullOrEmpty(_publicResourceFilePath))
+                    return _publicResourceFilePath;
+
+                // 解析时：从 Document.CommonData.PublicRes 读取（取第一个）
+                if (Document?.CommonData?.PublicRes != null && Document.CommonData.PublicRes.Count > 0)
+                    return Document.CommonData.PublicRes[0].GetAbsolutePath(DocDirectoryPath).Path;
+
+                // 新建时：使用默认路径
+                if (string.IsNullOrEmpty(DocDirectoryPath))
+                    return Constants.GetFilePath(Constants.Doc_PublicResFile, DocIndex);
+
+                return Path.Combine(DocDirectoryPath, "PublicRes.xml");
+            }
             set => _publicResourceFilePath = value;
         }
 
@@ -137,10 +169,22 @@ namespace OFDViewer.Parse
         /// </summary>
         public string DocumentResourceFilePath
         {
-            get => _documentResourceFilePath ?? 
-                (string.IsNullOrEmpty(DocDirectoryPath) 
-                ? Constants.GetFilePath(Constants.Doc_DocumentResFile, DocIndex)
-                : Path.Combine(DocDirectoryPath, "DocumentRes.xml"));
+            get
+            {
+                // 优先返回已设置的路径
+                if (!string.IsNullOrEmpty(_documentResourceFilePath))
+                    return _documentResourceFilePath;
+
+                // 解析时：从 Document.CommonData.DocumentRes 读取（取第一个）
+                if (Document?.CommonData?.DocumentRes != null && Document.CommonData.DocumentRes.Count > 0)
+                    return Document.CommonData.DocumentRes[0].GetAbsolutePath(DocDirectoryPath).Path;
+
+                // 新建时：使用默认路径
+                if (string.IsNullOrEmpty(DocDirectoryPath))
+                    return Constants.GetFilePath(Constants.Doc_DocumentResFile, DocIndex);
+
+                return Path.Combine(DocDirectoryPath, "DocumentRes.xml");
+            }
             set => _documentResourceFilePath = value;
         }
 
@@ -151,40 +195,160 @@ namespace OFDViewer.Parse
         /// </summary>
         public string SignsFilePath
         {
-            get => _signsFilePath ?? (string.IsNullOrEmpty(DocDirectoryPath)
-                ? Constants.GetFilePath(Constants.Signs_SignaturesFile, DocIndex)
-                : Path.Combine(SignsDirectoryPath, "Signatures.xml"));
+            get
+            {
+                // 优先返回已设置的路径（解析时由OFDReader设置）
+                if (!string.IsNullOrEmpty(_signsFilePath))
+                    return _signsFilePath;
+
+                // 新建时：使用默认路径
+                if (string.IsNullOrEmpty(DocDirectoryPath))
+                    return Constants.GetFilePath(Constants.Signs_SignaturesFile, DocIndex);
+
+                return Path.Combine(SignsDirectoryPath, "Signatures.xml");
+            }
             set => _signsFilePath = value;
         }
 
+        private string _signsDirectoryPath;
         /// <summary>
         /// 签章对象集合目录(Doc_{0}/Signs)
         /// </summary>
-        public string SignsDirectoryPath => string.IsNullOrEmpty(DocDirectoryPath) 
-            ? Constants.GetFilePath(Constants.Signs_BaseDirectory, DocIndex) 
-            : Path.Combine(DocDirectoryPath, "Signs");
+        public string SignsDirectoryPath
+        {
+            get
+            {
+                // 优先返回已设置的目录路径
+                if (!string.IsNullOrEmpty(_signsDirectoryPath))
+                    return _signsDirectoryPath;
 
+                // 解析时：从 SignsFilePath 推断目录
+                if (!string.IsNullOrEmpty(SignsFilePath))
+                    return Path.GetDirectoryName(SignsFilePath) ?? string.Empty;
+
+                // 新建时：使用默认路径
+                if (string.IsNullOrEmpty(DocDirectoryPath))
+                    return Constants.GetFilePath(Constants.Signs_BaseDirectory, DocIndex);
+
+                return Path.Combine(DocDirectoryPath, "Signs");
+            }
+            set => _signsDirectoryPath = value;
+        }
+
+        private string _annotationsFilePath;
+        /// <summary>
+        /// 获取注释列表索引文件路径
+        /// Doc_0/Annots/Annotations.xml 
+        /// </summary>
+        public string AnnotationsFilePath
+        {
+            get
+            {
+                // 优先返回已设置的路径
+                if (!string.IsNullOrEmpty(_annotationsFilePath))
+                    return _annotationsFilePath;
+
+                // 解析时：从 Document.Annotations 读取
+                if (Document?.Annotations != null)
+                    return Document.Annotations.GetAbsolutePath(DocDirectoryPath).Path;
+
+                // 新建时：使用默认路径
+                if (string.IsNullOrEmpty(DocDirectoryPath))
+                    return Constants.GetFilePath(Constants.Annots_AnnotationsFile, DocIndex);
+
+                return Path.Combine(AnnotsDirectoryPath, "Annotations.xml");
+            }
+            set => _annotationsFilePath = value;
+        }
+
+        private string _annotsDirectoryPath;
+        /// <summary>
+        /// 注释对象集合目录(Doc_{0}/Annots)
+        /// </summary>
+        public string AnnotsDirectoryPath
+        {
+            get
+            {
+                // 优先返回已设置的目录路径
+                if (!string.IsNullOrEmpty(_annotsDirectoryPath))
+                    return _annotsDirectoryPath;
+
+                // 解析时：从 AnnotationsFilePath 推断目录
+                if (!string.IsNullOrEmpty(AnnotationsFilePath))
+                    return Path.GetDirectoryName(AnnotationsFilePath) ?? string.Empty;
+
+                // 新建时：使用默认路径
+                if (string.IsNullOrEmpty(DocDirectoryPath))
+                    return Constants.GetFilePath(Constants.Annots_BaseDirectory, DocIndex);
+
+                return Path.Combine(DocDirectoryPath, "Annots");
+            }
+            set => _annotsDirectoryPath = value;
+        }
+
+        private string _resDirectoryPath;
         /// <summary>
         /// 文档级资源目录路径（Doc_{0}/Res）
         /// </summary>
-        public string ResDirectoryPath => string.IsNullOrEmpty(DocDirectoryPath) 
-            ? Constants.GetFilePath(Constants.Doc_ResDirectory, DocIndex)
-            : Path.Combine(DocDirectoryPath, "Res");
+        public string ResDirectoryPath
+        {
+            get
+            {
+                // 优先返回已设置的目录路径
+                if (!string.IsNullOrEmpty(_resDirectoryPath))
+                    return _resDirectoryPath;
+
+                // 新建时：使用默认路径
+                if (string.IsNullOrEmpty(DocDirectoryPath))
+                    return Constants.GetFilePath(Constants.Doc_ResDirectory, DocIndex);
+
+                return Path.Combine(DocDirectoryPath, "Res");
+            }
+            set => _resDirectoryPath = value;
+        }
 
 
+        private string _pagesDirectoryPath;
         /// <summary>
         /// 文档级资源目录路径（Doc_{0}/Pages）
         /// </summary>
-        public string PagesDirectoryPath => string.IsNullOrEmpty(DocDirectoryPath)
-            ? Constants.GetFilePath(Constants.Pages_BaseDirectory, DocIndex)
-            : Path.Combine(DocDirectoryPath, "Pages");
+        public string PagesDirectoryPath
+        {
+            get
+            {
+                // 优先返回已设置的目录路径
+                if (!string.IsNullOrEmpty(_pagesDirectoryPath))
+                    return _pagesDirectoryPath;
 
+                // 新建时：使用默认路径
+                if (string.IsNullOrEmpty(DocDirectoryPath))
+                    return Constants.GetFilePath(Constants.Pages_BaseDirectory, DocIndex);
+
+                return Path.Combine(DocDirectoryPath, "Pages");
+            }
+            set => _pagesDirectoryPath = value;
+        }
+
+        private string _templatesDirectoryPath;
         /// <summary>
         /// 模板页总目录路径（Doc_{0}/Tpls）
         /// </summary>
-        public string TemplatesDirectoryPath => string.IsNullOrEmpty(DocDirectoryPath)
-            ? Constants.GetFilePath(Constants.Templates_BaseDirectory, DocIndex)
-            : Path.Combine(DocDirectoryPath, "Tpls");
+        public string TemplatesDirectoryPath
+        {
+            get
+            {
+                // 优先返回已设置的目录路径
+                if (!string.IsNullOrEmpty(_templatesDirectoryPath))
+                    return _templatesDirectoryPath;
+
+                // 新建时：使用默认路径
+                if (string.IsNullOrEmpty(DocDirectoryPath))
+                    return Constants.GetFilePath(Constants.Templates_BaseDirectory, DocIndex);
+
+                return Path.Combine(DocDirectoryPath, "Tpls");
+            }
+            set => _templatesDirectoryPath = value;
+        }
 
 
         //无参构造函数
@@ -291,6 +455,20 @@ namespace OFDViewer.Parse
             SignDocs = SignDocs ?? new List<SignDocument>();
             // 添加签章对象
             SignDocs.Add(signDoc);
+        }
+
+        /// <summary>
+        /// 添加页面注释对象
+        /// </summary>
+        /// <param name="pageAnnotDoc">页面注释对象</param>
+        /// <remarks>
+        /// 将PageAnnotDocument对象添加到页面注释集合中
+        /// </remarks>
+        public void AddPageAnnotDoc(PageAnnotDocument pageAnnotDoc)
+        {
+            PageAnnotDocs = PageAnnotDocs ?? new List<PageAnnotDocument>();
+            // 添加页面注释对象
+            PageAnnotDocs.Add(pageAnnotDoc);
         }
 
         /// <summary>
@@ -828,7 +1006,7 @@ namespace OFDViewer.Parse
         /// </summary>
         /// <param name="templateIndex">模版页索引</param>
         /// <returns>模版页对象，如果未找到返回null</returns>
-        public Page GetTemplatePage(uint templateId)
+        public Models.BaseStructure.Pages.Page GetTemplatePage(uint templateId)
         {
             return TemplateDocs?.FirstOrDefault(t => t.TemplateId == templateId)?.TemplatePage;
         }

@@ -83,6 +83,27 @@ namespace OFDViewer
 
         #endregion
 
+        #region 注释（Annots）层级
+        /// <summary>
+        /// 注释总目录（对应某个Doc_N目录下）
+        /// 相对根目录路径：Doc_{0}/Annots
+        /// </summary>
+        public const string Annots_BaseDirectory = "Doc_{0}/Annots";
+
+        /// <summary>
+        /// 注释列表索引文件（对应某个Doc_N/Annots目录下）
+        /// 相对根目录路径：Doc_{0}/Annots/Annotations.xml
+        /// </summary>
+        public const string Annots_AnnotationsFile = "Doc_{0}/Annots/Annotations.xml";
+
+        /// <summary>
+        /// 单个页面注释文件（对应某个Doc_N/Annots/Page_N目录下，需替换{0}为文档ID，{1}为页面ID）
+        /// 相对根目录路径：Doc_{0}/Annots/Page_{1}/Annotation.xml
+        /// </summary>
+        public const string Annot_PageAnnotFile = "Doc_{0}/Annots/Page_{1}/Annotation.xml";
+
+        #endregion
+
         #region 页面（Pages）层级
         /// <summary>
         /// 页面总目录（对应某个Doc_N目录下）
