@@ -15,4 +15,9 @@
     <PackageReference Include="BitMiracle.LibTiff.NET" Version="2.4.649" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\OfdViewer.Eseal.Abstractions\OfdViewer.Eseal.Abstractions.csproj" />
+    <ProjectReference Include="..\OfdViewer.Eseal.Implementations\OfdViewer.Eseal.Implementations.csproj" />
+  </ItemGroup>
+
 </Project>
