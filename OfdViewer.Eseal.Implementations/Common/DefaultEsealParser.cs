@@ -207,6 +207,28 @@ namespace OfdViewer.ESeal.Implementations.Common
         }
 
         /// <summary>
+        /// 内部获取证书信息实现
+        /// </summary>
+        /// <param name="sealData">印章二进制数据</param>
+        /// <returns>证书信息</returns>
+        protected override Task<CertificateInfo> GetCertificateInfoInternalAsync(byte[] sealData)
+        {
+            // 默认解析器无法获取证书信息
+            return Task.FromResult<CertificateInfo>(null);
+        }
+
+        /// <summary>
+        /// 内部验证印章图片哈希实现
+        /// </summary>
+        /// <param name="sealData">印章二进制数据</param>
+        /// <returns>哈希验证结果</returns>
+        protected override Task<bool> VerifyImageHashInternalAsync(byte[] sealData)
+        {
+            // 默认解析器无法验证哈希值
+            return Task.FromResult(false);
+        }
+
+        /// <summary>
         /// 检测图像格式
         /// </summary>
         /// <param name="sealData">图像数据</param>

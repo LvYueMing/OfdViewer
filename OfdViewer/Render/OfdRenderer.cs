@@ -318,7 +318,7 @@ namespace OFDViewer.Render
 
                     // 渲染注释
                     // 根据当前页的pageDoc.PageId，获取当前页的页注释对象PageAnnotDocument
-                    var pageAnnotDoc = ofdDoc.PageAnnotDocs.FirstOrDefault(a => a.PageId == pageDoc.PageId);
+                    var pageAnnotDoc = ofdDoc.PageAnnotDocs?.FirstOrDefault(a => a.PageId == pageDoc.PageId);
                     if (pageAnnotDoc != null && pageAnnotDoc.PageAnnot != null)
                     {
                         // 渲染注释
