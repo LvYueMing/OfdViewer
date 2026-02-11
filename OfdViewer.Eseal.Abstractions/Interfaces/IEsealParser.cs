@@ -2,13 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
-using OfdViewer.Eseal.Abstractions.Models;
+using OfdViewer.ESeal.Abstractions.Models;
 
-namespace OfdViewer.Eseal.Abstractions.Interfaces
+namespace OfdViewer.ESeal.Abstractions.Interfaces
 {
     /// <summary>
     /// 电子印章解析器通用接口
     /// 所有厂商实现必须遵循此接口规范
+    /// 符合 GM/T 0031-2014 安全电子签章密码技术规范
     /// </summary>
     public interface IEsealParser : IDisposable
     {
@@ -68,10 +69,39 @@ namespace OfdViewer.Eseal.Abstractions.Interfaces
         Task<EsealMetadata> GetMetadataAsync(byte[] sealData);
 
         /// <summary>
+        /// 获取证书信息
+        /// </summary>
+        /// <param name="sealData">印章二进制数据</param>
+        /// <returns>证书信息</returns>
+        Task<CertificateInfo> GetCertificateInfoAsync(byte[] sealData);
+
+        /// <summary>
+        /// 验证印章图片哈希值
+        /// GM/T 0031-2014: pictureHash 验证
+        /// </summary>
+        /// <param name="sealData">印章二进制数据</param>
+        /// <returns>哈希验证结果</returns>
+        Task<bool> VerifyImageHashAsync(byte[] sealData);
+
+        /// <summary>
         /// 检查是否支持该格式的印章文件
         /// </summary>
         /// <param name="sealData">印章二进制数据</param>
         /// <returns>是否支持</returns>
         bool CanParse(byte[] sealData);
+
+        /// <summary>
+        /// 获取支持的签名算法列表
+        /// GM/T 0031-2014: signatureAlgorithm - 签名算法标识
+        /// </summary>
+        /// <returns>签名算法标识列表</returns>
+        IEnumerable<string> GetSupportedSignatureAlgorithms();
+
+        /// <summary>
+        /// 获取支持的哈希算法列表
+        /// GM/T 0031-2014: digestAlgorithm - 摘要算法标识
+        /// </summary>
+        /// <returns>哈希算法标识列表</returns>
+        IEnumerable<string> GetSupportedHashAlgorithms();
     }
 }

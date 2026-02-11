@@ -2,9 +2,9 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using OfdViewer.Eseal.Abstractions.Interfaces;
+using OfdViewer.ESeal.Abstractions.Interfaces;
 
-namespace OfdViewer.Eseal.Abstractions.Factory
+namespace OfdViewer.ESeal.Abstractions.Factory
 {
     /// <summary>
     /// 电子印章解析器工厂

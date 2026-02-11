@@ -2,16 +2,17 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
-using OfdViewer.Eseal.Abstractions.Exceptions;
-using OfdViewer.Eseal.Abstractions.Interfaces;
-using OfdViewer.Eseal.Abstractions.Models;
+using OfdViewer.ESeal.Abstractions.Exceptions;
+using OfdViewer.ESeal.Abstractions.Interfaces;
+using OfdViewer.ESeal.Abstractions.Models;
 using SkiaSharp;
 
-namespace OfdViewer.Eseal.Implementations.Base
+namespace OfdViewer.ESeal.Implementations.Base
 {
     /// <summary>
     /// 电子印章解析器抽象基类
     /// 提供通用的实现逻辑，各厂商只需实现特定方法
+    /// 符合 GM/T 0031-2014 安全电子签章密码技术规范
     /// </summary>
     public abstract class BaseEsealParser : IEsealParser
     {
@@ -189,11 +190,88 @@ namespace OfdViewer.Eseal.Implementations.Base
         }
 
         /// <summary>
+        /// 获取证书信息
+        /// </summary>
+        /// <param name="sealData">印章二进制数据</param>
+        /// <returns>证书信息</returns>
+        public virtual async Task<CertificateInfo> GetCertificateInfoAsync(byte[] sealData)
+        {
+            ThrowIfDisposed();
+            ValidateSealData(sealData);
+
+            try
+            {
+                return await GetCertificateInfoInternalAsync(sealData);
+            }
+            catch (Exception ex) when (!(ex is EsealParserException))
+            {
+                throw new EsealParserException(ParserName, 0, $"获取证书信息失败: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// 验证印章图片哈希值
+        /// GM/T 0031-2014: pictureHash 验证
+        /// </summary>
+        /// <param name="sealData">印章二进制数据</param>
+        /// <returns>哈希验证结果</returns>
+        public virtual async Task<bool> VerifyImageHashAsync(byte[] sealData)
+        {
+            ThrowIfDisposed();
+            ValidateSealData(sealData);
+
+            try
+            {
+                return await VerifyImageHashInternalAsync(sealData);
+            }
+            catch (Exception ex) when (!(ex is EsealParserException))
+            {
+                throw new EsealParserException(ParserName, 0, $"验证印章图片哈希失败: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
         /// 检查是否支持该格式的印章文件
         /// </summary>
         /// <param name="sealData">印章二进制数据</param>
         /// <returns>是否支持</returns>
         public abstract bool CanParse(byte[] sealData);
+
+        /// <summary>
+        /// 获取支持的签名算法列表
+        /// GM/T 0031-2014: signatureAlgorithm - 签名算法标识
+        /// </summary>
+        /// <returns>签名算法标识列表</returns>
+        public virtual IEnumerable<string> GetSupportedSignatureAlgorithms()
+        {
+            // 默认返回国密算法
+            return new[]
+            {
+                "1.2.156.10197.1.501",  // SM2withSM3
+                "SM2withSM3",
+                "1.2.840.10045.4.3.2",  // ECDSAwithSHA256
+                "SHA256withRSA",
+                "SHA256withECDSA"
+            };
+        }
+
+        /// <summary>
+        /// 获取支持的哈希算法列表
+        /// GM/T 0031-2014: digestAlgorithm - 摘要算法标识
+        /// </summary>
+        /// <returns>哈希算法标识列表</returns>
+        public virtual IEnumerable<string> GetSupportedHashAlgorithms()
+        {
+            // 默认返回国密哈希算法
+            return new[]
+            {
+                "1.2.156.10197.1.401",  // SM3
+                "SM3",
+                "2.16.840.1.101.3.4.2.1", // SHA-256
+                "SHA-256",
+                "SHA-1"
+            };
+        }
 
         /// <summary>
         /// 释放资源
@@ -244,6 +322,20 @@ namespace OfdViewer.Eseal.Implementations.Base
         /// <param name="sealData">印章二进制数据</param>
         /// <returns>印章元数据</returns>
         protected abstract Task<EsealMetadata> GetMetadataInternalAsync(byte[] sealData);
+
+        /// <summary>
+        /// 内部获取证书信息实现（由子类实现）
+        /// </summary>
+        /// <param name="sealData">印章二进制数据</param>
+        /// <returns>证书信息</returns>
+        protected abstract Task<CertificateInfo> GetCertificateInfoInternalAsync(byte[] sealData);
+
+        /// <summary>
+        /// 内部验证印章图片哈希实现（由子类实现）
+        /// </summary>
+        /// <param name="sealData">印章二进制数据</param>
+        /// <returns>哈希验证结果</returns>
+        protected abstract Task<bool> VerifyImageHashInternalAsync(byte[] sealData);
 
         /// <summary>
         /// 释放内部资源（由子类重写）

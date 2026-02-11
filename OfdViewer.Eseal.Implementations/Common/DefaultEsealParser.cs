@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using OfdViewer.Eseal.Abstractions.Exceptions;
-using OfdViewer.Eseal.Abstractions.Interfaces;
-using OfdViewer.Eseal.Abstractions.Models;
-using OfdViewer.Eseal.Implementations.Base;
+using OfdViewer.ESeal.Abstractions.Exceptions;
+using OfdViewer.ESeal.Abstractions.Interfaces;
+using OfdViewer.ESeal.Abstractions.Models;
+using OfdViewer.ESeal.Implementations.Base;
 using SkiaSharp;
 
-namespace OfdViewer.Eseal.Implementations.Common
+namespace OfdViewer.ESeal.Implementations.Common
 {
     /// <summary>
     /// 默认电子印章解析器

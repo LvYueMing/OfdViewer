@@ -19,9 +19,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Test", "Test", "{02EA681E-C
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkiaSharpExperiment", "SkiaSharpExperiment\SkiaSharpExperiment.csproj", "{E58C9816-24FC-4DFF-82EB-9F9CD4CBE4BE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OfdViewer.Eseal.Abstractions", "OfdViewer.Eseal.Abstractions\OfdViewer.Eseal.Abstractions.csproj", "{B1FB9947-6515-4588-ADA4-3FC2EA919204}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OfdViewer.ESeal.Abstractions", "OfdViewer.Eseal.Abstractions\OfdViewer.ESeal.Abstractions.csproj", "{B1FB9947-6515-4588-ADA4-3FC2EA919204}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OfdViewer.Eseal.Implementations", "OfdViewer.Eseal.Implementations\OfdViewer.Eseal.Implementations.csproj", "{4DB851C0-F37D-44F8-8CE7-11A780527B1C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OfdViewer.ESeal.Implementations", "OfdViewer.Eseal.Implementations\OfdViewer.ESeal.Implementations.csproj", "{4DB851C0-F37D-44F8-8CE7-11A780527B1C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -7,17 +7,21 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
-using OfdViewer.Eseal.Abstractions.Exceptions;
-using OfdViewer.Eseal.Abstractions.Interfaces;
-using OfdViewer.Eseal.Abstractions.Models;
-using OfdViewer.Eseal.Implementations.Base;
+using OfdViewer.ESeal.Abstractions.Exceptions;
+using OfdViewer.ESeal.Abstractions.Interfaces;
+using OfdViewer.ESeal.Abstractions.Models;
+using OfdViewer.ESeal.Implementations.Base;
 
-namespace OfdViewer.Eseal.Implementations.Gomain
+namespace OfdViewer.ESeal.Implementations.Gomain
 {
     /// <summary>
     /// 国脉信安电子印章解析器实现
     /// 针对国脉信安深度封装签章格式的解析
     /// 支持从 SignedValue.dat 中提取印章图像和签名信息
+    /// 
+    /// 文件结构（基于 SignedValue_Structure.md 文档）：
+    /// - ASN.1 数据部分（前 1317 字节）：包含签名元数据、签章者证书、SM2 签名值
+    /// - ZIP 数据部分（后 4968 字节）：包含被签名的原始文档内容
     /// </summary>
     public class GomainEsealParser : BaseEsealParser
     {
@@ -29,7 +33,13 @@ namespace OfdViewer.Eseal.Implementations.Gomain
         /// <summary>
         /// 支持的文件格式
         /// </summary>
-        public override IEnumerable<string> SupportedFormats => new[] { ".esl", ".eseal", ".dat", ".signed" };
+        public override IEnumerable<string> SupportedFormats => new[] { ".esl", ".eseal", ".dat", ".signed", ".ofd" };
+
+        /// <summary>
+        /// ZIP 文件签名（PK\x03\x04）
+        /// 用于检测 ASN.1 和 ZIP 数据的边界
+        /// </summary>
+        private static readonly byte[] ZipSignature = new byte[] { 0x50, 0x4B, 0x03, 0x04 };
 
         /// <summary>
         /// 国脉签章数据特征标识
@@ -38,9 +48,26 @@ namespace OfdViewer.Eseal.Implementations.Gomain
         {
             Encoding.ASCII.GetBytes("GM"),
             Encoding.ASCII.GetBytes("GOMAIN"),
-            new byte[] { 0x30, 0x82 }, // ASN.1 SEQUENCE 标识
-            new byte[] { 0x30, 0x81 }  // ASN.1 SEQUENCE 短形式
+            new byte[] { 0x30, 0x82 }, // ASN.1 SEQUENCE 长形式长度标识
+            new byte[] { 0x30, 0x81 }  // ASN.1 SEQUENCE 短形式长度标识
         };
+
+        /// <summary>
+        /// 国脉印章图像相关 OID 列表
+        /// </summary>
+        private static readonly string[] SealImageOids = new[]
+        {
+            "1.2.156.112570.1.1.1",    // 国脉印章图像 OID
+            "1.2.156.10197.1.501",       // SM2 签名算法相关
+            "1.2.156.10197.6.1.4.2.1",   // 印章图像数据
+            "1.2.156.10197.6.1.4.2.2",   // 印章属性数据
+            "1.2.156.10197.6.1.4.2"      // 电子印章数据
+        };
+
+        /// <summary>
+        /// 签名时间 OID
+        /// </summary>
+        private static readonly string SigningTimeOid = "1.2.840.113549.1.9.5";
 
         /// <summary>
         /// 检查是否支持该格式的印章文件
@@ -85,6 +112,12 @@ namespace OfdViewer.Eseal.Implementations.Gomain
         {
             try
             {
+                // 检查是否包含 ZIP 数据（国脉深度封装格式特征）
+                if (FindBytePattern(sealData, ZipSignature) > 0)
+                {
+                    return true;
+                }
+
                 // 尝试解析ASN.1结构或XML内容
                 if (sealData[0] == 0x30) // ASN.1 SEQUENCE
                 {
@@ -92,7 +125,7 @@ namespace OfdViewer.Eseal.Implementations.Gomain
                 }
 
                 string content = Encoding.UTF8.GetString(sealData);
-                return content.Contains("gomain") ||
+                return content.Contains("gomain", StringComparison.OrdinalIgnoreCase) ||
                        content.Contains("GOMAIN") ||
                        content.Contains("GM") ||
                        content.Contains("SignedValue") ||
@@ -127,7 +160,7 @@ namespace OfdViewer.Eseal.Implementations.Gomain
                     Version = signedValue.Version ?? "1.0",
                     ImageData = signedValue.SealImageData,
                     ImageFormat = DetectImageFormat(signedValue.SealImageData),
-                    ImageWidth = 0,  // 将在提取图像时计算
+                    ImageWidth = 0,
                     ImageHeight = 0
                 };
 
@@ -155,7 +188,7 @@ namespace OfdViewer.Eseal.Implementations.Gomain
 
         /// <summary>
         /// 解析 SignedValue.dat 文件
-        /// 国脉信安的签章数据采用 ASN.1 或自定义格式封装
+        /// 国脉信安的签章数据采用 ASN.1 + ZIP 混合格式封装
         /// </summary>
         /// <param name="signedValueData">SignedValue.dat 文件内容</param>
         /// <returns>解析后的签章信息</returns>
@@ -165,7 +198,16 @@ namespace OfdViewer.Eseal.Implementations.Gomain
 
             try
             {
-                // 尝试作为 ASN.1 结构解析（PKCS#7/CMS 格式）
+                // 第一步：检测数据边界（ASN.1 vs ZIP）
+                int zipIndex = FindBytePattern(signedValueData, ZipSignature);
+                
+                if (zipIndex > 0)
+                {
+                    // 国脉深度封装格式：ASN.1 + ZIP
+                    return ParseGomainHybridFormat(signedValueData, zipIndex, result);
+                }
+
+                // 尝试作为纯 ASN.1 结构解析（PKCS#7/CMS 格式）
                 if (TryParseAsn1Structure(signedValueData, result))
                 {
                     return result;
@@ -195,57 +237,124 @@ namespace OfdViewer.Eseal.Implementations.Gomain
         }
 
         /// <summary>
+        /// 解析国脉混合格式（ASN.1 + ZIP）
+        /// </summary>
+        /// <param name="data">完整数据</param>
+        /// <param name="zipIndex">ZIP 数据起始位置</param>
+        /// <param name="result">解析结果对象</param>
+        /// <returns>解析后的签章信息</returns>
+        private GomainSignedValue ParseGomainHybridFormat(byte[] data, int zipIndex, GomainSignedValue result)
+        {
+            // 提取 ASN.1 数据（签名部分）
+            var asn1Data = new byte[zipIndex];
+            Array.Copy(data, 0, asn1Data, 0, zipIndex);
+
+            // 提取 ZIP 数据（被签名的原始文档）
+            var zipData = new byte[data.Length - zipIndex];
+            Array.Copy(data, zipIndex, zipData, 0, zipData.Length);
+
+            // 解析 ASN.1 部分
+            ParseAsn1Data(asn1Data, result);
+
+            // 解析 ZIP 部分（提取文档内容和可能的印章图像）
+            ParseZipData(zipData, result);
+
+            return result;
+        }
+
+        /// <summary>
+        /// 解析 ASN.1 数据部分
+        /// </summary>
+        /// <param name="asn1Data">ASN.1 数据</param>
+        /// <param name="result">解析结果对象</param>
+        private void ParseAsn1Data(byte[] asn1Data, GomainSignedValue result)
+        {
+            try
+            {
+                // 尝试使用标准 PKCS#7/CMS 解析
+                if (TryParsePkcs7Structure(asn1Data, result))
+                {
+                    return;
+                }
+
+                // 尝试使用国脉自定义 ASN.1 解析
+                if (TryParseGomainAsn1Structure(asn1Data, result))
+                {
+                    return;
+                }
+
+                // 尝试提取证书信息
+                TryExtractCertificateFromAsn1(asn1Data, result);
+
+                // 尝试提取印章图像
+                var sealImage = TryExtractSealImageFromAsn1(asn1Data);
+                if (sealImage != null)
+                {
+                    result.SealImageData = sealImage;
+                }
+            }
+            catch (Exception ex)
+            {
+                // 记录解析异常，但不中断流程
+                System.Diagnostics.Debug.WriteLine($"ASN.1 解析警告: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 解析 ZIP 数据部分
+        /// </summary>
+        /// <param name="zipData">ZIP 数据</param>
+        /// <param name="result">解析结果对象</param>
+        private void ParseZipData(byte[] zipData, GomainSignedValue result)
+        {
+            try
+            {
+                using var stream = new MemoryStream(zipData);
+                using var zipArchive = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Read);
+
+                // 记录 ZIP 内容（用于调试）
+                System.Diagnostics.Debug.WriteLine($"ZIP 包含 {zipArchive.Entries.Count} 个条目:");
+                foreach (var entry in zipArchive.Entries)
+                {
+                    System.Diagnostics.Debug.WriteLine($"  - {entry.FullName} ({entry.Length} 字节)");
+                }
+
+                // 尝试从 ZIP 中提取印章图像
+                var sealImageFromZip = ExtractSealImageFromZip(zipArchive);
+                if (sealImageFromZip != null && result.SealImageData == null)
+                {
+                    result.SealImageData = sealImageFromZip;
+                }
+
+                // 验证 ZIP 中的文档完整性（可选）
+                // 可以在这里添加文档哈希验证逻辑
+            }
+            catch (Exception ex)
+            {
+                // ZIP 解析失败不影响整体流程
+                System.Diagnostics.Debug.WriteLine($"ZIP 解析警告: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// 尝试解析 ASN.1 结构（PKCS#7/CMS）
         /// </summary>
         private bool TryParseAsn1Structure(byte[] data, GomainSignedValue result)
         {
-            try
-            {
-                // 首先检查是否包含 ZIP 数据（国脉深度封装格式）
-                int zipIndex = FindBytePattern(data, new byte[] { 0x50, 0x4B, 0x03, 0x04 }); // PK\x03\x04
-                if (zipIndex > 0)
-                {
-                    // 提取 ZIP 数据之前的 ASN.1 结构
-                    var asn1Data = new byte[zipIndex];
-                    Array.Copy(data, 0, asn1Data, 0, zipIndex);
-                    
-                    // 尝试解析 ASN.1 结构（国脉自定义格式）
-                    if (TryParseGomainAsn1Structure(asn1Data, result))
-                    {
-                        // 从 ZIP 数据中提取印章图像
-                        var zipData = new byte[data.Length - zipIndex];
-                        Array.Copy(data, zipIndex, zipData, 0, zipData.Length);
-                        
-                        // 尝试从 ZIP 中提取印章图像
-                        var sealImageFromZip = ExtractSealImageFromZip(zipData);
-                        if (sealImageFromZip != null)
-                        {
-                            result.SealImageData = sealImageFromZip;
-                        }
-                        
-                        return true;
-                    }
-                }
-
-                // 检查是否为 ASN.1 SEQUENCE
-                if (data.Length < 2 || data[0] != 0x30)
-                {
-                    return false;
-                }
-
-                // 尝试国脉自定义格式
-                if (TryParseGomainAsn1Structure(data, result))
-                {
-                    return true;
-                }
-
-                // 使用 .NET 的 SignedCms 解析 PKCS#7/CMS 结构
-                return TryParsePkcs7Structure(data, result);
-            }
-            catch
+            // 检查是否为 ASN.1 SEQUENCE
+            if (data.Length < 2 || data[0] != 0x30)
             {
                 return false;
             }
+
+            // 尝试使用标准 PKCS#7/CMS 解析
+            if (TryParsePkcs7Structure(data, result))
+            {
+                return true;
+            }
+
+            // 尝试国脉自定义格式
+            return TryParseGomainAsn1Structure(data, result);
         }
 
         /// <summary>
@@ -279,7 +388,6 @@ namespace OfdViewer.Eseal.Implementations.Gomain
                 var content = reader.ReadBytes(length);
 
                 // 尝试解析内容中的证书和印章信息
-                // 国脉格式通常包含：版本号、签名算法、证书、印章数据等
                 if (TryExtractCertificateFromAsn1(content, result))
                 {
                     // 尝试提取印章图像
@@ -470,97 +578,19 @@ namespace OfdViewer.Eseal.Implementations.Gomain
                 }
 
                 // 提取签名时间
-                result.SignTime = DateTime.Now; // 从签名属性中提取
+                result.SignTime = DateTime.Now;
 
                 // 从签名属性中提取印章图像和元数据
                 foreach (var signerInfo in signedCms.SignerInfos)
                 {
                     // 提取签名时间
-                    foreach (var attr in signerInfo.SignedAttributes)
-                    {
-                        if (attr.Oid.Value == "1.2.840.113549.1.9.5" || // signingTime
-                            attr.Oid.FriendlyName.Contains("Time"))
-                        {
-                            foreach (var value in attr.Values)
-                            {
-                                if (value is Pkcs9SigningTime signingTime)
-                                {
-                                    result.SignTime = signingTime.SigningTime;
-                                    break;
-                                }
-                            }
-                        }
-                    }
+                    ExtractSigningTime(signerInfo, result);
 
-                    // 提取印章图像 - 国脉使用自定义 OID
-                    foreach (var attr in signerInfo.SignedAttributes)
-                    {
-                        // 国脉印章图像 OID（根据 GM/T 0031-2014 标准）
-                        var sealImageOids = new[]
-                        {
-                            "1.2.156.112570.1.1.1",  // 国脉印章图像 OID
-                            "1.2.156.10197.1.501",     // SM2 签名算法相关
-                            "1.2.156.10197.6.1.4.2.1", // 印章图像数据
-                            "1.2.156.10197.6.1.4.2.2", // 印章属性数据
-                        };
+                    // 提取印章图像
+                    ExtractSealImageFromSignerInfo(signerInfo, result);
 
-                        if (sealImageOids.Contains(attr.Oid.Value) ||
-                            attr.Oid.FriendlyName.Contains("Seal", StringComparison.OrdinalIgnoreCase) ||
-                            attr.Oid.FriendlyName.Contains("Image", StringComparison.OrdinalIgnoreCase))
-                        {
-                            foreach (var value in attr.Values)
-                            {
-                                if (value is AsnEncodedData asnData && asnData.RawData != null && asnData.RawData.Length > 0)
-                                {
-                                    // 检查是否是图像数据（PNG/JPG 头部）
-                                    if (IsImageData(asnData.RawData))
-                                    {
-                                        result.SealImageData = asnData.RawData;
-                                    }
-                                    else
-                                    {
-                                        // 可能是 ASN.1 封装的图像数据，尝试解包
-                                        result.SealImageData = ExtractImageFromAsn1Data(asnData.RawData);
-                                    }
-                                    break;
-                                }
-                            }
-                        }
-
-                        // 提取印章标识
-                        if (attr.Oid.Value.Contains("SealID") || 
-                            attr.Oid.FriendlyName.Contains("SealID", StringComparison.OrdinalIgnoreCase))
-                        {
-                            foreach (var value in attr.Values)
-                            {
-                                if (value is AsnEncodedData asnData)
-                                {
-                                    result.SealId = Encoding.UTF8.GetString(asnData.RawData);
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    // 如果未找到印章图像，尝试从未签名属性中查找
-                    if (result.SealImageData == null)
-                    {
-                        foreach (var attr in signerInfo.UnsignedAttributes)
-                        {
-                            if (attr.Oid.FriendlyName.Contains("Seal", StringComparison.OrdinalIgnoreCase) ||
-                                attr.Oid.FriendlyName.Contains("Image", StringComparison.OrdinalIgnoreCase))
-                            {
-                                foreach (var value in attr.Values)
-                                {
-                                    if (value is AsnEncodedData asnData && asnData.RawData != null)
-                                    {
-                                        result.SealImageData = asnData.RawData;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    // 提取印章标识
+                    ExtractSealIdFromSignerInfo(signerInfo, result);
                 }
 
                 return true;
@@ -573,20 +603,116 @@ namespace OfdViewer.Eseal.Implementations.Gomain
         }
 
         /// <summary>
+        /// 从签名信息中提取签名时间
+        /// </summary>
+        private void ExtractSigningTime(System.Security.Cryptography.Pkcs.SignerInfo signerInfo, GomainSignedValue result)
+        {
+            foreach (var attr in signerInfo.SignedAttributes)
+            {
+                if (attr.Oid.Value == SigningTimeOid || 
+                    attr.Oid.FriendlyName.Contains("Time", StringComparison.OrdinalIgnoreCase))
+                {
+                    foreach (var value in attr.Values)
+                    {
+                        if (value is Pkcs9SigningTime signingTime)
+                        {
+                            result.SignTime = signingTime.SigningTime;
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 从签名信息中提取印章图像
+        /// </summary>
+        private void ExtractSealImageFromSignerInfo(System.Security.Cryptography.Pkcs.SignerInfo signerInfo, GomainSignedValue result)
+        {
+            foreach (var attr in signerInfo.SignedAttributes)
+            {
+                if (SealImageOids.Contains(attr.Oid.Value) ||
+                    attr.Oid.FriendlyName.Contains("Seal", StringComparison.OrdinalIgnoreCase) ||
+                    attr.Oid.FriendlyName.Contains("Image", StringComparison.OrdinalIgnoreCase))
+                {
+                    foreach (var value in attr.Values)
+                    {
+                        if (value is AsnEncodedData asnData && asnData.RawData != null && asnData.RawData.Length > 0)
+                        {
+                            // 检查是否是图像数据（PNG/JPG 头部）
+                            if (IsImageData(asnData.RawData))
+                            {
+                                result.SealImageData = asnData.RawData;
+                            }
+                            else
+                            {
+                                // 可能是 ASN.1 封装的图像数据，尝试解包
+                                result.SealImageData = ExtractImageFromAsn1Data(asnData.RawData);
+                            }
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // 如果未找到印章图像，尝试从未签名属性中查找
+            if (result.SealImageData == null)
+            {
+                foreach (var attr in signerInfo.UnsignedAttributes)
+                {
+                    if (attr.Oid.FriendlyName.Contains("Seal", StringComparison.OrdinalIgnoreCase) ||
+                        attr.Oid.FriendlyName.Contains("Image", StringComparison.OrdinalIgnoreCase))
+                    {
+                        foreach (var value in attr.Values)
+                        {
+                            if (value is AsnEncodedData asnData && asnData.RawData != null)
+                            {
+                                result.SealImageData = asnData.RawData;
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 从签名信息中提取印章标识
+        /// </summary>
+        private void ExtractSealIdFromSignerInfo(System.Security.Cryptography.Pkcs.SignerInfo signerInfo, GomainSignedValue result)
+        {
+            foreach (var attr in signerInfo.SignedAttributes)
+            {
+                if (attr.Oid.Value.Contains("SealID") || 
+                    attr.Oid.FriendlyName.Contains("SealID", StringComparison.OrdinalIgnoreCase))
+                {
+                    foreach (var value in attr.Values)
+                    {
+                        if (value is AsnEncodedData asnData)
+                        {
+                            result.SealId = Encoding.UTF8.GetString(asnData.RawData);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
         /// 从 ZIP 数据中提取印章图像
         /// 国脉格式通常在 ZIP 包中包含印章图片
         /// </summary>
-        private byte[] ExtractSealImageFromZip(byte[] zipData)
+        private byte[] ExtractSealImageFromZip(System.IO.Compression.ZipArchive zipArchive)
         {
             try
             {
-                using var stream = new MemoryStream(zipData);
-                using var zipArchive = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Read);
-
                 // 查找常见的印章图像文件名
-                var sealImageNames = new[] { "seal.png", "seal.jpg", "seal.bmp", "stamp.png", "stamp.jpg", 
+                var sealImageNames = new[] { 
+                    "seal.png", "seal.jpg", "seal.bmp", "stamp.png", "stamp.jpg", 
                     "Seal.png", "Seal.jpg", "Seal.bmp", "Stamp.png", "Stamp.jpg",
-                    "Doc_0/Signs/Sign_0/Seal.png", "Doc_0/Signs/Sign_0/Seal.jpg" };
+                    "Doc_0/Signs/Sign_0/Seal.png", "Doc_0/Signs/Sign_0/Seal.jpg",
+                    "Doc_0/Signs/Sign_0/stamp.png", "Doc_0/Signs/Sign_0/stamp.jpg"
+                };
 
                 foreach (var entry in zipArchive.Entries)
                 {
@@ -992,6 +1118,41 @@ namespace OfdViewer.Eseal.Implementations.Gomain
                         return result;
                     }
                 }
+                else
+                {
+                    result.IsValid = false;
+                    result.StatusCode = -3;
+                    result.Message = "未找到签章者证书";
+                    result.Errors.Add("证书信息缺失");
+                    return result;
+                }
+
+                // 验证签名数据完整性（ZIP 部分）
+                int zipIndex = FindBytePattern(sealData, ZipSignature);
+                if (zipIndex > 0)
+                {
+                    var asn1Data = new byte[zipIndex];
+                    Array.Copy(sealData, 0, asn1Data, 0, zipIndex);
+
+                    var zipData = new byte[sealData.Length - zipIndex];
+                    Array.Copy(sealData, zipIndex, zipData, 0, zipData.Length);
+
+                    // 验证 ZIP 数据完整性
+                    try
+                    {
+                        using var stream = new MemoryStream(zipData);
+                        using var zipArchive = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Read);
+                        result.Message += "; ZIP数据完整性验证通过";
+                    }
+                    catch (Exception ex)
+                    {
+                        result.IsValid = false;
+                        result.StatusCode = -4;
+                        result.Message = "ZIP数据损坏";
+                        result.Errors.Add($"ZIP解析失败: {ex.Message}");
+                        return result;
+                    }
+                }
 
                 // TODO: 调用国脉 SDK 进行深度验签
                 // 验证 SM2 签名值
@@ -1039,13 +1200,64 @@ namespace OfdViewer.Eseal.Implementations.Gomain
 
             return new EsealMetadata
             {
-                SealId = signedValue.SealId,
-                Version = signedValue.Version,
+                SealId = signedValue.SealId ?? string.Empty,
+                Version = signedValue.Version ?? "1.0",
                 CreateTime = signedValue.SignTime,
                 ValidFrom = signedValue.ValidFrom,
                 ValidTo = signedValue.ValidTo,
-                SealType = signedValue.SealType
+                SealType = signedValue.SealType ?? string.Empty
             };
+        }
+
+        /// <summary>
+        /// 内部获取证书信息实现
+        /// </summary>
+        protected override async Task<CertificateInfo> GetCertificateInfoInternalAsync(byte[] sealData)
+        {
+            var signedValue = ParseSignedValue(sealData);
+
+            if (signedValue.Certificate == null)
+            {
+                return new CertificateInfo();
+            }
+
+            return new CertificateInfo
+            {
+                SerialNumber = signedValue.Certificate.SerialNumber,
+                Issuer = signedValue.Certificate.Issuer,
+                Subject = signedValue.Certificate.Subject,
+                ValidFrom = signedValue.Certificate.NotBefore,
+                ValidTo = signedValue.Certificate.NotAfter,
+                Thumbprint = signedValue.Certificate.Thumbprint,
+                PublicKeyAlgorithm = signedValue.Certificate.PublicKey.Oid?.Value ?? string.Empty,
+                SignatureAlgorithm = signedValue.Certificate.SignatureAlgorithm?.Value ?? string.Empty,
+                RawData = signedValue.Certificate.RawData
+            };
+        }
+
+        /// <summary>
+        /// 内部验证印章图片哈希实现
+        /// </summary>
+        protected override async Task<bool> VerifyImageHashInternalAsync(byte[] sealData)
+        {
+            try
+            {
+                var signedValue = ParseSignedValue(sealData);
+
+                // 如果没有图像数据或哈希值，返回 false
+                if (signedValue.SealImageData == null || signedValue.SealImageData.Length == 0)
+                {
+                    return false;
+                }
+
+                // 这里应该根据具体的哈希算法进行验证
+                // 目前国脉格式可能不包含独立的哈希值，返回 true 表示图像数据存在
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 

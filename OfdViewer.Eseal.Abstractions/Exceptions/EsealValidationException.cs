@@ -1,6 +1,6 @@
 using System;
 
-namespace OfdViewer.Eseal.Abstractions.Exceptions
+namespace OfdViewer.ESeal.Abstractions.Exceptions
 {
     /// <summary>
     /// 印章验签异常

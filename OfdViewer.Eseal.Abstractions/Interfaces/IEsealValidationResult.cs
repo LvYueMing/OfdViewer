@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using OfdViewer.Eseal.Abstractions.Models;
+using OfdViewer.ESeal.Abstractions.Models;
 
-namespace OfdViewer.Eseal.Abstractions.Interfaces
+namespace OfdViewer.ESeal.Abstractions.Interfaces
 {
     /// <summary>
     /// 印章验签结果接口
