@@ -81,52 +81,6 @@ using (var ofdDoc = OFDDocument.Create())
 }
 ```
 
-## 项目结构
-
-```
-OfdViewer/
-├── Doc/                    # 文档资源
-│   ├── *.xsd               # OFD 相关的 XML Schema 文件
-│   └── GBT+33190-2016-电子文件存储与交换格式-版式文档.pdf  # OFD 标准文档
-├── OFD-File/               # OFD 文件示例
-├── OfdViewer/              # 主项目
-│   ├── Models/             # 数据模型
-│   │   ├── Action/         # 动作相关模型
-│   │   ├── Annotation/     # 注释相关模型
-│   │   ├── Attachment/     # 附件相关模型
-│   │   ├── BaseStructure/  # 基础结构模型
-│   │   ├── BaseType/       # 基础类型模型
-│   │   ├── Composite/      # 复合类型模型
-│   │   ├── CustomTag/      # 自定义标签模型
-│   │   ├── Enum/           # 枚举类型
-│   │   ├── Extension/      # 扩展相关模型
-│   │   ├── Font/           # 字体相关模型
-│   │   ├── Graph/          # 图形相关模型
-│   │   ├── Image/          # 图片相关模型
-│   │   ├── PageDesc/       # 页面描述模型
-│   │   ├── Signature/      # 签名相关模型
-│   │   └── Version/        # 版本相关模型
-│   ├── OFD/                # OFD 核心处理
-│   │   ├── OFDArchive.cs   # OFD 归档处理
-│   │   ├── OFDDocument.cs  # OFD 文档核心类
-│   │   ├── OFDReader.cs    # OFD 文档读取器
-│   │   ├── OFDWriter.cs    # OFD 文档写入器
-│   │   ├── PageDocument.cs # 页面文档处理
-│   │   └── SignDocument.cs # 签名文档处理
-│   ├── Utils/              # 工具类
-│   │   ├── EnumHelper.cs           # 枚举辅助工具
-│   │   ├── SignedValueHandler.cs   # 签名值处理
-│   │   ├── XmlHelper.cs            # XML 辅助工具
-│   │   ├── XmlRequiredAttribute.cs # XML 必需属性
-│   │   └── XmlRequiredValidator.cs # XML 必需属性验证器
-│   ├── Constants.cs        # 常量定义
-│   └── OfdViewer.csproj    # 项目文件
-├── OfdViewer.Test/         # 测试项目
-│   └── ...                 # 测试用例
-├── OfdViewer.csproj        # 主项目文件
-└── OfdViewer.sln           # 解决方案文件
-```
-
 ## 核心模块说明
 
 ### OFDArchive
