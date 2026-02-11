@@ -339,6 +339,7 @@ plb/
 
 publish/
 OFD-File/
+Architecture/
 .vscode/
 .trae/
 *.md
