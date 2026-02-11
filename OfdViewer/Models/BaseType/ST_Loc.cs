@@ -120,6 +120,14 @@ namespace OFDViewer.Models.BaseType
             if (_path == "." || string.IsNullOrEmpty(_path))
                 return baseLoc;
 
+            // 如果当前路径以基准路径开头，说明它已经是绝对路径（相对于根目录）
+            // 例如：baseLoc="Doc_0/Signs", _path="Doc_0/Signs/Sign_0/Signature.xml"
+            // 这种情况下直接返回当前路径
+            if (baseLoc.Path != "." && _path.StartsWith(baseLoc.Path + "/"))
+            {
+                return new ST_Loc(_path);
+            }
+
             // 确保基准路径始终基于根目录，这样才能正确解析多个..
             // 使用List来保持路径顺序，比Stack更容易处理
             var fullPath = new List<string>();

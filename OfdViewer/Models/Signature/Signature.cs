@@ -13,6 +13,7 @@ namespace OFDViewer.Models.Signature
     /// 文以及本次签名对应的附加信息都将不可改动,从而实现一次数字签名对整个原文内容的保护。签名
     /// 描述文件的主要结构描述见图86。
     /// </summary>
+    [XmlRoot("Signature", Namespace = Constants.OFD_NAMESPACE_URI)]
     public class Signature
     {
         /// <summary>

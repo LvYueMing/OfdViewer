@@ -14,10 +14,15 @@ using OFDViewer.Parse;
 using OFDViewer.Render.Abstractions;
 using OFDViewer.Render.DataModels;
 using OFDViewer.Render.Implementation;
+using OfdViewer.Eseal.Abstractions.Factory;
+using OfdViewer.Eseal.Abstractions.Interfaces;
+using OfdViewer.Eseal.Implementations.Common;
+using OfdViewer.Eseal.Implementations.Gomain;
 using SkiaSharp;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace OFDViewer.Render
 {
@@ -54,7 +59,6 @@ namespace OFDViewer.Render
         /// 释放状态标志，防止重复释放资源
         /// </summary>
         private bool _disposed = false;
-        
 
         #endregion
 
@@ -162,6 +166,19 @@ namespace OFDViewer.Render
             
             // 读取文档并计算页数
             LoadDocument();
+        }
+
+
+        /// <summary>
+        /// 静态构造函数，注册电子印章解析器
+        /// </summary>
+        static OfdRenderer()
+        {
+            // 注册国脉电子印章解析器
+            EsealParserFactory.Register("Gomain", () => new GomainEsealParser());
+
+            // 注册默认解析器（作为后备）
+            EsealParserFactory.Register("Default", () => new DefaultEsealParser());
         }
         
         #endregion
@@ -289,6 +306,7 @@ namespace OFDViewer.Render
                     {
                         RenderContext = renderContext,
                         OfdDocument = ofdDoc,
+                        CurrentPageDoc = pageDoc,
                         CurrentPage = pageDoc.Page,
                         PageIndex = pageIndex,
                         DocumentIndex = docIndex,
@@ -2244,47 +2262,44 @@ namespace OFDViewer.Render
             // 2. 从 SignDocument 中获取印章数据并渲染
             if (ofdDoc?.SignDocs != null && ofdDoc.SignDocs.Count > 0)
             {
-                // 获取当前页面的索引
-                int pageIndex = renderCtxObj.PageIndex;
-
                 // 查找匹配的签章文档
                 foreach (var signDoc in ofdDoc.SignDocs)
                 {
                     if (signDoc?.Signature?.SignedInfo?.StampAnnots == null)
                         continue;
 
-                    // 查找与当前页面和注释ID匹配的 StampAnnot
-                    // StampAnnot.PageRef 是页面ID，需要从 PageDocs 中获取
-                    var pageDocs = ofdDoc.PageDocs;
-                    if (pageDocs == null || pageIndex >= pageDocs.Count)
-                        continue;
-
-                    var currentPageDoc = pageDocs[pageIndex];
-                    uint currentPageId = currentPageDoc.PageId;
-
-                    // 获取注释ID字符串
-                    // 使用 IDString 属性获取字符串形式的ID
-                    string annotIdStr = annot.IDString;
+                    // 查找与当前页面匹配的 StampAnnot
+                    // StampAnnot.PageRef 是页面ID
+                    uint currentPageId = renderCtxObj.CurrentPageDoc.PageId;
                     
                     // 查找匹配的 StampAnnot
                     Models.Signature.StampAnnot stampAnnot = FindMatchingStampAnnot(
                         signDoc.Signature.SignedInfo.StampAnnots, 
-                        currentPageId, 
-                        annotIdStr);
+                        currentPageId);
 
                     if (stampAnnot == null)
                         continue;
 
-                    // 获取印章数据（Seal.esl 文件内容）
-                    byte[] sealData = signDoc.Seal;
+                    // 获取印章数据
+                    // 优先尝试 SignedValue.dat（国脉等深度封装格式）
+                    byte[] sealData = signDoc.SignedValue;
+                    bool isSignedValueFormat = true;
+
+                    // 如果 SignedValue 为空，则尝试 Seal.esl
+                    if (sealData == null || sealData.Length == 0)
+                    {
+                        sealData = signDoc.Seal;
+                        isSignedValueFormat = false;
+                    }
+
                     if (sealData == null || sealData.Length == 0)
                         continue;
 
                     try
                     {
                         // 解析印章数据并渲染
-                        // 印章数据通常是遵循密码领域规范的电子印章文件
-                        RenderSealData(renderContext, sealData, stampAnnot, annot);
+                        // 支持深度封装格式（SignedValue.dat）和标准格式（Seal.esl）
+                        RenderSealData(renderContext, sealData, stampAnnot, annot, isSignedValueFormat);
                     }
                     catch (Exception ex)
                     {
@@ -2296,13 +2311,14 @@ namespace OFDViewer.Render
 
         /// <summary>
         /// 渲染印章数据
-        /// 解析电子印章数据并渲染到指定位置
+        /// 使用电子印章解析库解析并渲染印章到指定位置
         /// </summary>
         /// <param name="renderContext">渲染上下文</param>
         /// <param name="sealData">印章二进制数据</param>
         /// <param name="stampAnnot">签章注释信息</param>
         /// <param name="annot">注释元素（可选，用于获取边界）</param>
-        private void RenderSealData(IRenderContext renderContext, byte[] sealData, Models.Signature.StampAnnot stampAnnot, Models.Annotation.Annot annot = null)
+        /// <param name="isSignedValueFormat">是否为深度封装格式（SignedValue.dat）</param>
+        private async void RenderSealData(IRenderContext renderContext, byte[] sealData, Models.Signature.StampAnnot stampAnnot, Models.Annotation.Annot annot = null, bool isSignedValueFormat = false)
         {
             if (sealData == null || sealData.Length == 0)
                 return;
@@ -2339,26 +2355,70 @@ namespace OFDViewer.Render
                 float width = renderContext.MillimetersToPixels((float)boundary.Width);
                 float height = renderContext.MillimetersToPixels((float)boundary.Height);
 
-                // TODO: 解析电子印章数据（Seal.esl）
-                // 电子印章文件通常包含印章图像、签章人证书等信息
-                // 需要根据具体的印章格式（如 GM/T 0031-2014 标准）进行解析
+                // 使用电子印章解析库解析印章
+                IEsealParser parser = null;
+                Stream sealImageStream = null;
 
-                // 临时方案：如果印章数据是图像格式，直接渲染
-                // 实际实现需要根据印章文件格式进行解析
-                var imageRenderer = renderContext as IImageRenderer;
-                if (imageRenderer != null)
+                try
                 {
-                    // 创建图像样式
-                    var imageStyle = new ImageStyle();
+                    // 1. 记录签章数据格式类型
+                    string formatType = isSignedValueFormat ? "SignedValue.dat（深度封装）" : "Seal.esl（标准格式）";
+                    System.Diagnostics.Debug.WriteLine($"签章数据格式: {formatType}, 数据大小: {sealData.Length} 字节");
 
-                    // 使用 DrawImage 方法绘制印章
-                    using var sealStream = new MemoryStream(sealData);
-                    imageRenderer.DrawImage(x, y, width, height, sealStream, imageStyle);
+                    // 2. 自动检测并获取合适的解析器
+                    parser = EsealParserFactory.GetParser(sealData);
+                    System.Diagnostics.Debug.WriteLine($"使用解析器: {parser.ParserName}");
+
+                    // 3. 提取印章图像（按目标尺寸）
+                    sealImageStream = await parser.ExtractImageAsync(sealData, (int)width, (int)height);
+
+                    if (sealImageStream == null || sealImageStream.Length == 0)
+                    {
+                        System.Diagnostics.Debug.WriteLine("无法从印章数据中提取图像");
+                        return;
+                    }
+
+                    // 4. 可选：获取印章信息用于日志记录
+                    try
+                    {
+                        var sealInfo = await parser.LoadAsync(sealData);
+                        System.Diagnostics.Debug.WriteLine($"印章信息: {sealInfo?.SealName}, 类型: {sealInfo?.SealType}");
+                    }
+                    catch
+                    {
+                        // 获取信息失败不影响渲染
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"印章解析失败: {ex.Message}，尝试使用默认方式渲染");
+
+                    // 如果解析失败，尝试直接作为图像渲染
+                    sealImageStream = new MemoryStream(sealData);
+                }
+
+                // 4. 使用 IImageRenderer 绘制印章
+                var imageRenderer = renderContext as IImageRenderer;
+                if (imageRenderer != null && sealImageStream != null)
+                {
+                    try
+                    {
+                        // 创建图像样式
+                        var imageStyle = new ImageStyle();
+
+                        // 使用 DrawImage 方法绘制印章
+                        imageRenderer.DrawImage(x, y, width, height, sealImageStream, imageStyle);
+                    }
+                    finally
+                    {
+                        // 确保释放图像流
+                        sealImageStream?.Dispose();
+                    }
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"解析印章数据失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"渲染印章数据失败: {ex.Message}");
             }
         }
 
@@ -2371,10 +2431,9 @@ namespace OFDViewer.Render
         /// <returns>匹配的签章注释，如果未找到返回null</returns>
         private Models.Signature.StampAnnot FindMatchingStampAnnot(
             List<Models.Signature.StampAnnot> stampAnnots,
-            uint pageId,
-            string annotId)
+            uint pageId)
         {
-            if (stampAnnots == null || string.IsNullOrEmpty(annotId))
+            if (stampAnnots == null)
                 return null;
 
             foreach (var sa in stampAnnots)
@@ -2382,11 +2441,7 @@ namespace OFDViewer.Render
                 // 使用 ReferencedId.RawValue 获取 uint 类型的页面ID
                 if (sa.PageRef.ReferencedId.RawValue == pageId)
                 {
-                    string saId = sa.ID;
-                    if (saId.Equals(annotId, StringComparison.Ordinal))
-                    {
                         return sa;
-                    }
                 }
             }
 

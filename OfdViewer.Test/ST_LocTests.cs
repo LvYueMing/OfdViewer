@@ -144,6 +144,7 @@ namespace OFDViewer.Tests
         [InlineData("a/b/c", ".", "a/b/c")]
         [InlineData("a", ".", "a")]
         [InlineData("sub/file", "base", "base/sub/file")]
+        [InlineData("Doc_0/Signs/Sign_0/Signature.xml", "Doc_0/Signs", "Doc_0/Signs/Sign_0/Signature.xml")]
         public void GetAbsolutePath_RelativePath_Against_BaseLoc(string relativePath, string baseLoc, string expectedPath)
         {
             var loc = new ST_Loc(relativePath);

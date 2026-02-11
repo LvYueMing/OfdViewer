@@ -23,6 +23,11 @@ namespace OFDViewer.Render.Implementation
         public OFDDocument OfdDocument { get; set; }
 
         /// <summary>
+        /// 当前页文档对象
+        /// </summary>
+        public PageDocument CurrentPageDoc { get; set; }
+
+        /// <summary>
         /// 当前页面对象
         /// </summary>
         public Page CurrentPage { get; set; }
