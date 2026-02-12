@@ -540,8 +540,19 @@ namespace OFDViewer.Parse
             // 文档路径为空时，使用“/”根目录
             DocDirectoryPath = Path.GetDirectoryName(docFilePath);
             DocumentFilePath = docFilePath;
+
             // 从文档路径 Doc_{0} 获取文档序号 0
-            DocIndex = DocDirectoryPath == "/" ? 0 : int.Parse(Regex.Match(DocDirectoryPath, @"Doc_(\d+)").Groups[1].Value);
+            var index = Regex.Match(DocDirectoryPath, @"Doc_(\d+)").Groups[1].Value;
+            //文件目录结构非标准,即未包含 Doc_x 结构
+            if (string.IsNullOrEmpty(index))
+            {
+                DocIndex = -1;
+            }
+            else
+            {
+                DocIndex = int.Parse(index);
+            }
+           
             Document = new Document();
             PageDocs = new List<PageDocument>();
             ResFiles = new Dictionary<string, byte[]>();

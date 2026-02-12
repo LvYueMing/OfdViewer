@@ -108,7 +108,6 @@ namespace OFDViewer.Models.BaseType
         /// 根据基准位置解析当前相对路径，生成实际的相对路径
         /// </summary>
         /// <param name="baseLoc">基准位置路径,即当前路径</param>
-        /// <summary>
         /// 根据基准位置解析相对路径，生成实际的相对路径
         /// </summary>
         /// <param name="baseLoc">基准位置路径（不应包含.和..）</param>
@@ -150,21 +149,54 @@ namespace OFDViewer.Models.BaseType
             // 然后处理当前路径
             var currentParts = _path.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
 
-            // 检查相对路径的前缀是否与基准路径的后缀匹配
+            // 处理带有..的路径，检查..后的路径是否与当前路径匹配
+            // 例如："../Doc_0/Res/image_18.png" 相对于 "Doc_0/Res"
+            // ..回退到Doc_0，然后"Doc_0/Res"与当前路径"Doc_0"+"Res"匹配，应跳过
+            var processedParts = new List<string>();
+            for (int i = 0; i < currentParts.Length; i++)
+            {
+                var part = currentParts[i];
+
+                if (part == ".")
+                    continue;
+                if (part == "..")
+                {
+                    if (processedParts.Count > 0)
+                    {
+                        processedParts.RemoveAt(processedParts.Count - 1);
+                    }
+                    else if (fullPath.Count > 0)
+                    {
+                        // 消耗基准路径的一部分
+                        fullPath.RemoveAt(fullPath.Count - 1);
+                    }
+                    else
+                    {
+                        // 相对路径超出基准路径，抛出异常
+                        throw new ArgumentException("相对路径超出基准路径范围", nameof(_path));
+                    }
+                }
+                else
+                {
+                    processedParts.Add(part);
+                }
+            }
+
+            // 检查处理后的路径是否与基准路径的后缀匹配
             // 如果匹配，则跳过匹配的部分，避免路径重复
             // 例如："Res/sub/image_10.bmp" 相对于 "Doc_0/Res/sub" → "Doc_0/Res/sub/image_10.bmp"
             var skipCount = 0;
-            if (fullPath.Count > 0 && currentParts.Length > 0)
+            if (fullPath.Count > 0 && processedParts.Count > 0)
             {
-                // 计算相对路径前缀与基准路径后缀的最大可能匹配长度
-                var maxMatchLength = Math.Min(fullPath.Count, currentParts.Length);
+                // 计算处理后路径前缀与基准路径后缀的最大可能匹配长度
+                var maxMatchLength = Math.Min(fullPath.Count, processedParts.Count);
                 for (var matchLength = maxMatchLength; matchLength > 0; matchLength--)
                 {
                     var match = true;
                     for (var i = 0; i < matchLength; i++)
                     {
-                        // 比较基准路径的后缀与相对路径的前缀
-                        if (fullPath[fullPath.Count - matchLength + i] != currentParts[i])
+                        // 比较基准路径的后缀与处理后路径的前缀
+                        if (fullPath[fullPath.Count - matchLength + i] != processedParts[i])
                         {
                             match = false;
                             break;
@@ -178,33 +210,10 @@ namespace OFDViewer.Models.BaseType
                 }
             }
 
-            for (int i = 0; i < currentParts.Length; i++)
+            // 添加处理后的路径部分（跳过匹配的）
+            for (int i = skipCount; i < processedParts.Count; i++)
             {
-                var part = currentParts[i];
-
-                if (part == ".")
-                    continue;
-                if (part == "..")
-                {
-                    if (fullPath.Count > 0)
-                    {
-                        fullPath.RemoveAt(fullPath.Count - 1);
-                    }
-                    else
-                    {
-                        // 相对路径超出基准路径，抛出异常
-                        throw new ArgumentException("相对路径超出基准路径范围", nameof(_path));
-                    }
-                }
-                else
-                {
-                    // 跳过与基准路径后缀匹配的部分
-                    if (i < skipCount)
-                    {
-                        continue;
-                    }
-                    fullPath.Add(part);
-                }
+                fullPath.Add(processedParts[i]);
             }
 
             // 构建最终路径
