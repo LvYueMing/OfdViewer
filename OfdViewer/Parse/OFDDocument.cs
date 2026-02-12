@@ -759,15 +759,15 @@ namespace OFDViewer.Parse
 
         /// 从模版页获取指定类型的资源（非泛型版本）
         /// </summary>
-        /// <param name="templateIndex">模版页索引</param>
+        /// <param name="templateIndex">模版页ID</param>
         /// <param name="resourceId">资源ID</param>
         /// <param name="resourceType">资源类型</param>
         /// <param name="location">资源位置</param>
         /// <returns>指定类型的资源对象，如果未找到返回null</returns>
-        public object GetTemplateResource(int templateIndex, string resourceId, ResourceType resourceType, ResourceLocation location = ResourceLocation.Auto)
+        public object GetTemplateResource(int templateId, string resourceId, ResourceType resourceType, ResourceLocation location = ResourceLocation.Auto)
         {
             // 获取模版页面对象
-            TemplateDocument templateDoc = TemplateDocs?.FirstOrDefault(t => t.TemplateId == templateIndex);
+            TemplateDocument templateDoc = TemplateDocs?.FirstOrDefault(t => t.TemplateId == templateId);
             if (templateDoc == null) return null;
 
             // 按照指定位置或自动搜索顺序查找资源
@@ -801,14 +801,14 @@ namespace OFDViewer.Parse
         /// 从模版页获取指定类型的资源（泛型版本）
         /// </summary>
         /// <typeparam name="T">资源类型（OFDFont、ColorSpace、DrawParam等）</typeparam>
-        /// <param name="templateIndex">模版页索引</param>
+        /// <param name="templateId">模版页ID</param>
         /// <param name="resourceId">资源ID</param>
         /// <param name="location">资源位置</param>
         /// <returns>指定类型的资源对象，如果未找到返回default(T)</returns>
-        public T GetTemplateResource<T>(int templateIndex, string resourceId, ResourceLocation location = ResourceLocation.Auto)
+        public T GetTemplateResource<T>(int templateId, string resourceId, ResourceLocation location = ResourceLocation.Auto)
         {
             // 获取模版页面对象
-            TemplateDocument templateDoc = TemplateDocs?.FirstOrDefault(t => t.TemplateId == templateIndex);
+            TemplateDocument templateDoc = TemplateDocs?.FirstOrDefault(t => t.TemplateId == templateId);
             if (templateDoc == null) return default(T);
 
             // 按照指定位置或自动搜索顺序查找资源
@@ -934,10 +934,10 @@ namespace OFDViewer.Parse
         /// <param name="resourceType">资源类型</param>
         /// <param name="location">资源位置</param>
         /// <returns>资源对象，如果未找到返回null</returns>
-        public object GetResource(int pageIndex, string resourceId, ResourceType resourceType = ResourceType.All, ResourceLocation location = ResourceLocation.Auto)
+        public object GetResource(int pageId, string resourceId, ResourceType resourceType = ResourceType.All, ResourceLocation location = ResourceLocation.Auto)
         {
             // 获取页面对象
-            PageDocument pageDoc = PageDocs?.FirstOrDefault(p => p.PageIndex == pageIndex);
+            PageDocument pageDoc = PageDocs?.FirstOrDefault(p => p.PageId == pageId);
             if (pageDoc == null) return null;
 
             // 按照指定位置或自动搜索顺序查找资源
@@ -1105,14 +1105,14 @@ namespace OFDViewer.Parse
         /// <summary>
         /// 从模版页获取资源文件内容
         /// </summary>
-        /// <param name="templateIndex">模版页索引</param>
+        /// <param name="templateId">模版页ID</param>
         /// <param name="filePath">文件路径</param>
         /// <param name="location">资源位置</param>
         /// <returns>资源文件内容，如果未找到返回null</returns>
-        public byte[] GetTemplateResourceFile(int templateIndex, string filePath, ResourceLocation location = ResourceLocation.Auto)
+        public byte[] GetTemplateResourceFile(int templateId, string filePath, ResourceLocation location = ResourceLocation.Auto)
         {
             // 获取模版页面对象
-            TemplateDocument templateDoc = TemplateDocs?.FirstOrDefault(t => t.TemplateId == templateIndex);
+            TemplateDocument templateDoc = TemplateDocs?.FirstOrDefault(t => t.TemplateId == templateId);
             if (templateDoc == null) return null;
 
             // 构建完整的文件路径

@@ -149,8 +149,39 @@ namespace OFDViewer.Models.BaseType
 
             // 然后处理当前路径
             var currentParts = _path.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
-            foreach (var part in currentParts)
+
+            // 检查相对路径的前缀是否与基准路径的后缀匹配
+            // 如果匹配，则跳过匹配的部分，避免路径重复
+            // 例如："Res/sub/image_10.bmp" 相对于 "Doc_0/Res/sub" → "Doc_0/Res/sub/image_10.bmp"
+            var skipCount = 0;
+            if (fullPath.Count > 0 && currentParts.Length > 0)
             {
+                // 计算相对路径前缀与基准路径后缀的最大可能匹配长度
+                var maxMatchLength = Math.Min(fullPath.Count, currentParts.Length);
+                for (var matchLength = maxMatchLength; matchLength > 0; matchLength--)
+                {
+                    var match = true;
+                    for (var i = 0; i < matchLength; i++)
+                    {
+                        // 比较基准路径的后缀与相对路径的前缀
+                        if (fullPath[fullPath.Count - matchLength + i] != currentParts[i])
+                        {
+                            match = false;
+                            break;
+                        }
+                    }
+                    if (match)
+                    {
+                        skipCount = matchLength;
+                        break;
+                    }
+                }
+            }
+
+            for (int i = 0; i < currentParts.Length; i++)
+            {
+                var part = currentParts[i];
+
                 if (part == ".")
                     continue;
                 if (part == "..")
@@ -167,6 +198,11 @@ namespace OFDViewer.Models.BaseType
                 }
                 else
                 {
+                    // 跳过与基准路径后缀匹配的部分
+                    if (i < skipCount)
+                    {
+                        continue;
+                    }
                     fullPath.Add(part);
                 }
             }

@@ -176,6 +176,7 @@ namespace OFDViewer.Parse
                     {
                         using var stream = _archive.OpenFileStream(pubResFilePath);
                         doc.PublicResource = XmlHelper.DeserializeFromStream<Res>(stream);
+                        doc.ResDirectoryPath = doc.PublicResource.BaseLoc.GetAbsolutePath(doc.DocDirectoryPath).Path;
                         doc.PublicResourceFilePath = pubResFilePath;
 
                         // 不立即加载资源文件，等待使用时再从归档读取 doc.ResourceArchive = _archive;
