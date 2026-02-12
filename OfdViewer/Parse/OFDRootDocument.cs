@@ -71,7 +71,7 @@ namespace OFDViewer.Parse
         public OFDDocument NewDoc()
         {
             // 自动生成文档序号（从0开始，基于现有文档数量自增）
-            int newDocIndex = this.Docs.Count + 1 - 1;
+            int newDocIndex = this.Docs.Count;
             var newDoc = new OFDDocument(newDocIndex);
             this.Docs.Add(newDoc);
 
