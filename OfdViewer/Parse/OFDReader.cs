@@ -225,6 +225,8 @@ namespace OFDViewer.Parse
                     var pageDoc = ReadPageDoc(pageFilePath, doc.DocDirectoryPath);
                     // 页面ID
                     pageDoc.PageId = page.ID;
+                    if (pageDoc.PageIndex == -1)
+                        pageDoc.PageIndex = doc.PageDocs.Count + 1;
 
                     doc.AddPageDoc(pageDoc);
                 }

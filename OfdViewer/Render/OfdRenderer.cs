@@ -289,9 +289,6 @@ namespace OFDViewer.Render
             // 初始化渲染上下文
             renderContext.Initialize(renderWidth, renderHeight);
 
-            // 设置资源管理器
-            renderContext.ResourceManager = new ResourceManager(ofdDoc, pageIndex);
-
             // 设置背景色为白色
             renderContext.SetBackgroundColor(0xFFFFFFFF);
             
@@ -301,6 +298,8 @@ namespace OFDViewer.Render
                 var pageDoc = ofdDoc.PageDocs[pageIndex];
                 if (pageDoc != null && pageDoc.Page != null)
                 {
+                    // 设置资源管理器
+                    renderContext.ResourceManager = new ResourceManager(ofdDoc, (int)pageDoc.PageId);
                     // 创建渲染上下文对象，封装共性参数
                     var renderCtxObj = new RenderContextObject
                     {
