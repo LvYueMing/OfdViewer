@@ -18,13 +18,20 @@ namespace OFDViewer.Models.Signature
         [XmlRequired(ErrorMsg = "ID为必选项，且不能为空")]
         public string ID { get; set; }
 
+        [XmlIgnore]
+        public ST_RefID PageRef { get; set; }
+
         /// <summary>
         /// 引用外观注释所在的页面的标识 
         /// 必选
         /// </summary>
         [XmlAttribute("PageRef")]
         [XmlRequired(ErrorMsg = "PageRef为必选项，且不能为空")]
-        public ST_RefID PageRef { get; set; }
+        public string PageRefString
+        { 
+            get => PageRef.Value; 
+            set => PageRef = ST_RefID.Parse(value);
+        }
 
         /// <summary>
         /// 签章注释的外观外边框位置,可用于签章注释在页面内的定位 

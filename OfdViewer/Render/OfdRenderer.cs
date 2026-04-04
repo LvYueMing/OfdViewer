@@ -14,10 +14,15 @@ using OFDViewer.Parse;
 using OFDViewer.Render.Abstractions;
 using OFDViewer.Render.DataModels;
 using OFDViewer.Render.Implementation;
+using OfdViewer.ESeal.Abstractions.Factory;
+using OfdViewer.ESeal.Abstractions.Interfaces;
+using OfdViewer.ESeal.Implementations.Common;
+using OfdViewer.ESeal.Implementations.Gomain;
 using SkiaSharp;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace OFDViewer.Render
 {
@@ -54,7 +59,6 @@ namespace OFDViewer.Render
         /// 释放状态标志，防止重复释放资源
         /// </summary>
         private bool _disposed = false;
-        
 
         #endregion
 
@@ -162,6 +166,19 @@ namespace OFDViewer.Render
             
             // 读取文档并计算页数
             LoadDocument();
+        }
+
+
+        /// <summary>
+        /// 静态构造函数，注册电子印章解析器
+        /// </summary>
+        static OfdRenderer()
+        {
+            // 注册国脉电子印章解析器
+            EsealParserFactory.Register("Gomain", () => new GomainEsealParser());
+
+            // 注册默认解析器（作为后备）
+            EsealParserFactory.Register("Default", () => new DefaultEsealParser());
         }
         
         #endregion
@@ -272,9 +289,6 @@ namespace OFDViewer.Render
             // 初始化渲染上下文
             renderContext.Initialize(renderWidth, renderHeight);
 
-            // 设置资源管理器
-            renderContext.ResourceManager = new ResourceManager(ofdDoc, pageIndex);
-
             // 设置背景色为白色
             renderContext.SetBackgroundColor(0xFFFFFFFF);
             
@@ -284,11 +298,14 @@ namespace OFDViewer.Render
                 var pageDoc = ofdDoc.PageDocs[pageIndex];
                 if (pageDoc != null && pageDoc.Page != null)
                 {
+                    // 设置资源管理器
+                    renderContext.ResourceManager = new ResourceManager(ofdDoc, (int)pageDoc.PageId);
                     // 创建渲染上下文对象，封装共性参数
                     var renderCtxObj = new RenderContextObject
                     {
                         RenderContext = renderContext,
                         OfdDocument = ofdDoc,
+                        CurrentPageDoc = pageDoc,
                         CurrentPage = pageDoc.Page,
                         PageIndex = pageIndex,
                         DocumentIndex = docIndex,
@@ -297,6 +314,20 @@ namespace OFDViewer.Render
 
                     // 渲染页面内容
                     RenderPageContent(renderCtxObj);
+
+                    // 渲染注释
+                    // 根据当前页的pageDoc.PageId，获取当前页的页注释对象PageAnnotDocument
+                    var pageAnnotDoc = ofdDoc.PageAnnotDocs?.FirstOrDefault(a => a.PageId == pageDoc.PageId);
+                    if (pageAnnotDoc != null && pageAnnotDoc.PageAnnot != null)
+                    {
+                        // 渲染注释
+                        RenderPageAnnot(renderCtxObj, pageAnnotDoc.PageAnnot);
+                    }
+                    else
+                    {
+                        // 没有注释，跳过
+                    }
+                    
                 }
             }
             
@@ -2074,6 +2105,346 @@ namespace OFDViewer.Render
                 var outputPath = Path.Combine(outputDirectory, string.Format(fileNamePattern, i + 1));
                 RenderPageToFile(outputPath, i);
             }
+        }
+
+        #endregion
+
+        #region 注释渲染
+
+        /// <summary>
+        /// 渲染页面注释
+        /// 根据注释元素 Annot 的定义，渲染注释的外观（Appearance）
+        /// </summary>
+        /// <param name="renderCtxObj">渲染上下文对象</param>
+        /// <param name="pageAnnot">页面注释文档对象</param>
+        private void RenderPageAnnot(RenderContextObject renderCtxObj, Models.Annotation.PageAnnot pageAnnot)
+        {
+            if (pageAnnot.Annotations == null || pageAnnot.Annotations.Count == 0)
+                return;
+
+            var renderContext = renderCtxObj.RenderContext;
+
+            // 遍历所有注释元素
+            foreach (var annot in pageAnnot.Annotations)
+            {
+                // 检查注释是否可见
+                if (!annot.Visible)
+                    continue;
+
+                // 检查注释的外观是否存在
+                if (annot.Appearance == null)
+                    continue;
+
+                // 保存当前渲染状态
+                renderContext.SaveState();
+
+                try
+                {
+                    // 根据注释类型进行不同的处理
+                    switch (annot.Type)
+                    {
+                        case Models.Annotation.AnnotationType.Link:
+                            // 链接注释：渲染外观（如果有）
+                            RenderAnnotAppearance(renderCtxObj, annot);
+                            break;
+
+                        case Models.Annotation.AnnotationType.Path:
+                            // 路径注释：一般为图形对象，渲染外观
+                            RenderAnnotAppearance(renderCtxObj, annot);
+                            break;
+
+                        case Models.Annotation.AnnotationType.Highlight:
+                            // 高亮注释：渲染高亮效果
+                            RenderHighlightAnnot(renderCtxObj, annot);
+                            break;
+
+                        case Models.Annotation.AnnotationType.Stamp:
+                            // 签章注释：渲染电子印章
+                            RenderStampAnnot(renderCtxObj, annot);
+                            break;
+
+                        case Models.Annotation.AnnotationType.Watermark:
+                            // 水印注释：渲染水印
+                            RenderAnnotAppearance(renderCtxObj, annot);
+                            break;
+
+                        default:
+                            // 其他类型：默认渲染外观
+                            RenderAnnotAppearance(renderCtxObj, annot);
+                            break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // 记录错误但继续渲染其他注释
+                    System.Diagnostics.Debug.WriteLine($"渲染注释 {annot.ID} 失败: {ex.Message}");
+                }
+                finally
+                {
+                    // 恢复渲染状态
+                    renderContext.RestoreState();
+                }
+            }
+        }
+
+        /// <summary>
+        /// 渲染注释的外观内容
+        /// 处理具有 CT_PageBlock 属性的注释类型
+        /// </summary>
+        /// <param name="renderCtxObj">渲染上下文对象</param>
+        /// <param name="annot">注释元素</param>
+        private void RenderAnnotAppearance(RenderContextObject renderCtxObj, Models.Annotation.Annot annot)
+        {
+            // 检查外观是否存在
+            if (annot.Appearance == null)
+                return;
+
+            // 渲染外观内容
+            // Appearance 继承自 CT_PageBlock，包含 PageBlockItems
+            // 注意：边界框变换由 RenderPageBlock 内部处理
+            if (annot.Appearance.PageBlockItems != null)
+            {
+                foreach (var blockItem in annot.Appearance.PageBlockItems)
+                {
+                    RenderPageBlock(renderCtxObj, blockItem);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 渲染高亮注释
+        /// 高亮注释通常需要特殊的渲染处理，如半透明填充
+        /// </summary>
+        /// <param name="renderCtxObj">渲染上下文对象</param>
+        /// <param name="annot">注释元素</param>
+        private void RenderHighlightAnnot(RenderContextObject renderCtxObj, Models.Annotation.Annot annot)
+        {
+            var renderContext = renderCtxObj.RenderContext;
+
+            // 如果有外观，先渲染外观
+            if (annot.Appearance != null && annot.Appearance.PageBlockItems != null)
+            {
+                foreach (var blockItem in annot.Appearance.PageBlockItems)
+                {
+                    RenderPageBlock(renderCtxObj, blockItem);
+                }
+            }
+
+            // 高亮注释的特殊处理：可以在这里添加半透明高亮效果
+            // 例如，根据注释的参数或边界绘制半透明矩形
+            // 这里预留扩展点，可以根据具体需求实现高亮效果
+        }
+
+        /// <summary>
+        /// 渲染签章注释（电子印章）
+        /// 从 SignDocument 中获取印章数据并渲染
+        /// </summary>
+        /// <param name="renderCtxObj">渲染上下文对象</param>
+        /// <param name="annot">注释元素</param>
+        private void RenderStampAnnot(RenderContextObject renderCtxObj, Models.Annotation.Annot annot)
+        {
+            if (annot == null)
+                return;
+
+            var renderContext = renderCtxObj.RenderContext;
+            var ofdDoc = renderCtxObj.OfdDocument;
+
+            // 1. 首先尝试渲染外观（如果存在）
+            if (annot.Appearance != null && annot.Appearance.PageBlockItems != null)
+            {
+                foreach (var blockItem in annot.Appearance.PageBlockItems)
+                {
+                    RenderPageBlock(renderCtxObj, blockItem);
+                }
+            }
+
+            // 2. 从 SignDocument 中获取印章数据并渲染
+            if (ofdDoc?.SignDocs != null && ofdDoc.SignDocs.Count > 0)
+            {
+                // 查找匹配的签章文档
+                foreach (var signDoc in ofdDoc.SignDocs)
+                {
+                    if (signDoc?.Signature?.SignedInfo?.StampAnnots == null)
+                        continue;
+
+                    // 查找与当前页面匹配的 StampAnnot
+                    // StampAnnot.PageRef 是页面ID
+                    uint currentPageId = renderCtxObj.CurrentPageDoc.PageId;
+                    
+                    // 查找匹配的 StampAnnot
+                    Models.Signature.StampAnnot stampAnnot = FindMatchingStampAnnot(
+                        signDoc.Signature.SignedInfo.StampAnnots, 
+                        currentPageId);
+
+                    if (stampAnnot == null)
+                        continue;
+
+                    // 获取印章数据
+                    // 优先尝试 SignedValue.dat（国脉等深度封装格式）
+                    byte[] sealData = signDoc.SignedValue;
+                    bool isSignedValueFormat = true;
+
+                    // 如果 SignedValue 为空，则尝试 Seal.esl
+                    if (sealData == null || sealData.Length == 0)
+                    {
+                        sealData = signDoc.Seal;
+                        isSignedValueFormat = false;
+                    }
+
+                    if (sealData == null || sealData.Length == 0)
+                        continue;
+
+                    try
+                    {
+                        // 解析印章数据并渲染
+                        // 支持深度封装格式（SignedValue.dat）和标准格式（Seal.esl）
+                        RenderSealData(renderContext, sealData, stampAnnot, annot, isSignedValueFormat);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"渲染印章失败: {ex.Message}");
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 渲染印章数据
+        /// 使用电子印章解析库解析并渲染印章到指定位置
+        /// </summary>
+        /// <param name="renderContext">渲染上下文</param>
+        /// <param name="sealData">印章二进制数据</param>
+        /// <param name="stampAnnot">签章注释信息</param>
+        /// <param name="annot">注释元素（可选，用于获取边界）</param>
+        /// <param name="isSignedValueFormat">是否为深度封装格式（SignedValue.dat）</param>
+        private async void RenderSealData(IRenderContext renderContext, byte[] sealData, Models.Signature.StampAnnot stampAnnot, Models.Annotation.Annot annot = null, bool isSignedValueFormat = false)
+        {
+            if (sealData == null || sealData.Length == 0)
+                return;
+
+            try
+            {
+                // 获取签章注释的边界位置
+                ST_Box boundary = new ST_Box();
+                bool hasBoundary = false;
+
+                if (annot?.Appearance?.Boundary != null)
+                {
+                    boundary = annot.Appearance.Boundary;
+                    hasBoundary = true;
+                }
+                else if (stampAnnot.Boundary != null)
+                {
+                    // 从 StampAnnot 的 Boundary 属性解析
+                    // Boundary 格式通常是 "x y width height"
+                    var boundaryStr = stampAnnot.Boundary.ToString();
+                    if (!string.IsNullOrEmpty(boundaryStr))
+                    {
+                        boundary = ST_Box.Parse(boundaryStr);
+                        hasBoundary = true;
+                    }
+                }
+
+                if (!hasBoundary)
+                    return;
+
+                // 转换边界坐标为像素
+                float x = renderContext.MillimetersToPixels((float)boundary.X);
+                float y = renderContext.MillimetersToPixels((float)boundary.Y);
+                float width = renderContext.MillimetersToPixels((float)boundary.Width);
+                float height = renderContext.MillimetersToPixels((float)boundary.Height);
+
+                // 使用电子印章解析库解析印章
+                IEsealParser parser = null;
+                Stream sealImageStream = null;
+
+                try
+                {
+                    // 1. 记录签章数据格式类型
+                    string formatType = isSignedValueFormat ? "SignedValue.dat（深度封装）" : "Seal.esl（标准格式）";
+                    System.Diagnostics.Debug.WriteLine($"签章数据格式: {formatType}, 数据大小: {sealData.Length} 字节");
+
+                    // 2. 自动检测并获取合适的解析器
+                    parser = EsealParserFactory.GetParser(sealData);
+                    System.Diagnostics.Debug.WriteLine($"使用解析器: {parser.ParserName}");
+
+                    // 3. 提取印章图像（按目标尺寸）
+                    sealImageStream = await parser.ExtractImageAsync(sealData, (int)width, (int)height);
+
+                    if (sealImageStream == null || sealImageStream.Length == 0)
+                    {
+                        System.Diagnostics.Debug.WriteLine("无法从印章数据中提取图像");
+                        return;
+                    }
+
+                    // 4. 可选：获取印章信息用于日志记录
+                    try
+                    {
+                        var sealInfo = await parser.LoadAsync(sealData);
+                        System.Diagnostics.Debug.WriteLine($"印章信息: {sealInfo?.SealName}, 类型: {sealInfo?.SealType}");
+                    }
+                    catch
+                    {
+                        // 获取信息失败不影响渲染
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"印章解析失败: {ex.Message}，尝试使用默认方式渲染");
+
+                    // 如果解析失败，尝试直接作为图像渲染
+                    sealImageStream = new MemoryStream(sealData);
+                }
+
+                // 4. 使用 IImageRenderer 绘制印章
+                var imageRenderer = renderContext as IImageRenderer;
+                if (imageRenderer != null && sealImageStream != null)
+                {
+                    try
+                    {
+                        // 创建图像样式
+                        var imageStyle = new ImageStyle();
+
+                        // 使用 DrawImage 方法绘制印章
+                        imageRenderer.DrawImage(x, y, width, height, sealImageStream, imageStyle);
+                    }
+                    finally
+                    {
+                        // 确保释放图像流
+                        sealImageStream?.Dispose();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"渲染印章数据失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 查找匹配的签章注释
+        /// </summary>
+        /// <param name="stampAnnots">签章注释列表</param>
+        /// <param name="pageId">页面ID</param>
+        /// <param name="annotId">注释ID</param>
+        /// <returns>匹配的签章注释，如果未找到返回null</returns>
+        private Models.Signature.StampAnnot FindMatchingStampAnnot(
+            List<Models.Signature.StampAnnot> stampAnnots,
+            uint pageId)
+        {
+            if (stampAnnots == null)
+                return null;
+
+            foreach (var sa in stampAnnots)
+            {
+                // 使用 ReferencedId.RawValue 获取 uint 类型的页面ID
+                if (sa.PageRef.ReferencedId.RawValue == pageId)
+                {
+                        return sa;
+                }
+            }
+
+            return null;
         }
 
         #endregion

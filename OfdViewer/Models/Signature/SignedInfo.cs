@@ -47,14 +47,14 @@ namespace OFDViewer.Models.Signature
         /// 本签名关联的外观(用OFD中的注释来表示),该节点可出现多次
         /// 可选
         /// </summary>
-        [XmlElement("StampAnnot", IsNullable = false)]
+        [XmlElement("StampAnnot")]
         public List<StampAnnot> StampAnnots { get; set; }
 
         /// <summary>
         /// 电子印章信息 
         /// 可选
         /// </summary>
-        [XmlElement("Seal", IsNullable = false)]
+        [XmlElement("Seal")]
         public Seal Seal { get; set; }
     }
 }

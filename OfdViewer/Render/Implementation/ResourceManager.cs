@@ -10,17 +10,17 @@ namespace OFDViewer.Render.Implementation
     public class ResourceManager : IResourceManager
     {
         private readonly OFDDocument _document;
-        private readonly int _pageIndex;
+        private readonly int _pageId;
 
         /// <summary>
         /// 构造函数
         /// </summary>
         /// <param name="document">OFD文档对象</param>
-        /// <param name="pageIndex">页面索引</param>
-        public ResourceManager(OFDDocument document, int pageIndex)
+        /// <param name="pageId">页面索引</param>
+        public ResourceManager(OFDDocument document, int pageId)
         {
             _document = document ?? throw new ArgumentNullException(nameof(document));
-            _pageIndex = pageIndex;
+            _pageId = pageId;
         }
 
         /// <summary>
@@ -31,7 +31,7 @@ namespace OFDViewer.Render.Implementation
         /// <returns>指定类型的资源对象，如果未找到返回default(T)</returns>
         public T GetResource<T>(string resourceId)
         {
-            return _document.GetResource<T>(_pageIndex, resourceId);
+            return _document.GetResource<T>(_pageId, resourceId);
         }
 
         /// <summary>
@@ -55,7 +55,7 @@ namespace OFDViewer.Render.Implementation
         /// <returns>资源文件内容，如果未找到返回null</returns>
         public byte[] GetResourceFile(string filePath)
         {
-            return _document.GetResourceFile(_pageIndex, filePath);
+            return _document.GetResourceFile(_pageId, filePath);
         }
 
         /// <summary>

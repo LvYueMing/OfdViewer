@@ -17,9 +17,7 @@ namespace OFDViewer.Models.Signature
         [XmlRequired(MinItemCount = 1)]
         public List<Reference> Refers { get; set; }
 
-        /// <summary>
-        /// 校验方法枚举（忽略XML序列化，带默认值MD5）
-        /// </summary>
+
         [XmlIgnore]
         public CheckMethodEnum CheckMethod { get; set; } = CheckMethodEnum.MD5;
 

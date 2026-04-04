@@ -177,17 +177,28 @@ namespace OFDViewer.Parse
         /// <summary>
         /// 检查文件是否存在于OFD归档内
         /// </summary>
-        /// <param name="path"></param>
-        /// <returns></returns>
+        /// <param name="path">文件路径</param>
+        /// <returns>文件是否存在</returns>
         public bool FileExists(string path)
         {
             if (_zipArchive == null)
                 return false;
 
-            return _entryCache.ContainsKey(NormalizePath(path));
+            // 使用 DirectoryExists 检查路径是否为目录
+            if (DirectoryExists(path))
+            {
+                return false;
+            }
+
+            var normalizedPath = NormalizePath(path);
+            return _entryCache.ContainsKey(normalizedPath);
         }
 
-        //实现DirectoryExists
+        /// <summary>
+        /// 检查目录是否存在于OFD归档内
+        /// </summary>
+        /// <param name="path">目录路径</param>
+        /// <returns>目录是否存在</returns>
         public bool DirectoryExists(string path)
         {
             if (_zipArchive == null)

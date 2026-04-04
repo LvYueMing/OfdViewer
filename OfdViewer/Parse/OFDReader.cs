@@ -102,6 +102,11 @@ namespace OFDViewer.Parse
                             // Doc_0/Signs/Signatures.xml
                             var signsFilePath = docBody.Signatures.Path;
                             var ofdDoc = ReadOFDDocument(documentFilePath, signsFilePath);
+                            //非标准目录路径
+                            if (ofdDoc.DocIndex == -1)
+                            {
+                                ofdDoc.DocIndex = ofdDocs.Count;
+                            }
                             if (ofdDoc != null)
                                 ofdDocs.Add(ofdDoc);
                         }
@@ -176,6 +181,7 @@ namespace OFDViewer.Parse
                     {
                         using var stream = _archive.OpenFileStream(pubResFilePath);
                         doc.PublicResource = XmlHelper.DeserializeFromStream<Res>(stream);
+                        doc.ResDirectoryPath = doc.PublicResource.BaseLoc.GetAbsolutePath(doc.DocDirectoryPath).Path;
                         doc.PublicResourceFilePath = pubResFilePath;
 
                         // 不立即加载资源文件，等待使用时再从归档读取 doc.ResourceArchive = _archive;
@@ -224,7 +230,10 @@ namespace OFDViewer.Parse
                     var pageFilePath = page.BaseLoc.GetAbsolutePath(doc.DocDirectoryPath).Path;
                     var pageDoc = ReadPageDoc(pageFilePath, doc.DocDirectoryPath);
                     // 页面ID
-                    pageDoc.PageId = page.ID;
+                    pageDoc.PageId = page.ID;                    
+                    // 非标准目录路径
+                    if (pageDoc.PageIndex == -1)
+                        pageDoc.PageIndex = doc.PageDocs.Count;
 
                     doc.AddPageDoc(pageDoc);
                 }

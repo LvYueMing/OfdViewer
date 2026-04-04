@@ -60,7 +60,16 @@ namespace OFDViewer.Parse
             set
             {
                 _pageFilePath = value;
-                PageIndex = int.Parse(Regex.Match(value, @"Page_(\d+)").Groups[1].Value);
+                var index = Regex.Match(value, @"Page_(\d+)").Groups[1].Value;
+                //文件目录结构非标准,即未包含 Page_x 结构
+                if (string.IsNullOrEmpty(index))
+                {
+                    PageIndex = -1;
+                }
+                else
+                {
+                    PageIndex = int.Parse(index);
+                }
             }
         }
 
@@ -113,7 +122,17 @@ namespace OFDViewer.Parse
                 throw new ArgumentNullException(nameof(belongDocPath), "所属文档路径不能为空");
             }
             BelongDocPath = belongDocPath;
-            BelongDocIndex = int.Parse(Regex.Match(belongDocPath, @"Doc_(\d+)").Groups[1].Value);
+            var index = Regex.Match(belongDocPath, @"Doc_(\d+)").Groups[1].Value;
+
+            //文件目录结构非标准,即未包含 Doc_x 结构
+            if (string.IsNullOrEmpty(index))
+            {
+                BelongDocIndex = -1;
+            }
+            else
+            {
+                BelongDocIndex = int.Parse(index);
+            }
             Page = new Page();
         }
     }
