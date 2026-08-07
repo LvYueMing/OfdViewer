@@ -12,7 +12,7 @@ using OFDViewer.Models.PageDesc.Colors;
 
 namespace OFDViewer.Tests
 {
-    public class OFDWriterTests
+    public class OFDWriterTests : IDisposable
     {
         // 测试临时文件路径（自动清理）
         private readonly string _tempFilePath;
@@ -23,7 +23,12 @@ namespace OFDViewer.Tests
         public OFDWriterTests()
         {
             // 初始化临时文件路径
-            _tempFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"OFD");
+            _tempFilePath = Path.Combine(
+                Path.GetTempPath(),
+                "OfdViewer.Tests",
+                nameof(OFDWriterTests),
+                Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(_tempFilePath);
 
             // 创建默认OFD文档对象
             _testOfdDocument = new OFDRootDocument();
@@ -384,7 +389,7 @@ namespace OFDViewer.Tests
         public void Generate_FullOFDWithTextContent_SavesSuccessfully()
         {
             // 创建保存路径
-            var savePath = Path.Combine(_tempFilePath, $"TestFullOFD_{DateTime.Now:yyyyMMddHHmmss}.ofd");
+            var savePath = Path.Combine(_tempFilePath, $"TestFullOFD_{Guid.NewGuid():N}.ofd");
 
             // Arrange
             // 创建OFD文档对象
@@ -409,7 +414,9 @@ namespace OFDViewer.Tests
 
             // 添加字体资源文件
             string fontFileName = "font1_10.ttf";
-            string fontFilePath = @"D:\MySoft\GitHub\OfdViewer\OFD-File\Res\font1_10.ttf";
+            string fontFilePath = Path.Combine(_tempFilePath, fontFileName);
+            // 写入器只负责封装资源字节，字体格式解析不属于本用例的验证范围。
+            File.WriteAllBytes(fontFilePath, new byte[] { 0x00, 0x01, 0x00, 0x00 });
             doc.ResFiles.Add(fontFileName, OFDWriter.ReadResFile(fontFilePath));
 
             // 初始化PublicResource
@@ -603,9 +610,9 @@ namespace OFDViewer.Tests
         public void Dispose()
         {
             // 清理临时文件
-            if (File.Exists(_tempFilePath))
+            if (Directory.Exists(_tempFilePath))
             {
-                File.Delete(_tempFilePath);
+                Directory.Delete(_tempFilePath, recursive: true);
             }
         }
         #endregion

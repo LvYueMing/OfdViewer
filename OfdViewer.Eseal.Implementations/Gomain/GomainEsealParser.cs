@@ -1083,94 +1083,20 @@ namespace OfdViewer.ESeal.Implementations.Gomain
         /// <summary>
         /// 内部验证印章实现
         /// </summary>
-        protected override async Task<IEsealValidationResult> ValidateSealInternalAsync(byte[] sealData, byte[] signedData)
+        protected override Task<IEsealValidationResult> ValidateSealInternalAsync(byte[] sealData, byte[] signedData)
         {
+            // 国脉 SDK/SM2 深度验签尚未接入。在此之前必须失败关闭，
+            // 不能把格式、证书或 ZIP 结构检查等同于密码学验签成功。
             var result = new ValidationResult
             {
-                ValidationTime = DateTime.Now
+                ValidationTime = DateTime.Now,
+                IsValid = false,
+                StatusCode = ValidationStatusCodes.UnsupportedAlgorithm,
+                Message = "国脉 SM2 深度验签尚未实现，当前签章未通过密码学验证"
             };
+            result.Errors.Add("未执行签名值验证，不能确认签章真实性和完整性");
 
-            try
-            {
-                var signedValue = ParseSignedValue(sealData);
-
-                // 验证证书有效性
-                if (signedValue.Certificate != null)
-                {
-                    result.Certificate = new CertificateInfo
-                    {
-                        SerialNumber = signedValue.Certificate.SerialNumber,
-                        Issuer = signedValue.Certificate.Issuer,
-                        Subject = signedValue.Certificate.Subject,
-                        ValidFrom = signedValue.Certificate.NotBefore,
-                        ValidTo = signedValue.Certificate.NotAfter,
-                        Thumbprint = signedValue.Certificate.Thumbprint
-                    };
-
-                    // 检查证书有效期
-                    if (DateTime.Now < signedValue.Certificate.NotBefore ||
-                        DateTime.Now > signedValue.Certificate.NotAfter)
-                    {
-                        result.IsValid = false;
-                        result.StatusCode = -2;
-                        result.Message = "证书已过期或尚未生效";
-                        result.Errors.Add("证书不在有效期内");
-                        return result;
-                    }
-                }
-                else
-                {
-                    result.IsValid = false;
-                    result.StatusCode = -3;
-                    result.Message = "未找到签章者证书";
-                    result.Errors.Add("证书信息缺失");
-                    return result;
-                }
-
-                // 验证签名数据完整性（ZIP 部分）
-                int zipIndex = FindBytePattern(sealData, ZipSignature);
-                if (zipIndex > 0)
-                {
-                    var asn1Data = new byte[zipIndex];
-                    Array.Copy(sealData, 0, asn1Data, 0, zipIndex);
-
-                    var zipData = new byte[sealData.Length - zipIndex];
-                    Array.Copy(sealData, zipIndex, zipData, 0, zipData.Length);
-
-                    // 验证 ZIP 数据完整性
-                    try
-                    {
-                        using var stream = new MemoryStream(zipData);
-                        using var zipArchive = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Read);
-                        result.Message += "; ZIP数据完整性验证通过";
-                    }
-                    catch (Exception ex)
-                    {
-                        result.IsValid = false;
-                        result.StatusCode = -4;
-                        result.Message = "ZIP数据损坏";
-                        result.Errors.Add($"ZIP解析失败: {ex.Message}");
-                        return result;
-                    }
-                }
-
-                // TODO: 调用国脉 SDK 进行深度验签
-                // 验证 SM2 签名值
-
-                result.IsValid = true;
-                result.StatusCode = 0;
-                result.Message = "验签成功";
-
-                return result;
-            }
-            catch (Exception ex)
-            {
-                result.IsValid = false;
-                result.StatusCode = -1;
-                result.Message = $"验签失败: {ex.Message}";
-                result.Errors.Add(ex.Message);
-                return result;
-            }
+            return Task.FromResult<IEsealValidationResult>(result);
         }
 
         /// <summary>

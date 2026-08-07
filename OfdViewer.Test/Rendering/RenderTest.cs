@@ -1,136 +1,51 @@
-using System;
-using System.IO;
-using OFDViewer.Parse;
-using OFDViewer.Render.Implementation;
-using OFDViewer.Render.DataModels;
 using OFDViewer.Render;
+using OFDViewer.Render.DataModels;
 
 namespace OFDViewer.Tests.Rendering
 {
-    public class RenderTest
+    /// <summary>
+    /// OFD 渲染手工验证辅助方法。
+    /// 输入与输出路径由调用方提供，避免绑定特定开发机目录。
+    /// </summary>
+    internal static class RenderTest
     {
-        public static void RenderOfdToImage()
+        /// <summary>
+        /// 将 OFD 首页渲染为图片。
+        /// </summary>
+        /// <param name="ofdFilePath">待渲染的 OFD 文件路径。</param>
+        /// <param name="outputImagePath">输出图片路径。</param>
+        internal static void RenderOfdToImage(string ofdFilePath, string outputImagePath)
         {
-            // OFD文件路径
-            string ofdFilePath = "d:\\MySoft\\GitHub\\OfdViewer\\OFD-File\\ofd标准测试文件\\6.2.001 正常文件结构.ofd";
-            // 输出图片路径
-            string outputImagePath = "d:\\MySoft\\GitHub\\OfdViewer\\output.png";
-
-            try
-            {
-                Console.WriteLine($"正在读取OFD文件：{ofdFilePath}");
-
-                // 使用新创建的OfdRenderer类
-                using (var renderer = new OfdRenderer(ofdFilePath))
-                {
-                    Console.WriteLine($"OfdRenderer初始化成功");
-                    Console.WriteLine($"文档总页数：{renderer.PageCount}");
-
-                    // 渲染第一页到文件
-                    renderer.RenderPageToFile(outputImagePath, 0);
-
-                    Console.WriteLine($"渲染成功，图片已保存到：{outputImagePath}");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"渲染失败：{ex.Message}");
-                Console.WriteLine($"异常类型：{ex.GetType().FullName}");
-                Console.WriteLine($"堆栈跟踪：{ex.StackTrace}");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"内部异常：{ex.InnerException.Message}");
-                    Console.WriteLine($"内部异常类型：{ex.InnerException.GetType().FullName}");
-                    Console.WriteLine($"内部异常堆栈：{ex.InnerException.StackTrace}");
-                }
-            }
+            using var renderer = new OfdRenderer(ofdFilePath);
+            renderer.RenderPageToFile(outputImagePath, 0);
         }
 
         /// <summary>
-        /// 使用OfdRenderer渲染多个页面到目录
+        /// 将 OFD 的全部页面渲染到指定目录。
         /// </summary>
-        public static void RenderOfdToMultipleImages()
+        /// <param name="ofdFilePath">待渲染的 OFD 文件路径。</param>
+        /// <param name="outputDirectory">输出目录。</param>
+        internal static void RenderOfdToMultipleImages(string ofdFilePath, string outputDirectory)
         {
-            // OFD文件路径
-            string ofdFilePath = "d:\\MySoft\\GitHub\\OfdViewer\\OFD-File\\ofd标准测试文件\\6.2.001 正常文件结构.ofd";
-            // 输出目录
-            string outputDirectory = "d:\\MySoft\\GitHub\\OfdViewer\\output_pages";
-
-            try
-            {
-                Console.WriteLine($"正在读取OFD文件：{ofdFilePath}");
-
-                // 使用OfdRenderer类
-                using (var renderer = new OfdRenderer(ofdFilePath))
-                {
-                    Console.WriteLine($"OfdRenderer初始化成功");
-                    Console.WriteLine($"文档总页数：{renderer.PageCount}");
-
-                    // 渲染所有页面到目录
-                    renderer.RenderAllPagesToFile(outputDirectory);
-
-                    Console.WriteLine($"渲染成功，所有页面已保存到：{outputDirectory}");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"渲染失败：{ex.Message}");
-                Console.WriteLine($"异常类型：{ex.GetType().FullName}");
-                Console.WriteLine($"堆栈跟踪：{ex.StackTrace}");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"内部异常：{ex.InnerException.Message}");
-                    Console.WriteLine($"内部异常类型：{ex.InnerException.GetType().FullName}");
-                    Console.WriteLine($"内部异常堆栈：{ex.InnerException.StackTrace}");
-                }
-            }
+            using var renderer = new OfdRenderer(ofdFilePath);
+            renderer.RenderAllPagesToFile(outputDirectory);
         }
 
         /// <summary>
-        /// 使用自定义渲染配置渲染OFD文档
+        /// 使用固定的高 DPI 配置将 OFD 首页渲染为图片。
         /// </summary>
-        public static void RenderOfdWithCustomConfig()
+        /// <param name="ofdFilePath">待渲染的 OFD 文件路径。</param>
+        /// <param name="outputImagePath">输出图片路径。</param>
+        internal static void RenderOfdWithCustomConfig(string ofdFilePath, string outputImagePath)
         {
-            // OFD文件路径
-            string ofdFilePath = "d:\\MySoft\\GitHub\\OfdViewer\\OFD-File\\ofd标准测试文件\\6.2.001 正常文件结构.ofd";
-            // 输出图片路径
-            string outputImagePath = "d:\\MySoft\\GitHub\\OfdViewer\\output_custom_config.png";
-
-            try
+            var renderConfig = new RenderConfig
             {
-                Console.WriteLine($"正在读取OFD文件：{ofdFilePath}");
+                Dpi = 150,
+                AntiAlias = true
+            };
 
-                // 创建自定义渲染配置
-                var renderConfig = new RenderConfig
-                {
-                    Dpi = 150, // 提高DPI到150
-                    AntiAlias = true // 开启抗锯齿
-                };
-
-                // 使用OfdRenderer类并传入自定义配置
-                using (var renderer = new OfdRenderer(ofdFilePath, renderConfig))
-                {
-                    Console.WriteLine($"OfdRenderer初始化成功");
-                    Console.WriteLine($"文档总页数：{renderer.PageCount}");
-
-                    // 渲染第一页到文件
-                    renderer.RenderPageToFile(outputImagePath, 0);
-
-                    Console.WriteLine($"渲染成功，图片已保存到：{outputImagePath}");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"渲染失败：{ex.Message}");
-                Console.WriteLine($"异常类型：{ex.GetType().FullName}");
-                Console.WriteLine($"堆栈跟踪：{ex.StackTrace}");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"内部异常：{ex.InnerException.Message}");
-                    Console.WriteLine($"内部异常类型：{ex.InnerException.GetType().FullName}");
-                    Console.WriteLine($"内部异常堆栈：{ex.InnerException.StackTrace}");
-                }
-            }
+            using var renderer = new OfdRenderer(ofdFilePath, renderConfig);
+            renderer.RenderPageToFile(outputImagePath, 0);
         }
     }
 }

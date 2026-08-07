@@ -1,172 +1,148 @@
 # OFD Viewer
 
-## 项目概述
+## 一、项目概述
 
-OFD Viewer 是一个基于 .NET 8.0 开发的 ODF（Open Fixed-layout Document）文档处理库，用于读取、解析和写入 OFD 格式的文档。该项目旨在提供一个简单易用、功能完整的 OFD 文档处理解决方案，支持 .NET 8.0 及向下兼容 .NET Framework 4.0。
+OFD Viewer 是一个基于 .NET 的 OFD（Open Fixed-layout Document）文档处理与查看项目，用于读取、解析、创建、写入和渲染 OFD 文档。
 
-## 功能特性
+项目以 GB/T 33190-2016《电子文件存储与交换格式 版式文档》和 GM/T 0031-2014《安全电子签章密码技术规范》为主要标准依据，标准文件和配套 XSD 位于 `Doc/`。
 
-- ✅ OFD 文档的读取和解析
-- ✅ OFD 文档的写入和生成
-- ✅ 支持 OFD 文档的基本结构解析
-- ✅ 支持页面内容解析
-- ✅ 支持字体处理
-- ✅ 支持图形元素解析
-- ✅ 支持注释处理
-- ✅ 支持附件处理
-- ✅ 支持数字签名处理
-- ✅ 支持自定义标签处理
+## 二、主要能力
 
-## 快速开始
+- OFD ZIP 归档的文件和流式读写
+- OFD.xml、Document.xml、页面、模板和资源解析
+- 文本、图形、图像、注释、附件、自定义标签和签名数据模型
+- OFD 文档创建、资源写入和归档输出
+- 基于 SkiaSharp 的页面渲染
+- 电子签章抽象、默认解析器和厂商解析器扩展机制
+- Windows Forms 文档查看控件
 
-### 环境要求
+电子签章模块当前可以解析部分结构、证书和印章图像，但国脉解析器的 SM2 深度验签尚未完成。该能力目前不能作为生产环境中的可信密码学验签结果。
 
-- .NET 8.0 SDK 或更高版本
-- Visual Studio 2022 或其他兼容的 IDE
+## 三、项目结构
 
-### 安装
+- `OfdViewer/`：`net8.0` 主类库，包含模型、归档、解析、写入和渲染能力。
+- `OfdViewer.Eseal.Abstractions/`：`net8.0` 电子签章接口、模型、异常和工厂。
+- `OfdViewer.Eseal.Implementations/`：`net8.0` 默认及厂商电子签章实现。
+- `OfdViewer.Test/`：`net8.0` xUnit 自动化测试。
+- `OfdViewer.WinForm/`：`net9.0-windows` Windows Forms 查看控件。
+- `OfdViewer.WinForm.Test/`：`net9.0-windows` WinForms 手工宿主程序。
+- `SkiaSharpExperiment/`：`net9.0-windows` 渲染实验程序。
+- `Doc/`：OFD 标准、签章规范、XSD 和项目评估文档。
 
-将项目克隆到本地：
+根目录的 `OfdViewer.csproj` 是不含业务代码的空壳项目；主类库项目文件是 `OfdViewer/OfdViewer.csproj`。
 
-```bash
-git clone https://github.com/yourusername/OfdViewer.git
+## 四、环境要求
+
+- .NET 8 SDK：构建核心类库和运行自动化测试
+- .NET 9 SDK：构建 WinForms 和实验项目
+- Windows：运行 WinForms 项目，以及验证主类库中现有的 `System.Drawing` 相关路径
+- Visual Studio 2022：可选；使用 WinForms 时需安装对应桌面开发工作负载
+
+当前项目文件不支持 .NET Framework 4.0，不应将 `net8.0` 目标框架理解为对 .NET Framework 的向下兼容。
+
+## 五、获取与构建
+
+```powershell
+git clone https://github.com/LvYueMing/OfdViewer.git
+Set-Location OfdViewer
+dotnet restore OfdViewer.sln
+dotnet build OfdViewer.sln --configuration Debug --no-restore
 ```
 
-然后在 Visual Studio 中打开解决方案文件 `OfdViewer.sln`，编译项目即可。
+仅构建核心类库：
 
-### 使用示例
+```powershell
+dotnet build OfdViewer/OfdViewer.csproj --configuration Debug
+```
 
-#### 读取 OFD 文档
+## 六、使用示例
+
+### 读取 OFD 文档
 
 ```csharp
-using OFDViewer.OFD;
+using OFDViewer.Parse;
 
-// 从文件路径打开 OFD 文档
-using (var ofdDoc = OFDDocument.Open("sample.ofd"))
-{
-    // 获取文档基本信息
-    Console.WriteLine($"文档页数: {ofdDoc.Pages.Count}");
-    Console.WriteLine($"文档版本: {ofdDoc.Version}");
-    
-    // 处理文档内容
-    // ...
-}
+using var reader = new OFDReader("sample.ofd");
+var rootDocument = reader.ParseOFDDocument();
 
-// 从流中打开 OFD 文档
-using (var stream = new FileStream("sample.ofd", FileMode.Open))
-using (var ofdDoc = OFDDocument.Open(stream))
-{
-    // 处理文档内容
-    // ...
-}
+Console.WriteLine($"文档数量：{rootDocument.DocCount}");
+Console.WriteLine($"默认文档页数：{rootDocument.DefaultOFDDocument.PageDocs.Count}");
 ```
 
-#### 创建 OFD 文档
+从流读取并保持调用方流打开：
 
 ```csharp
-using OFDViewer.OFD;
-using OFDViewer.Models;
+using OFDViewer.Parse;
 
-// 创建新的 OFD 文档
-using (var ofdDoc = OFDDocument.Create())
-{
-    // 添加页面
-    var page = ofdDoc.AddPage();
-    
-    // 添加内容到页面
-    // ...
-    
-    // 保存文档
-    ofdDoc.Save("new_sample.ofd");
-}
+using var input = File.OpenRead("sample.ofd");
+using var reader = new OFDReader(input, leaveOpen: true);
+var rootDocument = reader.ParseOFDDocument();
 ```
 
-## 核心模块说明
+### 创建并写入 OFD 文档
 
-### OFDArchive
-- 负责 OFD 文档的归档处理，包括 ZIP 压缩、解压、文件管理等
-- 支持从文件和流两种方式打开 OFD 文档
-- 提供 XML 文档的缓存机制，提高处理效率
+```csharp
+using OFDViewer.Parse;
 
-### OFDDocument
-- OFD 文档的核心类，提供文档的整体管理
-- 包含文档的基本信息、页面集合、资源管理等
+var rootDocument = new OFDRootDocument();
+rootDocument.DefaultOFDDocument.NewPageDoc();
 
-### OFDReader
-- 负责 OFD 文档的读取和解析
-- 将 OFD 文档的 XML 结构解析为内存中的对象模型
-
-### OFDWriter
-- 负责 OFD 文档的写入和生成
-- 将内存中的对象模型转换为 OFD 文档的 XML 结构
-
-### Models
-- 包含 OFD 文档的所有数据模型
-- 按照 OFD 标准的结构组织，便于解析和生成
-
-## 开发指南
-
-### 环境设置
-
-1. 安装 .NET 8.0 SDK
-2. 安装 Visual Studio 2022 或其他兼容 IDE
-3. 克隆项目到本地
-4. 打开解决方案文件 `OfdViewer.sln`
-
-### 构建项目
-
-在 Visual Studio 中，选择 "生成" -> "生成解决方案"，或使用命令行：
-
-```bash
-dotnet build
+var outputPath = Path.Combine(Environment.CurrentDirectory, "new-sample.ofd");
+using var writer = new OFDWriter(outputPath);
+writer.WriteOFDRootDoc(rootDocument);
+writer.Save();
 ```
 
-### 运行测试
+### 渲染 OFD 页面
 
-在 Visual Studio 中，选择 "测试" -> "运行所有测试"，或使用命令行：
+```csharp
+using OFDViewer.Render;
 
-```bash
-dotnet test
+using var renderer = new OfdRenderer("sample.ofd");
+Console.WriteLine($"总页数：{renderer.PageCount}");
+renderer.RenderPageToFile("page-1.png", pageIndex: 0);
 ```
 
-## 测试说明
+## 七、运行测试
 
-测试项目包含了对 OFD 文档处理的各个方面的测试，包括：
+运行核心自动化测试：
 
-- OFD 文档的读取和解析测试
-- OFD 文档的写入和生成测试
-- 各种模型类的序列化和反序列化测试
-- 异常情况的处理测试
+```powershell
+dotnet test OfdViewer.Test/OfdViewer.Tests.csproj --configuration Debug
+```
 
-## 贡献指南
+运行指定测试类或测试方法：
 
-欢迎提交 Issue 和 Pull Request 来帮助改进项目。
+```powershell
+dotnet test OfdViewer.Test/OfdViewer.Tests.csproj --filter "FullyQualifiedName~OFDWriterTests"
+```
 
-### 提交 Pull Request 前的检查
+测试必须使用仓库内夹具或临时目录，不得依赖开发机绝对路径和被忽略的 `OFD-File/` 目录。
 
-1. 确保所有测试都通过
-2. 确保代码符合项目的编码规范
-3. 为新添加的功能编写相应的测试用例
-4. 更新相关文档
+## 八、开发约定
 
-## 许可证
+仓库级开发、测试、OFD 路径、渲染、电子签章和 Git 规则见 `AGENTS.md`。项目现状、风险和整改顺序见 `Doc/项目评估结果.md`。
 
-本项目采用 MIT 许可证，详情请查看 LICENSE 文件。
+提交 Pull Request 前应完成：
 
-## 联系信息
+1. 运行与改动范围匹配的构建和测试。
+2. 确认没有引入新的编译或分析器告警。
+3. 为新增功能或缺陷修复补充自动化测试。
+4. 更新受影响的公共 API 注释和文档。
+5. 检查提交中不包含 `bin/`、`obj/`、`.vs/`、本机样例或其他忽略内容。
 
-如有问题或建议，欢迎通过以下方式联系：
+提交信息推荐使用 `<类型>(<范围>): <描述>`，例如：
 
-- GitHub Issues: https://github.com/yourusername/OfdViewer/issues
+```text
+fix(OFD解析): 修复非标准目录下的页面定位
+```
 
-## 更新日志
+## 九、许可证与反馈
 
-### v1.0.0 (2026-01-18)
-- 初始版本
-- 支持 OFD 文档的基本读取和写入
-- 支持页面内容解析
-- 支持多种 OFD 元素处理
+本项目采用 MIT 许可证，详情见根目录 `LICENSE` 文件。
 
-## 致谢
+MIT 许可证允许使用、复制、修改、发布、分发、再许可及商业使用本项目，但必须在软件副本或主要部分中保留原版权声明和许可证声明。软件按“原样”提供，不附带任何担保。
 
-感谢所有为 OFD 标准和相关技术做出贡献的开发者和组织。
+问题与建议请通过 GitHub Issues 提交：
+
+https://github.com/LvYueMing/OfdViewer/issues

@@ -131,14 +131,14 @@ namespace OfdViewer.ESeal.Implementations.Common
         /// <param name="sealData">印章二进制数据</param>
         /// <param name="signedData">签名数据</param>
         /// <returns>验签结果</returns>
-        protected override async Task<IEsealValidationResult> ValidateSealInternalAsync(byte[] sealData, byte[] signedData)
+        protected override Task<IEsealValidationResult> ValidateSealInternalAsync(byte[] sealData, byte[] signedData)
         {
             var result = new ValidationResult
             {
                 ValidationTime = DateTime.Now,
-                IsValid = true,
-                StatusCode = 0,
-                Message = "默认解析器无法验证数字签名，仅验证图像格式正确"
+                IsValid = false,
+                StatusCode = ValidationStatusCodes.UnsupportedAlgorithm,
+                Message = "默认解析器只能识别印章图像，不能执行数字签名验证"
             };
 
             try
@@ -150,20 +150,25 @@ namespace OfdViewer.ESeal.Implementations.Common
                 if (bitmap == null)
                 {
                     result.IsValid = false;
-                    result.StatusCode = -1;
+                    result.StatusCode = ValidationStatusCodes.GeneralFailure;
                     result.Message = "印章图像格式无效";
                     result.Errors.Add("无法解码印章图像数据");
+                }
+                else
+                {
+                    // 图像可解码只说明资源格式有效，不能据此确认签名真实性。
+                    result.Errors.Add("未执行数字签名验证，不能确认签章真实性和完整性");
                 }
             }
             catch (Exception ex)
             {
                 result.IsValid = false;
-                result.StatusCode = -1;
+                result.StatusCode = ValidationStatusCodes.GeneralFailure;
                 result.Message = $"验证失败: {ex.Message}";
                 result.Errors.Add(ex.Message);
             }
 
-            return result;
+            return Task.FromResult<IEsealValidationResult>(result);
         }
 
         /// <summary>
