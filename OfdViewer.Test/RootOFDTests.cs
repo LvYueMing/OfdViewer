@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using System.Xml;
 using System.Xml.Serialization;
 using OFDViewer.Models.BaseStructure.MainEntry;
@@ -190,9 +190,8 @@ namespace OFDViewer.Tests
             // 执行添加操作
             ofd.AddDocBody(docBody);
 
-            //验证ofd.DocBodies 中有一个元素
-            Assert.Equal(1, ofd.DocBodies.Count);
-            Assert.Contains(docBody, ofd.DocBodies);
+            // 验证 DocBodies 中仅包含刚添加的对象。
+            Assert.Same(docBody, Assert.Single(ofd.DocBodies));
         }
 
         /// <summary>

@@ -389,8 +389,6 @@ namespace OFDViewer.Render.Implementation
             using (var ms = new MemoryStream())
             {
                 _bitmap.Encode(ms, SKEncodedImageFormat.Png, 100);
-                // System.Drawing.Bitmap 不支持 WebP
-                //_bitmap.Encode(ms, SKEncodedImageFormat.Webp, 100);
                 var result = ms.ToArray();
 
                 // 调试：仅在调试环境下保存渲染结果到本地文件，查看图片质量
@@ -856,11 +854,9 @@ namespace OFDViewer.Render.Implementation
         public void DrawImage(float x, float y, float width, float height, byte[] imageData, ImageStyle style)
         {
             if (_canvas == null  || imageData == null || imageData.Length == 0) return;
+            if (imageData.Length > _config.MaxEncodedImageBytes) return;
 
-            using (var stream = new MemoryStream(imageData))
-            {
-                DrawImage(x, y, width, height, stream, style);
-            }
+            DrawEncodedImage(x, y, width, height, imageData, style);
         }
 
         /// <summary>
@@ -878,24 +874,66 @@ namespace OFDViewer.Render.Implementation
 
             try
             {
-                using (var skImage = SKImage.FromEncodedData(stream))
-                {
-                    if (skImage == null) return;
+                byte[]? encodedImage = ReadEncodedImageWithinLimit(stream);
+                if (encodedImage == null) return;
 
-                    // 设置图像插值模式
-                    lock (_reusablePaintLock)
-                    {
-                        _reusablePaint.IsAntialias = style.InterpolationMode != ImageInterpolationMode.LowQuality;
-
-                        // 绘制图像（使用正确的API调用）
-                        _canvas.DrawImage(skImage, new SKRect(x, y, x + width, y + height), _reusablePaint);
-                    }
-                }
+                DrawEncodedImage(x, y, width, height, encodedImage, style);
             }
-            catch (Exception ex)
+            catch (IOException)
             {
-                // 忽略图像加载错误，避免影响整体渲染
+                // 损坏或不可读的图像资源按“跳过当前图像”处理，不影响其余页面对象。
             }
+        }
+
+        private void DrawEncodedImage(
+            float x,
+            float y,
+            float width,
+            float height,
+            byte[] encodedImage,
+            ImageStyle style)
+        {
+            using var imageData = SKData.CreateCopy(encodedImage);
+            using var codec = SKCodec.Create(imageData);
+            if (codec == null) return;
+
+            long pixelCount = (long)codec.Info.Width * codec.Info.Height;
+            if (codec.Info.Width <= 0 || codec.Info.Height <= 0 ||
+                pixelCount > _config.MaxDecodedImagePixels)
+            {
+                return;
+            }
+
+            using var skImage = SKImage.FromEncodedData(imageData);
+            if (skImage == null) return;
+
+            lock (_reusablePaintLock)
+            {
+                _reusablePaint.IsAntialias = style.InterpolationMode != ImageInterpolationMode.LowQuality;
+                _canvas?.DrawImage(skImage, new SKRect(x, y, x + width, y + height), _reusablePaint);
+            }
+        }
+
+        private byte[]? ReadEncodedImageWithinLimit(Stream stream)
+        {
+            if (_config.MaxEncodedImageBytes <= 0 || _config.MaxDecodedImagePixels <= 0)
+                return null;
+
+            if (stream.CanSeek && stream.Length - stream.Position > _config.MaxEncodedImageBytes)
+                return null;
+
+            using var encodedImage = new MemoryStream();
+            byte[] buffer = new byte[81920];
+            int read;
+            while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                if (read > _config.MaxEncodedImageBytes - encodedImage.Length)
+                    return null;
+
+                encodedImage.Write(buffer, 0, read);
+            }
+
+            return encodedImage.ToArray();
         }
 
         #endregion

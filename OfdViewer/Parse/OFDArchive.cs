@@ -24,12 +24,12 @@ namespace OFDViewer.Parse
         /// <summary>
         /// 归档对应的文件流（文件路径模式下使用）
         /// </summary>
-        private Stream _fileStream;
+        private Stream? _fileStream;
         
         /// <summary>
         /// 归档对应的自定义流（流模式下使用）
         /// </summary>
-        private Stream _customStream;
+        private Stream? _customStream;
         
         /// <summary>
         /// ZIP 条目缓存，提高文件查找效率
@@ -40,9 +40,18 @@ namespace OFDViewer.Parse
         /// XML 文档缓存，避免重复解析 XML 文件
         /// </summary>
         private readonly ConcurrentDictionary<string, XmlDocument> _xmlCache;
-        
-        private const long DefaultMaxExtractedBytes = 512L * 1024 * 1024;
-        private const int DefaultMaxEntryCount = 10_000;
+
+        /// <summary>
+        /// 读取不可信归档时使用的实例级资源限制。
+        /// </summary>
+        private readonly OFDArchiveReadLimits _readLimits;
+
+        private readonly object _xmlCacheLock = new object();
+
+        /// <summary>
+        /// 已缓存 XML 的原始字节总量，在 <see cref="_xmlCacheLock"/> 内访问。
+        /// </summary>
+        private long _cachedXmlBytes;
 
         /// <summary>
         /// 归档是否已保存（避免重复保存）
@@ -62,8 +71,9 @@ namespace OFDViewer.Parse
 
         #region 构造函数
 
-        private OFDArchive(FileStream stream, ZipArchiveMode mode, bool leaveOpen)
+        private OFDArchive(FileStream stream, ZipArchiveMode mode, bool leaveOpen, OFDArchiveReadLimits readLimits)
         {
+            _readLimits = readLimits ?? throw new ArgumentNullException(nameof(readLimits));
             _fileStream = stream;
             _leaveOpen = leaveOpen;
             _zipArchive = new ZipArchive(stream, mode, leaveOpen);
@@ -73,15 +83,26 @@ namespace OFDViewer.Parse
             // 预加载所有条目到缓存
             if (mode == ZipArchiveMode.Read)
             {
-                foreach (var entry in _zipArchive.Entries)
+                try
                 {
-                    _entryCache.TryAdd(NormalizePath(entry.FullName), entry);
+                    EnsureArchiveEntryCountWithinLimit();
+                    foreach (var entry in _zipArchive.Entries)
+                    {
+                        _entryCache.TryAdd(NormalizePath(entry.FullName), entry);
+                    }
+                }
+                catch
+                {
+                    _zipArchive.Dispose();
+                    stream.Dispose();
+                    throw;
                 }
             }
         }
 
-        private OFDArchive(Stream stream, ZipArchiveMode mode, bool leaveOpen)
+        private OFDArchive(Stream stream, ZipArchiveMode mode, bool leaveOpen, OFDArchiveReadLimits readLimits)
         {
+            _readLimits = readLimits ?? throw new ArgumentNullException(nameof(readLimits));
             _customStream = stream;
             _leaveOpen = leaveOpen;
             _zipArchive = new ZipArchive(stream, mode, leaveOpen);
@@ -91,9 +112,18 @@ namespace OFDViewer.Parse
             // 预加载所有条目到缓存
             if (mode == ZipArchiveMode.Read)
             {
-                foreach (var entry in _zipArchive.Entries)
+                try
                 {
-                    _entryCache.TryAdd(NormalizePath(entry.FullName), entry);
+                    EnsureArchiveEntryCountWithinLimit();
+                    foreach (var entry in _zipArchive.Entries)
+                    {
+                        _entryCache.TryAdd(NormalizePath(entry.FullName), entry);
+                    }
+                }
+                catch
+                {
+                    _zipArchive.Dispose();
+                    throw;
                 }
             }
         }
@@ -110,7 +140,21 @@ namespace OFDViewer.Parse
         public static OFDArchive OpenFromFile(string filePath)
         {
             var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            return new OFDArchive(stream, ZipArchiveMode.Read, leaveOpen: false);
+            return new OFDArchive(stream, ZipArchiveMode.Read, leaveOpen: false, OFDArchiveReadLimits.Default);
+        }
+
+        /// <summary>
+        /// 使用指定资源限制打开 OFD 文件。
+        /// </summary>
+        /// <param name="filePath">OFD 文件路径。</param>
+        /// <param name="readLimits">读取不可信归档时应用的资源限制。</param>
+        /// <returns>以只读模式打开的 OFD 归档。</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="readLimits"/> 为 <see langword="null"/>。</exception>
+        public static OFDArchive OpenFromFile(string filePath, OFDArchiveReadLimits readLimits)
+        {
+            ArgumentNullException.ThrowIfNull(readLimits);
+            var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            return new OFDArchive(stream, ZipArchiveMode.Read, leaveOpen: false, readLimits);
         }
 
         /// <summary>
@@ -122,7 +166,7 @@ namespace OFDViewer.Parse
         public static OFDArchive OpenFromFile(string filePath, ZipArchiveMode mode = ZipArchiveMode.Read, bool leaveOpen = false)
         {
             var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            return new OFDArchive(stream, mode, leaveOpen);
+            return new OFDArchive(stream, mode, leaveOpen, OFDArchiveReadLimits.Default);
         }
 
 
@@ -131,7 +175,23 @@ namespace OFDViewer.Parse
         /// </summary>
         public static OFDArchive OpenFromStream(Stream stream)
         {
-            return new OFDArchive(stream, ZipArchiveMode.Read, leaveOpen: false);
+            return new OFDArchive(stream, ZipArchiveMode.Read, leaveOpen: false, OFDArchiveReadLimits.Default);
+        }
+
+        /// <summary>
+        /// 使用指定资源限制从流打开 OFD 文件。
+        /// </summary>
+        /// <param name="stream">包含 OFD ZIP 数据的可读流。</param>
+        /// <param name="readLimits">读取不可信归档时应用的资源限制。</param>
+        /// <param name="leaveOpen">释放归档后是否保持调用方流打开。</param>
+        /// <returns>以只读模式打开的 OFD 归档。</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="readLimits"/> 为 <see langword="null"/>。</exception>
+        public static OFDArchive OpenFromStream(
+            Stream stream,
+            OFDArchiveReadLimits readLimits,
+            bool leaveOpen = false)
+        {
+            return new OFDArchive(stream, ZipArchiveMode.Read, leaveOpen, readLimits);
         }
 
         /// <summary>
@@ -141,7 +201,7 @@ namespace OFDViewer.Parse
         /// <param name="leaveOpen">false(默认):释放ZipArchive时自动释放stream; true:释放ZipArchive时不自动释放stream </param>
         public static OFDArchive OpenFromStream(Stream stream, ZipArchiveMode mode = ZipArchiveMode.Read, bool leaveOpen = false)
         {
-            return new OFDArchive(stream, mode, leaveOpen);
+            return new OFDArchive(stream, mode, leaveOpen, OFDArchiveReadLimits.Default);
         }
 
         #endregion
@@ -156,7 +216,7 @@ namespace OFDViewer.Parse
         public static OFDArchive CreateFromFile(string filePath)
         {
             var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write);
-            return new OFDArchive(stream, ZipArchiveMode.Create, leaveOpen: false);
+            return new OFDArchive(stream, ZipArchiveMode.Create, leaveOpen: false, OFDArchiveReadLimits.Default);
         }
 
         /// <summary>
@@ -167,7 +227,7 @@ namespace OFDViewer.Parse
         /// <returns>OFD归档对象</returns>
         public static OFDArchive CreateFromStream(Stream stream, bool leaveOpen)
         {
-            return new OFDArchive(stream, ZipArchiveMode.Create, leaveOpen);
+            return new OFDArchive(stream, ZipArchiveMode.Create, leaveOpen, OFDArchiveReadLimits.Default);
         }
 
         #endregion
@@ -389,9 +449,16 @@ namespace OFDViewer.Parse
         /// </summary>
         public Stream OpenFileStream(string filePath)
         {
+            CheckDisposed();
             if (_entryCache.TryGetValue(NormalizePath(filePath), out var entry))
             {
-                return entry.Open();
+                if (entry.Length > _readLimits.MaxEntryBytes)
+                {
+                    throw new InvalidDataException(
+                        $"归档条目 {filePath} 的未压缩大小 {entry.Length} 字节超过限制：{_readLimits.MaxEntryBytes} 字节");
+                }
+
+                return new LimitedReadStream(entry.Open(), _readLimits.MaxEntryBytes);
             }
             throw new FileNotFoundException($"文件未找到: {filePath}");
         }
@@ -399,7 +466,10 @@ namespace OFDViewer.Parse
         /// <summary>
         /// 读取文本文件内容
         /// </summary>
-        public string ReadTextFile(string filePath, Encoding encoding = null)
+        /// <param name="filePath">归档内文件路径。</param>
+        /// <param name="encoding">文本编码；未指定时使用 UTF-8。</param>
+        /// <returns>完整的文本内容。</returns>
+        public string ReadTextFile(string filePath, Encoding? encoding = null)
         {
             using (var stream = OpenFileStream(filePath))
             using (var reader = new StreamReader(stream, encoding ?? Encoding.UTF8))
@@ -413,26 +483,68 @@ namespace OFDViewer.Parse
         /// </summary>
         public XmlDocument ReadXmlFile(string filePath)
         {
-            return _xmlCache.GetOrAdd(filePath, path =>
-            {
-                var xmlDoc = new XmlDocument();
-                using (var stream = OpenFileStream(path))
-                {
-                    var settings = new XmlReaderSettings
-                    {
-                        DtdProcessing = DtdProcessing.Ignore,
-                        XmlResolver = null, // 禁用外部解析，提高安全性
-                        IgnoreComments = true,
-                        IgnoreWhitespace = true
-                    };
+            string normalizedPath = NormalizePath(filePath);
+            if (_xmlCache.TryGetValue(normalizedPath, out var cachedDocument))
+                return cachedDocument;
 
-                    using (var reader = XmlReader.Create(stream, settings))
+            var xmlDoc = new XmlDocument();
+            long xmlBytes;
+            using (var stream = OpenFileStream(normalizedPath))
+            using (var xmlBuffer = new MemoryStream())
+            {
+                stream.CopyTo(xmlBuffer);
+                xmlBytes = xmlBuffer.Length;
+                xmlBuffer.Position = 0;
+
+                var settings = CreateSecureXmlReaderSettings();
+                using (var depthReader = XmlReader.Create(xmlBuffer, settings))
+                {
+                    while (depthReader.Read())
                     {
-                        xmlDoc.Load(reader);
+                        if (depthReader.Depth > _readLimits.MaxXmlDepth)
+                        {
+                            throw new XmlException(
+                                $"XML 元素嵌套深度超过限制：{_readLimits.MaxXmlDepth}");
+                        }
                     }
                 }
+
+                xmlBuffer.Position = 0;
+                using var reader = XmlReader.Create(xmlBuffer, settings);
+                xmlDoc.Load(reader);
+            }
+
+            lock (_xmlCacheLock)
+            {
+                if (_xmlCache.TryGetValue(normalizedPath, out cachedDocument))
+                    return cachedDocument;
+                if (_xmlCache.Count >= _readLimits.MaxCachedXmlDocuments)
+                {
+                    throw new InvalidDataException(
+                        $"XML 缓存文档数超过限制：{_readLimits.MaxCachedXmlDocuments}");
+                }
+                if (xmlBytes > _readLimits.MaxCachedXmlBytes - _cachedXmlBytes)
+                {
+                    throw new InvalidDataException(
+                        $"XML 缓存总字节数超过限制：{_readLimits.MaxCachedXmlBytes} 字节");
+                }
+
+                _xmlCache[normalizedPath] = xmlDoc;
+                _cachedXmlBytes += xmlBytes;
                 return xmlDoc;
-            });
+            }
+        }
+
+        private XmlReaderSettings CreateSecureXmlReaderSettings()
+        {
+            return new XmlReaderSettings
+            {
+                DtdProcessing = DtdProcessing.Prohibit,
+                XmlResolver = null,
+                MaxCharactersInDocument = _readLimits.MaxXmlCharacters,
+                IgnoreComments = true,
+                IgnoreWhitespace = true
+            };
         }
 
         /// <summary>
@@ -440,7 +552,9 @@ namespace OFDViewer.Parse
         /// </summary>
         public string ExtractToTempDirectory()
         {
-            return ExtractToTempDirectory(DefaultMaxExtractedBytes, DefaultMaxEntryCount);
+            return ExtractToTempDirectory(
+                _readLimits.MaxExtractedBytes,
+                _readLimits.MaxArchiveEntryCount);
         }
 
         /// <summary>
@@ -540,6 +654,15 @@ namespace OFDViewer.Parse
                 : StringComparison.Ordinal;
         }
 
+        private void EnsureArchiveEntryCountWithinLimit()
+        {
+            if (_zipArchive.Entries.Count > _readLimits.MaxArchiveEntryCount)
+            {
+                throw new InvalidDataException(
+                    $"ZIP 条目数 {_zipArchive.Entries.Count} 超过限制：{_readLimits.MaxArchiveEntryCount}");
+            }
+        }
+
         /// <summary>
         /// 路径规范化（确保统一的路径分隔符为 /）
         /// </summary>
@@ -631,7 +754,11 @@ namespace OFDViewer.Parse
                     if (!_leaveOpen)
                         _customStream?.Dispose();
                     _entryCache.Clear();
-                    _xmlCache.Clear();
+                    lock (_xmlCacheLock)
+                    {
+                        _xmlCache.Clear();
+                        _cachedXmlBytes = 0;
+                    }
                 }
 
                 // 标记资源已释放

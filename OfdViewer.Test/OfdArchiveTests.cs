@@ -234,6 +234,84 @@ namespace OFDViewer.Tests
             Assert.Throws<XmlException>(() => archive.ReadXmlFile("broken.xml"));
         }
 
+        [Fact]
+        public void OpenFileStream_EntryExceedsConfiguredLimit_ThrowsInvalidDataException()
+        {
+            var limits = new OFDArchiveReadLimits(maxEntryBytes: 8);
+            using var stream = new MemoryStream(_zipStream.ToArray());
+            using var archive = OFDArchive.OpenFromStream(stream, limits, leaveOpen: true);
+
+            Assert.Throws<InvalidDataException>(() => archive.OpenFileStream("root_file.txt"));
+        }
+
+        [Fact]
+        public void OpenFromStream_ArchiveExceedsEntryCountLimit_ThrowsInvalidDataException()
+        {
+            var limits = new OFDArchiveReadLimits(maxArchiveEntryCount: 2);
+            using var stream = new MemoryStream(_zipStream.ToArray());
+
+            Assert.Throws<InvalidDataException>(() =>
+                OFDArchive.OpenFromStream(stream, limits, leaveOpen: true));
+            Assert.True(stream.CanRead);
+        }
+
+        [Fact]
+        public void ReadXmlFile_ExceedsCharacterLimit_ThrowsXmlException()
+        {
+            var limits = new OFDArchiveReadLimits(maxXmlCharacters: 16);
+            using var stream = new MemoryStream(_zipStream.ToArray());
+            using var archive = OFDArchive.OpenFromStream(stream, limits, leaveOpen: true);
+
+            Assert.Throws<XmlException>(() => archive.ReadXmlFile("another_root_file.xml"));
+        }
+
+        [Fact]
+        public void ReadXmlFile_ExceedsDepthLimit_ThrowsXmlException()
+        {
+            using var stream = CreateArchiveStream(
+                ("deep.xml", "<level1><level2><level3 /></level2></level1>"));
+            var limits = new OFDArchiveReadLimits(maxXmlDepth: 1);
+            using var archive = OFDArchive.OpenFromStream(stream, limits, leaveOpen: true);
+
+            Assert.Throws<XmlException>(() => archive.ReadXmlFile("deep.xml"));
+        }
+
+        [Fact]
+        public void ReadXmlFile_ContainsDtd_ThrowsXmlException()
+        {
+            using var stream = CreateArchiveStream(
+                ("dtd.xml", "<!DOCTYPE root [<!ENTITY value 'unsafe'>]><root>&value;</root>"));
+            using var archive = OFDArchive.OpenFromStream(stream, leaveOpen: true);
+
+            Assert.Throws<XmlException>(() => archive.ReadXmlFile("dtd.xml"));
+        }
+
+        [Fact]
+        public void ReadXmlFile_ExceedsCacheDocumentLimit_ThrowsInvalidDataException()
+        {
+            using var stream = CreateArchiveStream(
+                ("first.xml", "<root>first</root>"),
+                ("second.xml", "<root>second</root>"));
+            var limits = new OFDArchiveReadLimits(maxCachedXmlDocuments: 1);
+            using var archive = OFDArchive.OpenFromStream(stream, limits, leaveOpen: true);
+
+            Assert.NotNull(archive.ReadXmlFile("first.xml"));
+            Assert.Throws<InvalidDataException>(() => archive.ReadXmlFile("second.xml"));
+        }
+
+        [Fact]
+        public void ReadXmlFile_ExceedsCacheByteLimit_ThrowsInvalidDataException()
+        {
+            using var stream = CreateArchiveStream(
+                ("first.xml", "<root>first</root>"),
+                ("second.xml", "<root>second</root>"));
+            var limits = new OFDArchiveReadLimits(maxCachedXmlBytes: 25);
+            using var archive = OFDArchive.OpenFromStream(stream, limits, leaveOpen: true);
+
+            Assert.NotNull(archive.ReadXmlFile("first.xml"));
+            Assert.Throws<InvalidDataException>(() => archive.ReadXmlFile("second.xml"));
+        }
+
 
         [Fact]
         public void ExtractAndReadArchive_FromTemporaryOFDFile()
@@ -564,6 +642,23 @@ namespace OFDViewer.Tests
         {
             _archive.Dispose();
             _zipStream.Dispose();
+        }
+
+        private static MemoryStream CreateArchiveStream(params (string Name, string Content)[] entries)
+        {
+            var stream = new MemoryStream();
+            using (var zip = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
+            {
+                foreach (var item in entries)
+                {
+                    var entry = zip.CreateEntry(item.Name);
+                    using var writer = new StreamWriter(entry.Open());
+                    writer.Write(item.Content);
+                }
+            }
+
+            stream.Position = 0;
+            return stream;
         }
 
     }

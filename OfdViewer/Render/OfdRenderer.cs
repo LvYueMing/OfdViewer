@@ -2464,6 +2464,7 @@ namespace OFDViewer.Render
             // 验证输入参数
             if (imageData == null || imageData.Length == 0)
                 throw new ArgumentNullException(nameof(imageData), "图像数据不能为空");
+            EnsureEncodedImageWithinLimit(imageData);
 
             try
             {
@@ -2484,9 +2485,10 @@ namespace OFDViewer.Render
                 // 验证图像尺寸
                 if (width <= 0 || height <= 0)
                     throw new InvalidOperationException("无效的图像尺寸");
+                EnsureDecodedImageWithinLimit(width, height);
 
                 // 分配RGBA缓冲区（每个像素4个字节：R, G, B, A）
-                int[] rgbaBuffer = new int[width * height];
+                int[] rgbaBuffer = new int[checked(width * height)];
 
                 // 使用LibTiff.Net的RGBA接口直接读取为RGBA格式
                 // 这个方法是关键，它会自动处理TIFF的各种格式和压缩
@@ -2529,6 +2531,7 @@ namespace OFDViewer.Render
             // 验证输入参数
             if (imageData == null || imageData.Length == 0)
                 throw new ArgumentNullException(nameof(imageData), "图像数据不能为空");
+            EnsureEncodedImageWithinLimit(imageData);
 
             try
             {
@@ -2538,37 +2541,40 @@ namespace OFDViewer.Render
                 int height = 0;
                 // the resulting 'byte[] rgbBuffer' is a RGB array
                 byte[] rgbBuffer = jbig.DecodeJBIG2(imageData, out width, out height);
+                EnsureDecodedImageWithinLimit(width, height);
 
-                // 使用System.Drawing.Bitmap创建位图
-                using var bitmap = new System.Drawing.Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
-
-                // 锁定位图数据
-                var bmpData = bitmap.LockBits(new System.Drawing.Rectangle(0, 0, width, height),
-                    System.Drawing.Imaging.ImageLockMode.WriteOnly,
-                    System.Drawing.Imaging.PixelFormat.Format24bppRgb);
-
-                try
+                int pixelCount = checked(width * height);
+                int expectedRgbBytes = checked(pixelCount * 3);
+                if (rgbBuffer == null || rgbBuffer.Length < expectedRgbBytes)
                 {
-                    // 将RGB数据拷贝到位图
-                    System.Runtime.InteropServices.Marshal.Copy(rgbBuffer, 0, bmpData.Scan0, rgbBuffer.Length);
-                }
-                finally
-                {
-                    // 解锁位图数据
-                    bitmap.UnlockBits(bmpData);
+                    throw new InvalidOperationException("JBIG2 解码结果长度与图像尺寸不匹配");
                 }
 
-                // 创建SkiaSharp位图 SKColorType.Rgb888x 每个像素占用 4 字节 (R,G,B,X)，而rgbBuffer 是 3 字节/像素 的 RGB 数据
-                //using var bitmap = new SkiaSharp.SKBitmap(width, height,
-                //    SkiaSharp.SKColorType.Rgb888x, SkiaSharp.SKAlphaType.Opaque);
+                byte[] rgbaBuffer = new byte[checked(pixelCount * 4)];
+                for (int sourceOffset = 0, targetOffset = 0;
+                    sourceOffset < expectedRgbBytes;
+                    sourceOffset += 3, targetOffset += 4)
+                {
+                    rgbaBuffer[targetOffset] = rgbBuffer[sourceOffset];
+                    rgbaBuffer[targetOffset + 1] = rgbBuffer[sourceOffset + 1];
+                    rgbaBuffer[targetOffset + 2] = rgbBuffer[sourceOffset + 2];
+                    rgbaBuffer[targetOffset + 3] = byte.MaxValue;
+                }
 
-                //// 将RGBA数据拷贝到位图
-                //IntPtr pixels = bitmap.GetPixels();
-                //System.Runtime.InteropServices.Marshal.Copy(rgbBuffer, 0, pixels, rgbBuffer.Length);
+                using var bitmap = new SKBitmap(
+                    width,
+                    height,
+                    SKColorType.Rgba8888,
+                    SKAlphaType.Opaque);
+                System.Runtime.InteropServices.Marshal.Copy(
+                    rgbaBuffer,
+                    0,
+                    bitmap.GetPixels(),
+                    rgbaBuffer.Length);
 
                 // 编码为PNG格式
                 using var pngStream = new MemoryStream();
-                bitmap.Save(pngStream, System.Drawing.Imaging.ImageFormat.Png);
+                bitmap.Encode(pngStream, SKEncodedImageFormat.Png, 100);
 
                 // 返回PNG数据
                 return pngStream.ToArray();
@@ -2579,6 +2585,28 @@ namespace OFDViewer.Render
                 // 记录错误并返回原始数据，避免整个渲染过程失败
                 System.Diagnostics.Debug.WriteLine($"JB2转换失败: {ex.Message}");
                 return imageData;
+            }
+        }
+
+        private void EnsureEncodedImageWithinLimit(byte[] imageData)
+        {
+            if (_renderConfig.MaxEncodedImageBytes <= 0 ||
+                imageData.Length > _renderConfig.MaxEncodedImageBytes)
+            {
+                throw new InvalidOperationException(
+                    $"编码图像大小 {imageData.Length} 字节超过限制：{_renderConfig.MaxEncodedImageBytes} 字节");
+            }
+        }
+
+        private void EnsureDecodedImageWithinLimit(int width, int height)
+        {
+            long pixelCount = (long)width * height;
+            if (width <= 0 || height <= 0 ||
+                _renderConfig.MaxDecodedImagePixels <= 0 ||
+                pixelCount > _renderConfig.MaxDecodedImagePixels)
+            {
+                throw new InvalidOperationException(
+                    $"解码图像尺寸 {width}x{height} 超过限制：{_renderConfig.MaxDecodedImagePixels} 像素");
             }
         }
 

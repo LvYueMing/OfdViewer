@@ -35,7 +35,7 @@ OFD Viewer 是一个基于 .NET 的 OFD（Open Fixed-layout Document）文档处
 
 - .NET 8 SDK：构建核心类库和运行自动化测试
 - .NET 9 SDK：构建 WinForms 和实验项目
-- Windows：运行 WinForms 项目，以及验证主类库中现有的 `System.Drawing` 相关路径
+- Windows：运行和手工验证 WinForms 项目；核心 .NET 8 类库不依赖 `System.Drawing`
 - Visual Studio 2022：可选；使用 WinForms 时需安装对应桌面开发工作负载
 
 当前项目文件不支持 .NET Framework 4.0，不应将 `net8.0` 目标框架理解为对 .NET Framework 的向下兼容。

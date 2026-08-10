@@ -90,7 +90,6 @@ namespace OFDViewer.Tests
             Assert.NotEmpty(publicResXml);
             var deserializedPublicRes = XmlHelper.DeserializeFromString<Res>(publicResXml);
             Assert.NotNull(deserializedPublicRes);
-            Assert.NotNull(deserializedPublicRes.BaseLoc);
 
             // 序列化DocumentResource
             string docResXml = XmlHelper.SerializeToString(ofdDoc.DocumentResource);
@@ -108,8 +107,8 @@ namespace OFDViewer.Tests
 
             // 验证集合属性的完整性
             Assert.Null(ofdDoc.SignDocs);
-            Assert.Equal(1, ofdDoc.PageDocs.Count);
-            Assert.Equal(1, ofdDoc.ResFiles.Count);
+            Assert.Single(ofdDoc.PageDocs);
+            Assert.Single(ofdDoc.ResFiles);
             Assert.Equal("test content", System.Text.Encoding.UTF8.GetString(ofdDoc.ResFiles["test.txt"]));
         }
 

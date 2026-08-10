@@ -3,6 +3,7 @@ using System.IO;
 using Xunit;
 using OFDViewer.Render.Implementation;
 using OFDViewer.Render.DataModels;
+using SkiaSharp;
 
 namespace OFDViewer.Test.Rendering
 {
@@ -199,6 +200,60 @@ namespace OFDViewer.Test.Rendering
             var result = renderContext.GetRenderResult();
             Assert.NotNull(result);
             Assert.True(result.Length > 0);
+        }
+
+        [Fact]
+        public void DrawImage_WithinConfiguredLimits_ChangesCanvas()
+        {
+            using var renderContext = new SkiaRenderContext();
+            renderContext.Initialize(20, 20);
+            byte[] before = renderContext.GetRenderResult();
+
+            renderContext.DrawImage(0, 0, 20, 20, CreatePng(2, 2), new ImageStyle());
+
+            byte[] after = renderContext.GetRenderResult();
+            Assert.False(before.SequenceEqual(after));
+        }
+
+        [Fact]
+        public void DrawImage_ExceedsEncodedByteLimit_DoesNotChangeCanvas()
+        {
+            using var renderContext = new SkiaRenderContext
+            {
+                Config = new RenderConfig(96) { MaxEncodedImageBytes = 8 }
+            };
+            renderContext.Initialize(20, 20);
+            byte[] before = renderContext.GetRenderResult();
+
+            renderContext.DrawImage(0, 0, 20, 20, CreatePng(2, 2), new ImageStyle());
+
+            byte[] after = renderContext.GetRenderResult();
+            Assert.True(before.SequenceEqual(after));
+        }
+
+        [Fact]
+        public void DrawImage_ExceedsDecodedPixelLimit_DoesNotChangeCanvas()
+        {
+            using var renderContext = new SkiaRenderContext
+            {
+                Config = new RenderConfig(96) { MaxDecodedImagePixels = 1 }
+            };
+            renderContext.Initialize(20, 20);
+            byte[] before = renderContext.GetRenderResult();
+
+            renderContext.DrawImage(0, 0, 20, 20, CreatePng(2, 2), new ImageStyle());
+
+            byte[] after = renderContext.GetRenderResult();
+            Assert.True(before.SequenceEqual(after));
+        }
+
+        private static byte[] CreatePng(int width, int height)
+        {
+            using var bitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
+            bitmap.Erase(SKColors.Red);
+            using var image = SKImage.FromBitmap(bitmap);
+            using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+            return data.ToArray();
         }
     }
 }
