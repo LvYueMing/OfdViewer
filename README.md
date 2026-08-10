@@ -121,7 +121,7 @@ dotnet test OfdViewer.Test/OfdViewer.Tests.csproj --filter "FullyQualifiedName~O
 
 ## 八、开发约定
 
-仓库级开发、测试、OFD 路径、渲染、电子签章和 Git 规则见 `AGENTS.md`。项目现状、风险和整改顺序见 `Doc/项目评估结果.md`。
+仓库级开发、测试、OFD 路径、渲染、电子签章和 Git 规则见 `AGENTS.md`。项目现状、风险和整改顺序见 `Architecture/项目评估结果.md`。
 
 提交 Pull Request 前应完成：
 

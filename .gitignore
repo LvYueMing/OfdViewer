@@ -343,4 +343,5 @@ Architecture/
 .vscode/
 .trae/
 *.md
-AGENTS.md
+Architecture/*
+

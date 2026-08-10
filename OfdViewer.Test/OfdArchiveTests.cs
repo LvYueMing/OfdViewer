@@ -1,5 +1,5 @@
 using System.IO.Compression;
-using System.Text;
+using System.Xml;
 using OFDViewer.Parse;
 using Xunit;
 
@@ -168,35 +168,99 @@ namespace OFDViewer.Tests
             }
         }
 
+        [Fact]
+        public void ExtractToTempDirectory_PathTraversalEntry_ThrowsInvalidDataException()
+        {
+            string escapedFileName = $"ofd-escaped-{Guid.NewGuid():N}.txt";
+            string escapedPath = Path.Combine(Path.GetTempPath(), escapedFileName);
+            using var zipStream = new MemoryStream();
+            using (var zip = new ZipArchive(zipStream, ZipArchiveMode.Create, leaveOpen: true))
+            {
+                var entry = zip.CreateEntry($"../{escapedFileName}");
+                using var writer = new StreamWriter(entry.Open());
+                writer.Write("must not escape");
+            }
+            zipStream.Position = 0;
+
+            try
+            {
+                using var archive = OFDArchive.OpenFromStream(zipStream, leaveOpen: true);
+
+                Assert.Throws<InvalidDataException>(() => archive.ExtractToTempDirectory());
+                Assert.False(File.Exists(escapedPath));
+            }
+            finally
+            {
+                if (File.Exists(escapedPath))
+                    File.Delete(escapedPath);
+            }
+        }
 
         [Fact]
-        public void ExtractAndReadOFD_LoadLocalFile()
+        public void ExtractToTempDirectory_ExceedsByteLimit_ThrowsInvalidDataException()
         {
-            var ofdPath = Path.Combine(@"..\..\..\..\OFD-File", "test.ofd");
-            using var archive = OFDArchive.OpenFromFile(ofdPath);
+            Assert.Throws<InvalidDataException>(() =>
+                _archive.ExtractToTempDirectory(maxExtractedBytes: 8, maxEntryCount: 100));
+        }
 
-            // 解压
-            var tempDir = archive.ExtractToTempDirectory();
-            Assert.True(Directory.Exists(tempDir));
-            Console.OutputEncoding = Encoding.UTF8;
-            Console.WriteLine($"已解压到{tempDir}");
+        [Fact]
+        public void ExtractToTempDirectory_ExceedsEntryLimit_ThrowsInvalidDataException()
+        {
+            Assert.Throws<InvalidDataException>(() =>
+                _archive.ExtractToTempDirectory(maxExtractedBytes: 1024 * 1024, maxEntryCount: 2));
+        }
 
-            // 遍历所有文件项
-            var entryCache = archive.GetType()
-                .GetField("_entryCache", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                .GetValue(archive) as System.Collections.IDictionary;
-            foreach (var entry in entryCache)
+        [Fact]
+        public void OpenFromStream_DamagedZip_ThrowsInvalidDataException()
+        {
+            using var damagedZip = new MemoryStream(new byte[] { 0x50, 0x4B, 0x03, 0x04, 0x00 });
+
+            Assert.Throws<InvalidDataException>(() => OFDArchive.OpenFromStream(damagedZip, leaveOpen: true));
+        }
+
+        [Fact]
+        public void ReadXmlFile_MalformedXml_ThrowsXmlException()
+        {
+            using var zipStream = new MemoryStream();
+            using (var zip = new ZipArchive(zipStream, ZipArchiveMode.Create, leaveOpen: true))
             {
-                Console.WriteLine(((System.Collections.DictionaryEntry)entry).Key);
+                var entry = zip.CreateEntry("broken.xml");
+                using var writer = new StreamWriter(entry.Open());
+                writer.Write("<root><unclosed></root>");
             }
+            zipStream.Position = 0;
+            using var archive = OFDArchive.OpenFromStream(zipStream, leaveOpen: true);
 
-            // 获取文档中的某个 XML 文件内容
-            string xmlFile = "Doc_0/Document.xml"; // 替换为实际 OFD 文档中的 XML 路径
-            var xml = archive.ReadXmlFile(xmlFile);
-            Console.WriteLine(xml.OuterXml);
+            Assert.Throws<XmlException>(() => archive.ReadXmlFile("broken.xml"));
+        }
 
-            // 清理
-            Directory.Delete(tempDir, true);
+
+        [Fact]
+        public void ExtractAndReadArchive_FromTemporaryOFDFile()
+        {
+            var ofdPath = Path.Combine(Path.GetTempPath(), $"ofd-archive-{Guid.NewGuid():N}.ofd");
+            string? tempDir = null;
+            File.WriteAllBytes(ofdPath, _zipStream.ToArray());
+
+            try
+            {
+                using var archive = OFDArchive.OpenFromFile(ofdPath);
+                tempDir = archive.ExtractToTempDirectory();
+
+                Assert.True(Directory.Exists(tempDir));
+                Assert.True(File.Exists(Path.Combine(tempDir, "another_root_file.xml")));
+
+                var xml = archive.ReadXmlFile("another_root_file.xml");
+                Assert.Equal("root", xml.DocumentElement?.Name);
+                Assert.Equal("abc", xml.DocumentElement?["child"]?.InnerText);
+            }
+            finally
+            {
+                if (!string.IsNullOrEmpty(tempDir) && Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, true);
+                if (File.Exists(ofdPath))
+                    File.Delete(ofdPath);
+            }
         }
 
 

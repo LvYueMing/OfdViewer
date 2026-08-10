@@ -41,10 +41,8 @@ namespace OFDViewer.Parse
         /// </summary>
         private readonly ConcurrentDictionary<string, XmlDocument> _xmlCache;
         
-        /// <summary>
-        /// 临时解压路径
-        /// </summary>
-        private readonly string _tempExtractPath;
+        private const long DefaultMaxExtractedBytes = 512L * 1024 * 1024;
+        private const int DefaultMaxEntryCount = 10_000;
 
         /// <summary>
         /// 归档是否已保存（避免重复保存）
@@ -442,27 +440,105 @@ namespace OFDViewer.Parse
         /// </summary>
         public string ExtractToTempDirectory()
         {
-            var tempPath = _tempExtractPath ?? Path.Combine(Path.GetTempPath(), $"OFD_{Guid.NewGuid():N}");
-            Directory.CreateDirectory(tempPath);
-            foreach (var entry in _zipArchive.Entries)
-            {
-                var targetPath = Path.Combine(tempPath, entry.FullName);
-                var targetDir = Path.GetDirectoryName(targetPath);
-
-                if (!string.IsNullOrEmpty(targetDir) && !Directory.Exists(targetDir))
-                {
-                    Directory.CreateDirectory(targetDir);
-                }
-
-                if (!entry.FullName.EndsWith("/")) // 不是目录
-                {
-                    entry.ExtractToFile(targetPath, overwrite: true);
-                }
-            }
-
-            return tempPath;
+            return ExtractToTempDirectory(DefaultMaxExtractedBytes, DefaultMaxEntryCount);
         }
 
+        /// <summary>
+        /// 在条目数量和解压总字节数限制内，将 OFD 内容安全解压到新的临时目录。
+        /// </summary>
+        /// <param name="maxExtractedBytes">允许写出的最大未压缩字节数。</param>
+        /// <param name="maxEntryCount">允许处理的最大 ZIP 条目数。</param>
+        /// <exception cref="ArgumentOutOfRangeException">限制参数不是正数。</exception>
+        /// <exception cref="InvalidDataException">条目越界或归档超过资源限制。</exception>
+        public string ExtractToTempDirectory(long maxExtractedBytes, int maxEntryCount)
+        {
+            CheckDisposed();
+            if (maxExtractedBytes <= 0)
+                throw new ArgumentOutOfRangeException(nameof(maxExtractedBytes));
+            if (maxEntryCount <= 0)
+                throw new ArgumentOutOfRangeException(nameof(maxEntryCount));
+
+            var archive = _zipArchive ?? throw new InvalidOperationException("ZIP 归档已释放，无法解压");
+            if (archive.Entries.Count > maxEntryCount)
+                throw new InvalidDataException($"ZIP 条目数超过限制：{maxEntryCount}");
+
+            string tempPath = Path.GetFullPath(
+                Path.Combine(Path.GetTempPath(), $"OFD_{Guid.NewGuid():N}"));
+            string allowedPrefix = tempPath.TrimEnd(Path.DirectorySeparatorChar)
+                + Path.DirectorySeparatorChar;
+            long extractedBytes = 0;
+
+            Directory.CreateDirectory(tempPath);
+            try
+            {
+                foreach (var entry in archive.Entries)
+                {
+                    string relativePath = entry.FullName
+                        .Replace('/', Path.DirectorySeparatorChar)
+                        .Replace('\\', Path.DirectorySeparatorChar);
+                    if (string.IsNullOrWhiteSpace(relativePath) || Path.IsPathRooted(relativePath))
+                        throw new InvalidDataException($"ZIP 条目路径无效：{entry.FullName}");
+
+                    string targetPath = Path.GetFullPath(Path.Combine(tempPath, relativePath));
+                    if (!targetPath.StartsWith(allowedPrefix, GetPathComparison()))
+                        throw new InvalidDataException($"ZIP 条目试图写出解压目录：{entry.FullName}");
+
+                    bool isDirectory = entry.FullName.EndsWith("/", StringComparison.Ordinal)
+                        || entry.FullName.EndsWith("\\", StringComparison.Ordinal);
+                    if (isDirectory)
+                    {
+                        Directory.CreateDirectory(targetPath);
+                        continue;
+                    }
+
+                    if (entry.Length > maxExtractedBytes - extractedBytes)
+                        throw new InvalidDataException($"ZIP 解压总大小超过限制：{maxExtractedBytes} 字节");
+
+                    string? targetDir = Path.GetDirectoryName(targetPath);
+                    if (!string.IsNullOrEmpty(targetDir))
+                        Directory.CreateDirectory(targetDir);
+
+                    using var source = entry.Open();
+                    using var destination = new FileStream(targetPath, FileMode.Create, FileAccess.Write, FileShare.None);
+                    extractedBytes = CopyWithLimit(source, destination, extractedBytes, maxExtractedBytes);
+                }
+
+                return tempPath;
+            }
+            catch
+            {
+                if (Directory.Exists(tempPath))
+                    Directory.Delete(tempPath, recursive: true);
+                throw;
+            }
+        }
+
+        private static long CopyWithLimit(
+            Stream source,
+            Stream destination,
+            long extractedBytes,
+            long maxExtractedBytes)
+        {
+            byte[] buffer = new byte[81920];
+            int read;
+            while ((read = source.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                if (read > maxExtractedBytes - extractedBytes)
+                    throw new InvalidDataException($"ZIP 解压总大小超过限制：{maxExtractedBytes} 字节");
+
+                destination.Write(buffer, 0, read);
+                extractedBytes += read;
+            }
+
+            return extractedBytes;
+        }
+
+        private static StringComparison GetPathComparison()
+        {
+            return OperatingSystem.IsWindows()
+                ? StringComparison.OrdinalIgnoreCase
+                : StringComparison.Ordinal;
+        }
 
         /// <summary>
         /// 路径规范化（确保统一的路径分隔符为 /）

@@ -1,4 +1,4 @@
-﻿using System.Xml.Serialization;
+using System.Xml.Serialization;
 using OFDViewer.Models.BaseType;
 using OFDViewer.Utils;
 
@@ -114,6 +114,14 @@ namespace OFDViewer.Models.BaseStructure.MainEntry
         public List<Keyword> Keywords { get; set; } = Array.Empty<Keyword>().ToList();
 
         /// <summary>
+        /// XSD 规定 Keywords 节点出现时至少包含一个 Keyword，空集合不应序列化。
+        /// </summary>
+        public bool ShouldSerializeKeywords()
+        {
+            return Keywords != null && Keywords.Count > 0;
+        }
+
+        /// <summary>
         /// 创建文档的应用程序 
         /// 可选
         /// </summary>
@@ -134,6 +142,14 @@ namespace OFDViewer.Models.BaseStructure.MainEntry
         [XmlArray("CustomDatas")]
         [XmlArrayItem("CustomData")]
         public List<CustomData> CustomDatas { get; set; } = Array.Empty<CustomData>().ToList();
+
+        /// <summary>
+        /// XSD 规定 CustomDatas 节点出现时至少包含一个 CustomData，空集合不应序列化。
+        /// </summary>
+        public bool ShouldSerializeCustomDatas()
+        {
+            return CustomDatas != null && CustomDatas.Count > 0;
+        }
 
 
         //无参构造函数，每个 DocID 在文档创建或生成的时候进行分配  采用 UUID 算法生成的由 32 个字符组成的文件标识。  
