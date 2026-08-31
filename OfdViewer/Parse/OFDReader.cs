@@ -22,7 +22,7 @@ namespace OFDViewer.Parse
         /// OFD归档对象（只读），负责底层文件访问
         /// </summary>
         private readonly OFDArchive _archive;
-        
+
         /// <summary>
         /// 资源释放标记
         /// </summary>
@@ -110,7 +110,7 @@ namespace OFDViewer.Parse
                             if (ofdDoc != null)
                                 ofdDocs.Add(ofdDoc);
                         }
-                       
+
                     }
                 }
 
@@ -180,7 +180,14 @@ namespace OFDViewer.Parse
                     if (_archive.FileExists(pubResFilePath))
                     {
                         using var stream = _archive.OpenFileStream(pubResFilePath);
-                        doc.PublicResource = XmlHelper.DeserializeFromStream<Res>(stream);
+                        try
+                        {
+                            doc.PublicResource = XmlHelper.DeserializeFromStream<Res>(stream);
+                        }
+                        catch (Exception ex)
+                        {
+                            throw new InvalidOperationException($"解析公共资源文件失败: {pubResFilePath}", ex);
+                        }
                         doc.ResDirectoryPath = doc.PublicResource.BaseLoc.GetAbsolutePath(doc.DocDirectoryPath).Path;
                         doc.PublicResourceFilePath = pubResFilePath;
 
@@ -198,7 +205,14 @@ namespace OFDViewer.Parse
                     if (_archive.FileExists(docResFilePath))
                     {
                         using var stream = _archive.OpenFileStream(docResFilePath);
-                        doc.DocumentResource = XmlHelper.DeserializeFromStream<Res>(stream);
+                        try
+                        {
+                            doc.DocumentResource = XmlHelper.DeserializeFromStream<Res>(stream);
+                        }
+                        catch (Exception ex)
+                        {
+                            throw new InvalidOperationException($"解析文档资源文件失败: {docResFilePath}", ex);
+                        }
                         doc.DocumentResourceFilePath = docResFilePath;
 
                         // 不立即加载资源文件，等待使用时再从归档读取 doc.ResourceArchive = _archive;
@@ -230,7 +244,7 @@ namespace OFDViewer.Parse
                     var pageFilePath = page.BaseLoc.GetAbsolutePath(doc.DocDirectoryPath).Path;
                     var pageDoc = ReadPageDoc(pageFilePath, doc.DocDirectoryPath);
                     // 页面ID
-                    pageDoc.PageId = page.ID;                    
+                    pageDoc.PageId = page.ID;
                     // 非标准目录路径
                     if (pageDoc.PageIndex == -1)
                         pageDoc.PageIndex = doc.PageDocs.Count;
@@ -357,7 +371,7 @@ namespace OFDViewer.Parse
             }
 
             // 签章信息 Doc_{0}/Signs/Sign_{1}/Seal.esl
-            if (signDoc.Signature != null&&signDoc.Signature.SignedInfo != null && signDoc.Signature.SignedInfo.Seal != null)
+            if (signDoc.Signature != null && signDoc.Signature.SignedInfo != null && signDoc.Signature.SignedInfo.Seal != null)
             {
                 var signSealFile = signDoc.Signature.SignedInfo.Seal.BaseLoc.GetAbsolutePath(signDoc.SignDirectoryPath).Path;
                 if (_archive.FileExists(signSealFile))
@@ -402,7 +416,7 @@ namespace OFDViewer.Parse
         /// </summary>
         /// <param name="pageDocFilePath">文档路径</param>
         /// <returns>页面对象</returns>
-        private PageDocument ReadPageDoc(string pageDocFilePath,string docFilePath)
+        private PageDocument ReadPageDoc(string pageDocFilePath, string docFilePath)
         {
             EnsureNotDisposed();
             var pageDoc = new PageDocument(docFilePath);

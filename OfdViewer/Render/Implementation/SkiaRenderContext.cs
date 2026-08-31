@@ -48,6 +48,11 @@ namespace OFDViewer.Render.Implementation
         /// </summary>
         private readonly object _skiaCacheLock = new object();
         /// <summary>
+        /// 缺字形回退字体缓存，避免重复调用 SKFontManager.MatchCharacter
+        /// 缓存键：字符码位
+        /// </summary>
+        private readonly Dictionary<int, SKTypeface> _fallbackTypefaceCache = new Dictionary<int, SKTypeface>();
+        /// <summary>
         /// 可重用的SKPaint对象，避免频繁创建和销毁
         /// </summary>
         private readonly SKPaint _reusablePaint = new SKPaint();
@@ -232,7 +237,7 @@ namespace OFDViewer.Render.Implementation
 
             // 创建或重新创建画布
             _canvas?.Dispose();
-            _canvas = new SKCanvas(_bitmap); 
+            _canvas = new SKCanvas(_bitmap);
 
             // 设置初始渲染质量
             SetRenderQuality(_config.Quality);
@@ -390,7 +395,6 @@ namespace OFDViewer.Render.Implementation
             {
                 _bitmap.Encode(ms, SKEncodedImageFormat.Png, 100);
                 var result = ms.ToArray();
-
                 // 调试：仅在调试环境下保存渲染结果到本地文件，查看图片质量
 #if DEBUG_SAVE
                 try
@@ -417,6 +421,14 @@ namespace OFDViewer.Render.Implementation
 
                 return result;
             }
+        }
+
+        /// <summary>
+        /// 获取当前渲染位图的副本（用于离屏瓦片、图案填充等场景），调用方负责释放
+        /// </summary>
+        public SKBitmap CopyRenderBitmap()
+        {
+            return _bitmap?.Copy();
         }
 
 
@@ -610,38 +622,7 @@ namespace OFDViewer.Render.Implementation
             // 缓存未命中，创建新的 SKTypeface
             if (skTypeface == null)
             {
-                //从style.FontResource 加载SKTypeface
-                if (!string.IsNullOrEmpty(style.FontFilePath))
-                {
-                    var fontByte = ResourceManager.GetResourceFile(style.FontFilePath);
-                    using (var stream = new MemoryStream(fontByte))
-                    {
-                        skTypeface = SKTypeface.FromStream(stream);
-                    }
-                }
-                else
-                {
-                    skTypeface = SKTypeface.FromFamilyName(
-                        style.FontFamily,
-                        (SKFontStyleWeight)style.FontWeight,
-                        SKFontStyleWidth.Normal,
-                        style.Italic ? SKFontStyleSlant.Italic : SKFontStyleSlant.Upright);
-                }
-
-                // 如果指定字体不存在，使用系统默认字体
-                if (skTypeface == null)
-                {
-                    skTypeface = SKTypeface.Default;
-                }
-
-                // 缓存 SKTypeface
-                lock (_skiaCacheLock)
-                {
-                    if (!_typefaceCache.ContainsKey(typefaceKey))
-                    {
-                        _typefaceCache[typefaceKey] = skTypeface;
-                    }
-                }
+                skTypeface = ResolvePrimaryTypeface(style, typefaceKey);
             }
 
             // 缓存未命中，创建新的 SKFont
@@ -668,12 +649,176 @@ namespace OFDViewer.Render.Implementation
                 _reusablePaint.StrokeWidth = style.StrokeWidth;
                 _reusablePaint.Color = ConvertToSKColor(style.Color, style.Alpha);
                 _reusablePaint.BlendMode = SKBlendMode.SrcOver; // 设置混合模式，确保文字颜色正确
-                
+
                 // 优化：设置字体渲染质量
                 //_reusablePaint.TextEncoding = SKTextEncoding.Utf8;
 
-                // 绘制文本
-                _canvas.DrawText(text, x, y, skFont, _reusablePaint);
+                // 绘制文本：主字体完全覆盖字形时走原路径；缺字形时按字符回退分段绘制
+                if (AllGlyphsAvailable(skTypeface, text))
+                {
+                    _canvas.DrawText(text, x, y, skFont, _reusablePaint);
+                }
+                else
+                {
+                    DrawTextWithGlyphFallback(x, y, text, style, skTypeface, skFont, _reusablePaint);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 解析文本绘制字体：主字体（嵌入文件或按字体族名匹配）无法覆盖文本全部字形时，
+        /// 对缺字字符使用系统字体回退。用于字体资源只有 FontName 而无嵌入 FontFile、
+        /// 或嵌入字体为子集导致缺字的场景（否则缺字字符渲染为方框）。
+        /// </summary>
+        /// <param name="text">待绘制的文本</param>
+        /// <param name="style">文本样式</param>
+        /// <returns>可用于绘制该文本的字体</returns>
+        public SKTypeface ResolveTypefaceWithGlyphFallback(string text, TextStyle style)
+        {
+            var typefaceKey = $"{style.FontFamily}_{style.FontWeight}_{style.Italic}";
+            var primary = ResolvePrimaryTypeface(style, typefaceKey);
+
+            if (string.IsNullOrEmpty(text) || AllGlyphsAvailable(primary, text))
+                return primary;
+
+            foreach (var ch in text)
+            {
+                if (!primary.ContainsGlyph(ch))
+                    return GetFallbackTypeface(ch);
+            }
+
+            return primary;
+        }
+
+        /// <summary>解析主字体：优先嵌入字体文件，其次按字体族名匹配系统字体，最后回退系统默认字体</summary>
+        private SKTypeface ResolvePrimaryTypeface(TextStyle style, string typefaceKey)
+        {
+            SKTypeface skTypeface;
+
+            //从style.FontResource 加载SKTypeface
+            if (!string.IsNullOrEmpty(style.FontFilePath))
+            {
+                var fontByte = ResourceManager.GetResourceFile(style.FontFilePath);
+                using (var stream = new MemoryStream(fontByte))
+                {
+                    skTypeface = SKTypeface.FromStream(stream);
+                }
+            }
+            else
+            {
+                skTypeface = SKTypeface.FromFamilyName(
+                    style.FontFamily,
+                    (SKFontStyleWeight)style.FontWeight,
+                    SKFontStyleWidth.Normal,
+                    style.Italic ? SKFontStyleSlant.Italic : SKFontStyleSlant.Upright);
+            }
+
+            // 如果指定字体不存在，使用系统默认字体
+            if (skTypeface == null)
+            {
+                skTypeface = SKTypeface.Default;
+            }
+
+            // 缓存 SKTypeface
+            lock (_skiaCacheLock)
+            {
+                if (!_typefaceCache.ContainsKey(typefaceKey))
+                {
+                    _typefaceCache[typefaceKey] = skTypeface;
+                }
+            }
+
+            return skTypeface;
+        }
+
+        /// <summary>检查主字体是否覆盖文本全部字形</summary>
+        private static bool AllGlyphsAvailable(SKTypeface typeface, string text)
+        {
+            foreach (var ch in text)
+            {
+                if (!typeface.ContainsGlyph(ch))
+                    return false;
+            }
+            return true;
+        }
+
+        /// <summary>获取指定字符的系统回退字体（按码位缓存）</summary>
+        private SKTypeface GetFallbackTypeface(int codepoint)
+        {
+            lock (_skiaCacheLock)
+            {
+                if (_fallbackTypefaceCache.TryGetValue(codepoint, out var cached))
+                    return cached;
+            }
+
+            var fallback = SKFontManager.Default.MatchCharacter(codepoint) ?? SKTypeface.Default;
+
+            lock (_skiaCacheLock)
+            {
+                _fallbackTypefaceCache[codepoint] = fallback;
+            }
+
+            return fallback;
+        }
+
+        /// <summary>获取或创建回退字体的 SKFont（复用全局字体缓存）</summary>
+        private SKFont GetOrCreateFallbackFont(SKTypeface typeface, TextStyle style)
+        {
+            string fontKey = $"fb_{typeface.FamilyName}_{style.FontSize}_{style.HScale}";
+
+            lock (_skiaCacheLock)
+            {
+                if (_fontCache.TryGetValue(fontKey, out var cached))
+                    return cached;
+            }
+
+            var font = new SKFont(typeface, style.FontSize) { ScaleX = style.HScale };
+
+            lock (_skiaCacheLock)
+            {
+                if (!_fontCache.ContainsKey(fontKey))
+                {
+                    _fontCache[fontKey] = font;
+                }
+            }
+
+            return font;
+        }
+
+        /// <summary>
+        /// 缺字形分段绘制：相邻的同字体字符合并为一段依次绘制，
+        /// 段间位置按各段字体的实际排印宽度推进，保证不同字体混排时不断行错位
+        /// </summary>
+        private void DrawTextWithGlyphFallback(float x, float y, string text, TextStyle style,
+            SKTypeface primaryTypeface, SKFont primaryFont, SKPaint paint)
+        {
+            float cursor = x;
+            int index = 0;
+
+            while (index < text.Length)
+            {
+                bool usePrimary = primaryTypeface.ContainsGlyph(text[index]);
+                var segmentTypeface = usePrimary
+                    ? primaryTypeface
+                    : GetFallbackTypeface(text[index]);
+
+                // 找到可由同一字体绘制的连续字符段
+                int end = index + 1;
+                while (end < text.Length)
+                {
+                    bool segmentable = usePrimary
+                        ? primaryTypeface.ContainsGlyph(text[end])
+                        : GetFallbackTypeface(text[end]) == segmentTypeface;
+                    if (!segmentable)
+                        break;
+                    end++;
+                }
+
+                var segment = text.Substring(index, end - index);
+                var font = usePrimary ? primaryFont : GetOrCreateFallbackFont(segmentTypeface, style);
+                _canvas.DrawText(segment, cursor, y, font, paint);
+                cursor += font.MeasureText(segment);
+                index = end;
             }
         }
 
@@ -711,38 +856,7 @@ namespace OFDViewer.Render.Implementation
             // 缓存未命中，创建新的 SKTypeface
             if (skTypeface == null)
             {
-                //从style.FontResource 加载SKTypeface
-                if (!string.IsNullOrEmpty(style.FontFilePath))
-                {
-                    var fontByte = ResourceManager.GetResourceFile(style.FontFilePath);
-                    using (var stream = new MemoryStream(fontByte))
-                    {
-                        skTypeface = SKTypeface.FromStream(stream);
-                    }
-                }
-                else
-                {
-                    skTypeface = SKTypeface.FromFamilyName(
-                        style.FontFamily,
-                        (SKFontStyleWeight)style.FontWeight,
-                        SKFontStyleWidth.Normal,
-                        style.Italic ? SKFontStyleSlant.Italic : SKFontStyleSlant.Upright);
-                }
-
-                // 如果指定字体不存在，使用系统默认字体
-                if (skTypeface == null)
-                {
-                    skTypeface = SKTypeface.Default;
-                }
-
-                // 缓存 SKTypeface
-                lock (_skiaCacheLock)
-                {
-                    if (!_typefaceCache.ContainsKey(typefaceKey))
-                    {
-                        _typefaceCache[typefaceKey] = skTypeface;
-                    }
-                }
+                skTypeface = ResolvePrimaryTypeface(style, typefaceKey);
             }
 
             // 缓存未命中，创建新的 SKFont
@@ -765,7 +879,7 @@ namespace OFDViewer.Render.Implementation
             lock (_reusablePaintLock)
             {
                 _reusablePaint.IsAntialias = _config.AntiAlias;
-                _reusablePaint.Style = style.Stroke ? SKPaintStyle.StrokeAndFill : SKPaintStyle.Fill; 
+                _reusablePaint.Style = style.Stroke ? SKPaintStyle.StrokeAndFill : SKPaintStyle.Fill;
                 _reusablePaint.StrokeWidth = style.StrokeWidth;
                 _reusablePaint.Color = ConvertToSKColor(style.Color, style.Alpha);
 
@@ -784,7 +898,7 @@ namespace OFDViewer.Render.Implementation
                 var run = builder.AllocatePositionedRun(skFont, glyphs.Length);
                 run.SetGlyphs(allGlyphs.ToArray());
                 run.SetPositions(allPositions.ToArray());
-               
+
                 using var positionedTextBlob = builder.Build();
 
                 _canvas.DrawText(positionedTextBlob, 0, 0, _reusablePaint);
@@ -853,7 +967,7 @@ namespace OFDViewer.Render.Implementation
         /// <param name="style">图像样式</param>
         public void DrawImage(float x, float y, float width, float height, byte[] imageData, ImageStyle style)
         {
-            if (_canvas == null  || imageData == null || imageData.Length == 0) return;
+            if (_canvas == null || imageData == null || imageData.Length == 0) return;
             if (imageData.Length > _config.MaxEncodedImageBytes) return;
 
             DrawEncodedImage(x, y, width, height, imageData, style);
@@ -1008,10 +1122,10 @@ namespace OFDViewer.Render.Implementation
         public void ArcTo(float rx, float ry, float angle, bool largeArc, bool sweep, float x, float y)
         {
             if (_currentPath == null) return;
-            
+
             // SkiaSharp的ArcTo参数与OFD的A命令参数有所不同
             // 需要进行参数转换
-            _currentPath.ArcTo(rx, ry, angle, 
+            _currentPath.ArcTo(rx, ry, angle,
                 largeArc ? SKPathArcSize.Large : SKPathArcSize.Small,
                 sweep ? SKPathDirection.Clockwise : SKPathDirection.CounterClockwise,
                 x, y);
@@ -1080,7 +1194,7 @@ namespace OFDViewer.Render.Implementation
             // 获取路径边界
             SKRect pathRect = new SKRect();
             _currentPath.GetBounds(out pathRect);
-            
+
             // 检查边界是否有效
             if (pathRect.Width <= 0 || pathRect.Height <= 0)
                 return;
@@ -1090,7 +1204,8 @@ namespace OFDViewer.Render.Implementation
             float translateY = -pathRect.Top;
             float scaleX = 1.0f / pathRect.Width;
             float scaleY = 1.0f / pathRect.Height;
-            SKMatrix normalizeMatrix = new SKMatrix {
+            SKMatrix normalizeMatrix = new SKMatrix
+            {
                 ScaleX = scaleX,
                 ScaleY = scaleY,
                 TransX = translateX * scaleX,
@@ -1118,7 +1233,16 @@ namespace OFDViewer.Render.Implementation
             var paint = new SKPaint();
             paint.IsAntialias = _config.AntiAlias;
             paint.Style = SKPaintStyle.Fill;
-            paint.Color = ConvertToSKColor(style.Color, style.Alpha);
+
+            // 优先使用填充着色器（如底纹 Pattern 平铺填充），否则使用纯色
+            if (style.FillShader != null)
+            {
+                paint.Shader = style.FillShader;
+            }
+            else
+            {
+                paint.Color = ConvertToSKColor(style.Color, style.Alpha);
+            }
 
             // 设置渐变样式（如果有）
             // paint.Shader = CreateGradientShader(style);

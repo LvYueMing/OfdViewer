@@ -9,24 +9,30 @@ using Xunit;
 namespace OFDViewer.Tests
 {
     /// <summary>
-    /// 真实 OFD 样本文档（Doc/会诊记录.ofd）解析测试。
+    /// 真实 OFD 样本文档（Doc/ofdtest/会诊记录.ofd）解析测试。
     /// 该文档包含多处非标准写法（PDF 日期格式、大写资源目录、空日期属性等），
     /// 用于回归验证解析器的容错能力。
     /// </summary>
     public class OfdSampleDocumentTests
     {
-        /// <summary>定位仓库内测试夹具，不依赖开发机绝对路径</summary>
+        /// <summary>定位仓库内测试夹具，不依赖开发机绝对路径；兼容 Doc/ 与 Doc/ofdtest/ 两种存放位置</summary>
         private static string FindSampleOfdPath()
         {
             var dir = new DirectoryInfo(AppContext.BaseDirectory);
             while (dir != null)
             {
-                var candidate = Path.Combine(dir.FullName, "Doc", "会诊记录.ofd");
-                if (File.Exists(candidate))
-                    return candidate;
+                foreach (var candidate in new[]
+                {
+                    Path.Combine(dir.FullName, "Doc", "ofdtest", "会诊记录.ofd"),
+                    Path.Combine(dir.FullName, "Doc", "会诊记录.ofd"),
+                })
+                {
+                    if (File.Exists(candidate))
+                        return candidate;
+                }
                 dir = dir.Parent;
             }
-            throw new FileNotFoundException("未找到测试夹具 Doc/会诊记录.ofd");
+            throw new FileNotFoundException("未找到测试夹具 Doc/ofdtest/会诊记录.ofd");
         }
 
         [Fact]

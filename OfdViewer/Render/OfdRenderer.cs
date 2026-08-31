@@ -1198,9 +1198,21 @@ namespace OFDViewer.Render
             var drawParam = GetDrawParam(pathObject, layer, renderContext, isTemplate);
 
             // 填充颜色（按照就近原则：图元属性 > 图元DrawParam > 图层DrawParam > 默认透明色）
-            if (pathObject.FillColor != null)
+            // 复杂颜色（底纹 Pattern/渐变）优先于纯色处理
+            if (pathObject.FillColor?.ColorItem is CT_Pattern fillPattern)
+            {
+                // 底纹填充：把底纹单元渲染为离屏瓦片后平铺填充（用于水印等）
+                style.FillShader = CreatePatternFillShader(fillPattern, renderCtxObj);
+                style.Color = 0x00000000;
+            }
+            else if (pathObject.FillColor != null)
             {
                 style.Color = ConvertToARGB(pathObject.FillColor, renderContext, isTemplate);
+            }
+            else if (drawParam != null && drawParam.FillColor?.ColorItem is CT_Pattern drawParamPattern)
+            {
+                style.FillShader = CreatePatternFillShader(drawParamPattern, renderCtxObj);
+                style.Color = 0x00000000;
             }
             else if (drawParam != null && drawParam.FillColor != null)
             {
@@ -1231,29 +1243,35 @@ namespace OFDViewer.Render
             // 描边透明度（默认完全不透明）
             style.StrokeAlpha = 255;
 
-            // 线宽/虚线单位换算系数：
-            // OFD 中 LineWidth 与 DashPattern 以毫米（页面空间）定义，需换算为像素；
-            // 存在 CTM 时，Skia 会在用户空间构建描边轮廓后再施加画布矩阵，
-            // 故按 CTM 行列式平方根反算，使设备空间线宽等于 s·LineWidth 像素
+            // 线宽/虚线单位与 CTM 缩放补偿：
+            // OFD 中 LineWidth/DashPattern 以毫米（页面空间）定义；
+            // SkiaRenderContext 在绘制层对线宽乘 MmToPixel（样式层保持毫米值），
+            // 而虚线按原值使用（样式层需为像素）；存在 CTM 时 Skia 会在用户空间
+            // 构建描边轮廓后再施加画布矩阵，故按 CTM 行列式平方根反算补偿，
+            // 使最终设备线宽等于 s·LineWidth 像素
             float mmToPx = renderContext.MillimetersToPixels(1f);
-            float strokeScale = mmToPx;
+            float widthScale = 1f;
+            float dashScale = mmToPx;
             var pathCtm = pathObject.CTM.ToDoubleArray();
             if (pathCtm != null && pathCtm.Length >= 6)
             {
                 double det = pathCtm[0] * pathCtm[3] - pathCtm[1] * pathCtm[2];
                 double linearScale = Math.Sqrt(Math.Abs(det));
                 if (linearScale > 1e-6)
-                    strokeScale = (float)(mmToPx / linearScale);
+                {
+                    widthScale = (float)(1.0 / linearScale);
+                    dashScale = (float)(mmToPx / linearScale);
+                }
             }
 
             // 描边宽度（按照就近原则：图元属性 > 图元DrawParam > 图层DrawParam > 默认0）
             if (pathObject.LineWidth != 0)
             {
-                style.StrokeWidth = (float)pathObject.LineWidth * strokeScale;
+                style.StrokeWidth = (float)pathObject.LineWidth * widthScale;
             }
             else if (drawParam != null && drawParam.LineWidth != 0.353)
             {
-                style.StrokeWidth = (float)drawParam.LineWidth * strokeScale;
+                style.StrokeWidth = (float)drawParam.LineWidth * widthScale;
             }
             else
             {
@@ -1275,7 +1293,7 @@ namespace OFDViewer.Render
                     style.DashPattern = new float[dashArray.Length];
                     for (int i = 0; i < dashArray.Length; i++)
                     {
-                        style.DashPattern[i] = (float)dashArray[i] * strokeScale;
+                        style.DashPattern[i] = (float)dashArray[i] * dashScale;
                     }
                 }
                 else
@@ -1289,6 +1307,74 @@ namespace OFDViewer.Render
             }
 
             return style;
+        }
+
+        /// <summary>
+        /// 创建底纹（Pattern）平铺填充着色器：
+        /// 把底纹单元 CellContent 渲染为透明背景的离屏瓦片位图，
+        /// 再以 Repeat 方式平铺填充目标路径（常用于证照文档的水印）。
+        /// 说明：底纹单元锚定于对象空间原点（RelativeTo=Object，默认）；
+        /// ReflectMethod 翻转与底纹级 CTM 暂不支持，按默认方式平铺。
+        /// </summary>
+        /// <param name="pattern">底纹定义</param>
+        /// <param name="renderCtxObj">渲染上下文对象（复用其资源管理器以解析字体等资源）</param>
+        /// <returns>平铺着色器；创建失败时返回 null（回退为纯色填充）</returns>
+        private SKShader CreatePatternFillShader(CT_Pattern pattern, RenderContextObject renderCtxObj)
+        {
+            try
+            {
+                if (pattern?.CellContent == null || pattern.Width <= 0 || pattern.Height <= 0)
+                    return null;
+
+                var renderContext = renderCtxObj.RenderContext;
+                float mmToPx = renderContext.MillimetersToPixels(1f);
+
+                // 瓦片尺寸：XStep/YStep 为单元间距（不小于单元尺寸，规范规定过小时按默认值处理）
+                float cellWidthPx = (float)pattern.Width * mmToPx;
+                float cellHeightPx = (float)pattern.Height * mmToPx;
+                float xStep = pattern.XStep > 0 ? (float)pattern.XStep * mmToPx : cellWidthPx;
+                float yStep = pattern.YStep > 0 ? (float)pattern.YStep * mmToPx : cellHeightPx;
+                int tileWidth = Math.Max(1, (int)Math.Ceiling(Math.Max(xStep, cellWidthPx)));
+                int tileHeight = Math.Max(1, (int)Math.Ceiling(Math.Max(yStep, cellHeightPx)));
+
+                // 离屏渲染底纹单元（透明背景，共享字体等资源缓存）
+                using var tileContext = new SkiaRenderContext();
+                tileContext.Config = _renderConfig;
+                tileContext.Initialize(tileWidth, tileHeight);
+                // Initialize 会以白色清屏，底纹瓦片需要透明背景
+                tileContext.SetBackgroundColor(0x00FFFFFF);
+                tileContext.ResourceManager = renderContext.ResourceManager;
+
+                var tileCtxObj = new RenderContextObject
+                {
+                    RenderContext = tileContext,
+                    OfdDocument = renderCtxObj.OfdDocument,
+                    CurrentPageDoc = renderCtxObj.CurrentPageDoc,
+                    CurrentPage = renderCtxObj.CurrentPage,
+                    PageIndex = renderCtxObj.PageIndex,
+                    DocumentIndex = renderCtxObj.DocumentIndex,
+                    IsTemplate = renderCtxObj.IsTemplate
+                };
+
+                if (pattern.CellContent.PageBlockItems != null)
+                {
+                    foreach (var blockItem in pattern.CellContent.PageBlockItems)
+                    {
+                        RenderPageBlock(tileCtxObj, blockItem);
+                    }
+                }
+
+                using var tileBitmap = tileContext.CopyRenderBitmap();
+                if (tileBitmap == null)
+                    return null;
+
+                return SKShader.CreateBitmap(tileBitmap, SKShaderTileMode.Repeat, SKShaderTileMode.Repeat);
+            }
+            catch (Exception)
+            {
+                // 底纹创建失败时回退为纯色填充，避免水印导致页面整体不可用
+                return null;
+            }
         }
 
         #endregion
@@ -1468,7 +1554,12 @@ namespace OFDViewer.Render
                     float height = renderContext.MillimetersToPixels((float)compositeObject.Boundary.Height);
 
                     // 应用变换
+                    // 页面位置 = Boundary 原点 + CTM × CGU内部坐标。部分生成器（如
+                    // suwell-pdf2ofd）以磅为 CGU 局部单位，靠 CompositeObject 的
+                    // CTM="0.3528 0 0 0.3528 0 0" 缩到毫米，丢弃 CTM 会导致 CGU 内
+                    // 文字/图元整体放大约 2.83 倍（表现为超大字体）
                     renderContext.Translate(boundaryX, boundaryY);
+                    ApplyVectorSpaceTransformMatrix(renderContext, compositeObject.CTM);
 
                     // 递归渲染复合对象中的子对象
                     if (vectorGraphic.Content.PageBlockItems != null && vectorGraphic.Content.PageBlockItems.Count > 0)

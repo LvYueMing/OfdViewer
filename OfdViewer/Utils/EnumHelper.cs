@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Reflection;
 
 namespace OFDViewer.Utils
@@ -37,6 +37,12 @@ namespace OFDViewer.Utils
                 return true;
             }
 
+            // 尝试忽略大小写解析（兼容 "jpg"、"png" 等非标准大小写写法）
+            if (Enum.TryParse(value, true, out result) && Enum.IsDefined(typeof(T), result))
+            {
+                return true;
+            }
+
             // 尝试按数字值解析（兼容 "0"/"1"/"2" 字符串）
             if (int.TryParse(value, out var intValue) && Enum.IsDefined(typeof(T), intValue))
             {
@@ -47,7 +53,7 @@ namespace OFDViewer.Utils
             // 尝试按Description特性值解析
             foreach (var enumValue in Enum.GetValues(typeof(T)).Cast<T>())
             {
-                if (GetEnumDesc(enumValue) == value)
+                if (string.Equals(GetEnumDesc(enumValue), value, StringComparison.OrdinalIgnoreCase))
                 {
                     result = enumValue;
                     return true;
@@ -73,6 +79,12 @@ namespace OFDViewer.Utils
                 return result;
             }
 
+            // 尝试忽略大小写解析（兼容 "jpg"、"png" 等非标准大小写写法）
+            if (Enum.TryParse(value, true, out result) && Enum.IsDefined(typeof(T), result))
+            {
+                return result;
+            }
+
             // 尝试按数字值解析（兼容 "0"/"1"/"2" 字符串）
             if (int.TryParse(value, out var intValue) && Enum.IsDefined(typeof(T), intValue))
             {
@@ -82,7 +94,7 @@ namespace OFDViewer.Utils
             // 尝试按Description特性值解析
             foreach (var enumValue in Enum.GetValues(typeof(T)).Cast<T>())
             {
-                if (GetEnumDesc(enumValue) == value)
+                if (string.Equals(GetEnumDesc(enumValue), value, StringComparison.OrdinalIgnoreCase))
                 {
                     return enumValue;
                 }
