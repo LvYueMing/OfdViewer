@@ -253,6 +253,44 @@ namespace OFDViewer.Parse
         }
 
         /// <summary>
+        /// 尝试按大小写不敏感方式解析归档内的实际条目路径。
+        /// OFD 标准规定路径区分大小写，但部分生成工具产出的文档存在大小写不一致
+        /// （如资源目录实际为 DOC_0/Res，而文档引用为 Doc_0/Res），此处提供容错回退。
+        /// </summary>
+        /// <param name="path">待查找的路径</param>
+        /// <param name="actualPath">归档内实际存在的条目路径</param>
+        /// <returns>是否找到匹配条目</returns>
+        public bool TryResolveEntryPath(string path, out string actualPath)
+        {
+            actualPath = null;
+            if (_zipArchive == null || string.IsNullOrWhiteSpace(path))
+                return false;
+
+            var normalizedPath = NormalizePath(path);
+            if (normalizedPath.Length == 0)
+                return false;
+
+            // 精确匹配优先（标准行为）
+            if (_entryCache.ContainsKey(normalizedPath))
+            {
+                actualPath = normalizedPath;
+                return true;
+            }
+
+            // 大小写不敏感回退（兼容非标准文档）
+            foreach (var key in _entryCache.Keys)
+            {
+                if (string.Equals(key, normalizedPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    actualPath = key;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// 检查目录是否存在于OFD归档内
         /// </summary>
         /// <param name="path">目录路径</param>

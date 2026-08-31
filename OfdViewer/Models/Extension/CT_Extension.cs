@@ -2,6 +2,7 @@ using System;
 using System.Xml.Serialization;
 using OFDViewer.Models.BaseType;
 using OFDViewer.Models.Extension.ExtensionItems;
+using OFDViewer.Utils;
 
 namespace OFDViewer.Models.Extension
 {
@@ -53,8 +54,15 @@ namespace OFDViewer.Models.Extension
         /// <summary>
         /// 形成此扩展信息的日期时间
         /// 可选
+        /// 兼容：部分文档该属性取空值或非标准日期格式（如 PDF 日期 D:...），需容错解析
         /// </summary>
-        [XmlAttribute("Date", DataType = "dateTime", AttributeName = "Date")]
+        [XmlAttribute("Date")]
+        public string DateString
+        {
+            get => Date.ToString("s");
+            set => Date = DateParser.TryParse(value, out var parsed) ? parsed : DateTime.MinValue;
+        }
+        [XmlIgnore]
         public DateTime Date { get; set; }
 
         /// <summary>

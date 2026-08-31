@@ -1,6 +1,7 @@
 ﻿using System.Xml.Serialization;
 using OFDViewer.Models.BaseType;
 using OFDViewer.Models.PageDesc.Colors.ColorItems;
+using OFDViewer.Utils;
 
 namespace OFDViewer.Models.PageDesc.Colors
 {
@@ -51,12 +52,30 @@ namespace OFDViewer.Models.PageDesc.Colors
         /// 引用资源文件中颜色空间的标识
         /// 默认值为文档设定的颜色空间
         /// 可选
+        /// 兼容：部分生成工具使用预定义色彩空间名称（GRAY/RGB/CMYK）而非引用 ID
         /// </summary>
         [XmlAttribute("ColorSpace")]
         public string ColorSpaceString
         {
             get { return ColorSpace.ToString(); }
-            set { ColorSpace = ST_RefID.Parse(value); }
+            set
+            {
+                // 1. 标准写法：数字形式的资源引用 ID
+                if (ST_RefID.TryParse(value, out var refId))
+                {
+                    ColorSpace = refId;
+                }
+                // 2. 兼容写法：预定义色彩空间名称
+                else if (PredefinedColorSpace.TryParse(value, out refId))
+                {
+                    ColorSpace = refId;
+                }
+                // 3. 无法识别：置为无效引用，由渲染层按默认色彩空间（RGB）处理
+                else
+                {
+                    ColorSpace = ST_RefID.Invalid;
+                }
+            }
         }
         [XmlIgnore]
         public ST_RefID ColorSpace { get; set; }

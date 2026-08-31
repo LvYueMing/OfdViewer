@@ -59,8 +59,15 @@ namespace OFDViewer.Models.Attachment
         /// <summary>
         /// 创建日期
         /// 可选
+        /// 兼容：部分文档该属性取空值或非标准日期格式（如 PDF 日期 D:...），需容错解析
         /// </summary>
-        [XmlAttribute("CreationDate", DataType = "dateTime", AttributeName = "CreationDate")]
+        [XmlAttribute("CreationDate")]
+        public string CreationDateString
+        {
+            get => CreationDate.ToString("s");
+            set => CreationDate = DateParser.TryParse(value, out var parsed) ? parsed : DateTime.MinValue;
+        }
+        [XmlIgnore]
         public DateTime CreationDate { get; set; }
 
         /// <summary>
@@ -75,8 +82,15 @@ namespace OFDViewer.Models.Attachment
         /// <summary>
         /// 修改日期
         /// 可选
+        /// 兼容：部分文档该属性取空值或非标准日期格式（如 PDF 日期 D:...），需容错解析
         /// </summary>
-        [XmlAttribute("ModDate", DataType = "dateTime", AttributeName = "ModDate")]
+        [XmlAttribute("ModDate")]
+        public string ModDateString
+        {
+            get => ModDate.ToString("s");
+            set => ModDate = DateParser.TryParse(value, out var parsed) ? parsed : DateTime.MinValue;
+        }
+        [XmlIgnore]
         public DateTime ModDate { get; set; }
 
         /// <summary>

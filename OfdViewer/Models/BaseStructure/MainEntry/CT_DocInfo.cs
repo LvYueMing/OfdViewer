@@ -51,7 +51,8 @@ namespace OFDViewer.Models.BaseStructure.MainEntry
         public string CreationDateString
         {
             get => CreationDate.ToString("yyyy-MM-dd");
-            set => CreationDate = DateTime.Parse(value);
+            // 容错解析：兼容 PDF 日期（D:...）等非标准格式，失败保留默认值
+            set => CreationDate = DateParser.TryParse(value, out var parsed) ? parsed : DateTime.MinValue;
         }
 
         [XmlIgnore]
@@ -65,7 +66,8 @@ namespace OFDViewer.Models.BaseStructure.MainEntry
         public string ModDateString
         {
             get => ModDate.ToString("yyyy-MM-dd");
-            set => ModDate = DateTime.Parse(value);
+            // 容错解析：兼容 PDF 日期（D:...）等非标准格式，失败保留默认值
+            set => ModDate = DateParser.TryParse(value, out var parsed) ? parsed : DateTime.MinValue;
         }
         [XmlIgnore]
         public DateTime ModDate { get; set; }
