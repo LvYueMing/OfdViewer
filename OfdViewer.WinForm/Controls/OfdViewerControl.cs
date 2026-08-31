@@ -90,15 +90,15 @@ namespace OfdViewer.WinForm.Controls
             {
                 // 计算毫米到像素的转换因子
                 float mmToPixel = _renderConfig.Dpi / INCH_TO_MM;
-                
+
                 // 计算A4尺寸的像素值
                 _cachedA4Width = (int)(A4_WIDTH_MM * mmToPixel);
                 _cachedA4Height = (int)(A4_HEIGHT_MM * mmToPixel);
-                
+
                 // 更新缓存的DPI值
                 _cachedDpi = _renderConfig.Dpi;
             }
-            
+
             // 返回缓存的像素值
             width = _cachedA4Width;
             height = _cachedA4Height;
@@ -164,7 +164,7 @@ namespace OfdViewer.WinForm.Controls
         /// 页面信息文本
         /// </summary>
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public string PageInfo => $"第 {CurrentPage + 1} 页 / 共 {TotalPages} 页";        
+        public string PageInfo => $"第 {CurrentPage + 1} 页 / 共 {TotalPages} 页";
 
         /// <summary>
         /// 缩放比例文本
@@ -184,15 +184,18 @@ namespace OfdViewer.WinForm.Controls
             {
                 // 限制最小缩放比例为25%
                 value = Math.Max(value, 0.25);
-                
+
                 if (_zoom != value)
                 {
                     _zoom = value;
-                    
+
+                    // 缩放变化影响目标渲染 DPI（放大时提高渲染分辨率保证清晰）
+                    UpdateTargetRenderDpi();
+
                     // 触发属性变更事件
                     OnPropertyChanged(nameof(Zoom));
                     OnPropertyChanged(nameof(ZoomInfo));
-                    
+
                     // 触发重绘，更新所有页面的缩放
                     _pictureBoxPanel?.Invalidate();
                 }
@@ -208,6 +211,21 @@ namespace OfdViewer.WinForm.Controls
         /// 渲染配置
         /// </summary>
         private readonly RenderConfig _renderConfig = new RenderConfig();
+
+        /// <summary>
+        /// 目标渲染 DPI（设备 DPI × 放大倍数，上限 300），UI 线程更新、渲染线程读取
+        /// </summary>
+        private volatile float _targetRenderDpi = 96f;
+
+        /// <summary>
+        /// 各页面缓存位图对应的渲染 DPI（用于 DPI/缩放变化后按需重渲染）
+        /// </summary>
+        private readonly Dictionary<int, float> _renderedPageDpis = new Dictionary<int, float>();
+
+        /// <summary>
+        /// 缓存位图 DPI 与目标 DPI 的相对偏差超过该阈值时触发重渲染
+        /// </summary>
+        private const float RenderDpiRefreshThreshold = 0.2f;
 
         /// <summary>
         /// 已渲染的页面缓存
@@ -291,6 +309,25 @@ namespace OfdViewer.WinForm.Controls
             this.DoubleBuffered = true; // 启用双缓冲，提高显示质量
         }
 
+        /// <summary>
+        /// 句柄创建后初始化目标渲染 DPI（此时 DeviceDpi 才反映实际屏幕缩放）
+        /// </summary>
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            UpdateTargetRenderDpi();
+        }
+
+        /// <summary>
+        /// 跨屏移动或屏幕缩放变化导致 DPI 变化时，更新目标渲染 DPI 并触发重渲染
+        /// </summary>
+        protected override void OnDpiChangedAfterParent(EventArgs e)
+        {
+            base.OnDpiChangedAfterParent(e);
+            UpdateTargetRenderDpi();
+            _pictureBoxPanel?.Invalidate();
+        }
+
         #endregion
 
         #region 对象池和优化方法
@@ -315,7 +352,7 @@ namespace OfdViewer.WinForm.Controls
                 SizeMode = PictureBoxSizeMode.Zoom,  // 使用Zoom模式，保持图片比例并支持缩放
                 BorderStyle = BorderStyle.FixedSingle
             };
-            
+
             // 设置图片插值模式为高质量
             pictureBox.Paint += (s, e) =>
             {
@@ -324,7 +361,7 @@ namespace OfdViewer.WinForm.Controls
                 e.Graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
                 e.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
             };
-            
+
             return pictureBox;
         }
 
@@ -384,13 +421,15 @@ namespace OfdViewer.WinForm.Controls
         }
 
         /// <summary>
-        /// 请求渲染页面（异步）
+        /// 请求渲染页面（异步）。
+        /// 页面未渲染或缓存位图分辨率与目标渲染 DPI 偏差过大（缩放/屏幕 DPI 变化）时重新渲染；
+        /// 重渲染完成前继续显示旧位图，避免闪烁。
         /// </summary>
         private async Task RequestRenderPageAsync(int pageIndex)
         {
-            if (_renderedPages.ContainsKey(pageIndex))
+            if (_renderedPages.ContainsKey(pageIndex) && !IsPageStale(pageIndex))
             {
-                return; // 已经渲染过
+                return; // 已按目标分辨率渲染
             }
 
             // 添加到队列
@@ -426,8 +465,8 @@ namespace OfdViewer.WinForm.Controls
                         pendingPageIndex = _pendingRenderQueue.Dequeue();
                     }
 
-                    // 检查是否已经渲染（可能在等待时已渲染）
-                    if (_renderedPages.ContainsKey(pendingPageIndex))
+                    // 检查是否已经按目标分辨率渲染（可能在等待时已渲染）
+                    if (_renderedPages.ContainsKey(pendingPageIndex) && !IsPageStale(pendingPageIndex))
                     {
                         continue;
                     }
@@ -449,11 +488,32 @@ namespace OfdViewer.WinForm.Controls
         }
 
         /// <summary>
+        /// 更新目标渲染 DPI（须在 UI 线程调用）。
+        /// 渲染 DPI 跟随设备 DPI 与放大倍数，避免高分屏/放大阅读时位图上采样模糊。
+        /// </summary>
+        private void UpdateTargetRenderDpi()
+        {
+            _targetRenderDpi = RenderConfig.CalcTargetRenderDpi(DeviceDpi, Zoom);
+        }
+
+        /// <summary>
+        /// 判断页面缓存位图是否因目标渲染 DPI 变化而过期（相对偏差超过阈值）
+        /// </summary>
+        private bool IsPageStale(int pageIndex)
+        {
+            return _renderedPageDpis.TryGetValue(pageIndex, out var renderedDpi)
+                   && Math.Abs(_targetRenderDpi - renderedDpi) / renderedDpi > RenderDpiRefreshThreshold;
+        }
+
+        /// <summary>
         /// 渲染页面
         /// </summary>
         private void RenderPage(int pageIndex)
         {
             if (_ofdRenderer == null) return;
+
+            // 以目标 DPI 渲染（跟随设备 DPI 与放大倍数），保证显示端无需上采样
+            _renderConfig.Dpi = _targetRenderDpi;
 
             byte[] imageData = _ofdRenderer.RenderPageToBitmap(pageIndex);
 
@@ -468,6 +528,7 @@ namespace OfdViewer.WinForm.Controls
                 }
 
                 _renderedPages[pageIndex] = bitmap;
+                _renderedPageDpis[pageIndex] = _renderConfig.Dpi;
             }
         }
 
@@ -503,25 +564,25 @@ namespace OfdViewer.WinForm.Controls
             _toolStrip = new ToolStrip();
             _toolStrip.Dock = DockStyle.Top;
             _toolStrip.AutoSize = true;
-            
+
             // 添加按钮
             var openButton = new ToolStripButton("打开");
             openButton.Click += OpenButton_Click;
-            
+
             var prevButton = new ToolStripButton("上一页");
             prevButton.Click += PrevButton_Click;
             prevButton.Name = "btnPrev";
-            
+
             var nextButton = new ToolStripButton("下一页");
             nextButton.Click += NextButton_Click;
             nextButton.Name = "btnNext";
-            
+
             var pageInfoLabel = new ToolStripLabel("页面信息");
             pageInfoLabel.Name = "lblPageInfo";
             // pageInfoLabel.Text = PageInfo;
             // 绑定模式：双向绑定（控件值变化 → 模型属性变化；模型属性变化 → 控件值变化）
-            pageInfoLabel.DataBindings.Add("Text",this, nameof(PageInfo),false,DataSourceUpdateMode.OnPropertyChanged);
-            
+            pageInfoLabel.DataBindings.Add("Text", this, nameof(PageInfo), false, DataSourceUpdateMode.OnPropertyChanged);
+
             // 添加页码输入框
             var pageNumberTextBox = new ToolStripTextBox();
             pageNumberTextBox.Name = "txtPageNumber";
@@ -530,37 +591,37 @@ namespace OfdViewer.WinForm.Controls
 
             var zoomInButton = new ToolStripButton("放大");
             zoomInButton.Click += ZoomInButton_Click;
-            
+
             var zoomOutButton = new ToolStripButton("缩小");
             zoomOutButton.Click += ZoomOutButton_Click;
-            
+
             var fitToWindowButton = new ToolStripButton("适应窗口");
             fitToWindowButton.Click += FitToWindowButton_Click;
-            
+
             // 添加缩放比例显示
             var zoomInfoLabel = new ToolStripLabel("缩放信息");
             zoomInfoLabel.Name = "lblZoomInfo";
             zoomInfoLabel.DataBindings.Add("Text", this, nameof(ZoomInfo), false, DataSourceUpdateMode.OnPropertyChanged);
-            
+
             // 添加常用缩放比例快捷按钮
             var zoom25Button = new ToolStripButton("25%");
             zoom25Button.Click += (sender, e) => Zoom = 0.25;
-            
+
             var zoom50Button = new ToolStripButton("50%");
             zoom50Button.Click += (sender, e) => Zoom = 0.5;
-            
+
             var zoom75Button = new ToolStripButton("75%");
             zoom75Button.Click += (sender, e) => Zoom = 0.75;
-            
+
             var zoom100Button = new ToolStripButton("100%");
             zoom100Button.Click += (sender, e) => Zoom = 1.0;
-            
+
             var zoom150Button = new ToolStripButton("150%");
             zoom150Button.Click += (sender, e) => Zoom = 1.5;
-            
+
             var zoom200Button = new ToolStripButton("200%");
             zoom200Button.Click += (sender, e) => Zoom = 2.0;
-            
+
             // 添加到工具栏
             _toolStrip.Items.Add(openButton);
             _toolStrip.Items.Add(prevButton);
@@ -581,7 +642,7 @@ namespace OfdViewer.WinForm.Controls
             _toolStrip.Items.Add(zoomInButton);
             _toolStrip.Items.Add(zoomOutButton);
             _toolStrip.Items.Add(fitToWindowButton);
-            
+
             // 添加到控件
             this.Controls.Add(_toolStrip);
         }
@@ -601,23 +662,23 @@ namespace OfdViewer.WinForm.Controls
             panel.KeyDown += Panel_KeyDown;
             panel.Focus();
             panel.TabStop = true;
-            
+
             // 保存面板引用
             _pictureBoxPanel = panel;
-            
+
             // 添加到控件
             this.Controls.Add(panel);
-            
+
             // 确保工具栏位于面板上方
             if (_toolStrip != null)
             {
                 panel.BringToFront();
             }
-            
+
             // 触发一次重绘，显示空白文档区域
             panel.Invalidate();
         }
-        
+
         /// <summary>
         /// 面板键盘按下事件
         /// </summary>
@@ -712,6 +773,7 @@ namespace OfdViewer.WinForm.Controls
                     bitmap.Dispose();
                 }
                 _renderedPages.Clear();
+                _renderedPageDpis.Clear();
 
                 // 页面偏移量（用于滚动）
                 _pageOffsets.Clear();
@@ -926,7 +988,7 @@ namespace OfdViewer.WinForm.Controls
                 // 使用缓存的页面范围
                 int firstPage = _lastFirstPage;
                 int lastPage = _lastLastPage;
-                
+
                 // 收集需要保留的页面索引
                 var pagesToKeep = new HashSet<int>();
                 for (int pageIndex = firstPage; pageIndex <= lastPage; pageIndex++)
@@ -956,8 +1018,8 @@ namespace OfdViewer.WinForm.Controls
                 // 渲染并显示页面
                 for (int pageIndex = firstPage; pageIndex <= lastPage; pageIndex++)
                 {
-                    // 检查页面是否已经渲染
-                    if (!_renderedPages.ContainsKey(pageIndex))
+                    // 检查页面是否已经渲染或缓存分辨率是否过期
+                    if (!_renderedPages.ContainsKey(pageIndex) || IsPageStale(pageIndex))
                     {
                         // 异步渲染页面，不阻塞UI
                         _ = RequestRenderPageAsync(pageIndex);
@@ -1014,15 +1076,15 @@ namespace OfdViewer.WinForm.Controls
 
                 // 计算所有页面的总高度（用于设置滚动范围）
                 int totalHeight = _accumulatedHeight; // 使用之前计算的累计高度
-                
+
                 // 确保总高度不小于面板高度
                 totalHeight = Math.Max(totalHeight, panel.ClientSize.Height);
-                
+
                 // 只有当总高度发生变化时才更新滚动范围
                 if (panel.AutoScrollMinSize.Height != totalHeight)
                 {
                     panel.AutoScrollMinSize = new Size(0, totalHeight);
-                }             
+                }
             }
             else
             {
@@ -1171,13 +1233,13 @@ namespace OfdViewer.WinForm.Controls
                 {
                     // 转换为从0开始的索引
                     int pageIndex = pageNumber - 1;
-                    
+
                     // 检查页码是否有效
                     if (pageIndex >= 0 && pageIndex < TotalPages)
                     {
                         // 跳转到指定页码
                         CurrentPage = pageIndex;
-                        
+
                         // 清空输入框
                         textBox.Text = string.Empty;
                     }
@@ -1192,7 +1254,7 @@ namespace OfdViewer.WinForm.Controls
                     // 显示错误提示
                     MessageBox.Show("请输入有效的页码", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
-                
+
                 // 取消按键事件，避免输入框失去焦点
                 e.Handled = true;
             }
@@ -1218,7 +1280,7 @@ namespace OfdViewer.WinForm.Controls
                 }
             }
         }
-        
+
         /// <summary>
         /// 面板鼠标滚轮事件
         /// </summary>
