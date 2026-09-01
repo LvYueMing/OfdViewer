@@ -79,7 +79,12 @@ namespace OFDViewer.Parse
             set
             {
                 _templateFilePath = value;
-                TemplateIndex = int.Parse(Regex.Match(value, @"Tpl_(\d+)").Groups[1].Value);
+                // 容错解析：部分文档模板页目录为非标准命名（如 Tmps/Tmp_0），提取不到序号时保持默认值
+                var match = Regex.Match(value, @"Tp[lm]_(\d+)", RegexOptions.IgnoreCase);
+                if (match.Success)
+                {
+                    TemplateIndex = int.Parse(match.Groups[1].Value);
+                }
             }
         }
 
