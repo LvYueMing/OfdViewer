@@ -345,3 +345,8 @@ Architecture/
 *.md
 Architecture/*
 
+# 本地样例文档与渲染预览输出（含隐私数据，不入库）
+Doc/*.ofd
+Doc/_preview/
+Doc/ofdtest/
+

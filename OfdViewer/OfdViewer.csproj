@@ -1,22 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
 <Project Sdk="Microsoft.NET.Sdk">
-
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'" />
-
-  <ItemGroup>
-    <PackageReference Include="JBig2Decoder.NETStandard" Version="1.5.2" />
-    <PackageReference Include="SkiaSharp" Version="3.119.1" />
-    <PackageReference Include="BitMiracle.LibTiff.NET" Version="2.4.649" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\OfdViewer.Eseal.Abstractions\OfdViewer.Eseal.Abstractions.csproj" />
-    <ProjectReference Include="..\OfdViewer.Eseal.Implementations\OfdViewer.Eseal.Implementations.csproj" />
-  </ItemGroup>
-
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <LangVersion>latest</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'" />
+    <ItemGroup>
+        <PackageReference Include="JBig2Decoder.NETStandard"
+                          Version="1.5.2" />
+        <PackageReference Include="SkiaSharp"
+                          Version="3.119.1" />
+        <PackageReference Include="BitMiracle.LibTiff.NET"
+                          Version="2.4.649" />
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\OfdViewer.Eseal.Abstractions\OfdViewer.Eseal.Abstractions.csproj" />
+        <ProjectReference Include="..\OfdViewer.Eseal.Implementations\OfdViewer.Eseal.Implementations.csproj" />
+    </ItemGroup>
 </Project>

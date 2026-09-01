@@ -1,6 +1,7 @@
 using System;using System.Xml.Serialization;
 using OFDViewer.Models.BaseStructure.Pages;
 using OFDViewer.Models.BaseType;
+using OFDViewer.Utils;
 
 namespace OFDViewer.Models.Annotation
 {
@@ -79,8 +80,15 @@ namespace OFDViewer.Models.Annotation
         /// <summary>
         /// 最近一次修改的时间
         /// 必选
+        /// 兼容：部分文档该属性取空值或非标准日期格式（如 PDF 日期 D:...），需容错解析
         /// </summary>
-        [XmlAttribute("LastModDate", DataType = "date")]
+        [XmlAttribute("LastModDate")]
+        public string LastModDateString
+        {
+            get => LastModDate.ToString("yyyy-MM-dd");
+            set => LastModDate = DateParser.TryParse(value, out var parsed) ? parsed : DateTime.MinValue;
+        }
+        [XmlIgnore]
         public DateTime LastModDate { get; set; }
 
         /// <summary>

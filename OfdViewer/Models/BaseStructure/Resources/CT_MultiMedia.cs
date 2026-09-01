@@ -1,4 +1,4 @@
-﻿using System.Xml.Serialization;
+using System.Xml.Serialization;
 using OFDViewer.Models.BaseType;
 using OFDViewer.Utils;
 
@@ -41,7 +41,24 @@ namespace OFDViewer.Models.BaseStructure.Resources
         public string FormatString
         {
             get => Format.ToString();
-            set => Format = EnumHelper.ParseEnum<MultiMediaFormatType>(value);
+            set
+            {
+                // 容错解析：Format 为可选属性，实际生成器常写 "jpg"/"tif" 等非标准值；
+                // 无法识别时保持默认值，避免整个文档解析失败
+                if (EnumHelper.TryParseEnum<MultiMediaFormatType>(value, out var format))
+                {
+                    Format = format;
+                }
+                else if (string.Equals(value, "jpg", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(value, "jpe", StringComparison.OrdinalIgnoreCase))
+                {
+                    Format = MultiMediaFormatType.JPEG;
+                }
+                else if (string.Equals(value, "tif", StringComparison.OrdinalIgnoreCase))
+                {
+                    Format = MultiMediaFormatType.TIFF;
+                }
+            }
         }
         [XmlIgnore]
         public MultiMediaFormatType Format { get; set; }

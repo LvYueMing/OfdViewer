@@ -1,3 +1,5 @@
+using SkiaSharp;
+
 namespace OFDViewer.Render.DataModels
 {
     /// <summary>
@@ -58,6 +60,11 @@ namespace OFDViewer.Render.DataModels
         /// 虚线样式（数组中的元素表示实线和虚线的长度）
         /// </summary>
         public float[] DashPattern { get; set; } = null;
+
+        /// <summary>
+        /// 填充着色器（如底纹 Pattern 平铺填充）；设置后填充优先使用该着色器而非纯色
+        /// </summary>
+        public SKShader FillShader { get; set; } = null;
     }
 
     /// <summary>

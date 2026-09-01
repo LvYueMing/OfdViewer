@@ -33,28 +33,28 @@ namespace OFDViewer.Render
     public class OfdRenderer : IDisposable
     {
         #region 私有字段
-        
+
         /// <summary>
         /// OFD读取器，负责解析OFD文件
         /// </summary>
         private readonly OFDReader _ofdReader;
-        
+
         /// <summary>
         /// 渲染配置
         /// </summary>
         private readonly RenderConfig _renderConfig;
-        
+
         /// <summary>
         /// 文本样式缓存，避免重复创建 TextStyle 对象
         /// 缓存键：字体ID_字号_字体粗细_斜体_水平缩放
         /// </summary>
         private readonly Dictionary<string, TextStyle> _textStyleCache = new Dictionary<string, TextStyle>();
-        
+
         /// <summary>
         /// 样式缓存锁，确保线程安全的缓存操作
         /// </summary>
         private readonly object _styleCacheLock = new object();
-        
+
         /// <summary>
         /// 释放状态标志，防止重复释放资源
         /// </summary>
@@ -63,17 +63,17 @@ namespace OFDViewer.Render
         #endregion
 
         #region 属性
-        
+
         /// <summary>
         /// 当前OFD文档
         /// </summary>
         public OFDRootDocument RootDocument { get; private set; }
-        
+
         /// <summary>
         /// 文档总页数
         /// </summary>
         public int PageCount { get; private set; }
-        
+
         /// <summary>
         /// 获取指定文档的页数
         /// </summary>
@@ -82,17 +82,17 @@ namespace OFDViewer.Render
         public int GetDocumentPageCount(int docIndex)
         {
             CheckDisposed();
-            
+
             if (RootDocument == null || RootDocument.Docs == null || RootDocument.Docs.Count == 0)
                 throw new InvalidOperationException("OFD文档未加载或为空");
-            
+
             // 验证文档索引
             if (docIndex < 0 || docIndex >= RootDocument.Docs.Count)
                 throw new ArgumentOutOfRangeException(nameof(docIndex), "文档索引超出范围");
-            
+
             return RootDocument.Docs[docIndex].PageDocs?.Count ?? 0;
         }
-        
+
         /// <summary>
         /// 获取文档数量
         /// </summary>
@@ -105,11 +105,11 @@ namespace OFDViewer.Render
                 return RootDocument.Docs.Count;
             }
         }
-        
+
         #endregion
 
         #region 构造函数
-        
+
         /// <summary>
         /// 从文件路径初始化OFD渲染器
         /// </summary>
@@ -118,7 +118,7 @@ namespace OFDViewer.Render
             : this(filePath, new RenderConfig())
         {
         }
-        
+
         /// <summary>
         /// 从文件路径初始化OFD渲染器，并指定渲染配置
         /// </summary>
@@ -128,17 +128,17 @@ namespace OFDViewer.Render
         {
             if (string.IsNullOrWhiteSpace(filePath))
                 throw new ArgumentNullException(nameof(filePath), "OFD文件路径不能为空");
-            
+
             if (!File.Exists(filePath))
                 throw new FileNotFoundException("指定的OFD文件不存在", filePath);
-            
+
             _renderConfig = renderConfig ?? new RenderConfig();
             _ofdReader = new OFDReader(filePath);
-            
+
             // 读取文档并计算页数
             LoadDocument();
         }
-        
+
         /// <summary>
         /// 从流初始化OFD渲染器
         /// </summary>
@@ -147,7 +147,7 @@ namespace OFDViewer.Render
             : this(stream, new RenderConfig())
         {
         }
-        
+
         /// <summary>
         /// 从流初始化OFD渲染器，并指定渲染配置
         /// </summary>
@@ -157,13 +157,13 @@ namespace OFDViewer.Render
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream), "OFD文件流不能为空");
-            
+
             if (!stream.CanRead)
                 throw new ArgumentException("OFD文件流不支持读取操作", nameof(stream));
-            
+
             _renderConfig = renderConfig ?? new RenderConfig();
             _ofdReader = new OFDReader(stream, true);
-            
+
             // 读取文档并计算页数
             LoadDocument();
         }
@@ -180,11 +180,11 @@ namespace OFDViewer.Render
             // 注册默认解析器（作为后备）
             EsealParserFactory.Register("Default", () => new DefaultEsealParser());
         }
-        
+
         #endregion
 
         #region 核心方法
-        
+
         /// <summary>
         /// 加载OFD文档
         /// </summary>
@@ -193,7 +193,7 @@ namespace OFDViewer.Render
             RootDocument = _ofdReader.ParseOFDDocument();
             PageCount = CalculatePageCount();
         }
-        
+
         /// <summary>
         /// 计算所有文档的总页数
         /// </summary>
@@ -202,7 +202,7 @@ namespace OFDViewer.Render
         {
             if (RootDocument == null || RootDocument.Docs == null || RootDocument.Docs.Count == 0)
                 return 0;
-            
+
             int totalPages = 0;
             foreach (var doc in RootDocument.Docs)
             {
@@ -256,86 +256,90 @@ namespace OFDViewer.Render
         public byte[] RenderPageToBitmap(int docIndex, int pageIndex)
         {
             CheckDisposed();
-            
+
             if (RootDocument == null || RootDocument.Docs == null || RootDocument.Docs.Count == 0)
                 throw new InvalidOperationException("OFD文档未加载或为空");
-            
+
             // 验证文档索引
             if (docIndex < 0 || docIndex >= RootDocument.Docs.Count)
                 throw new ArgumentOutOfRangeException(nameof(docIndex), "文档索引超出范围");
-            
+
             var ofdDoc = RootDocument.Docs[docIndex];
             if (ofdDoc == null || ofdDoc.Document == null)
                 throw new InvalidOperationException("OFD文档结构无效");
-            
+
             // 验证页面索引
             int docPageCount = ofdDoc.PageDocs?.Count ?? 0;
             if (pageIndex < 0 || pageIndex >= docPageCount)
                 throw new ArgumentOutOfRangeException(nameof(pageIndex), "页面索引超出当前文档的范围");
-            
+
+            // 获取页面文档对象
+            PageDocument pageDoc = null;
+            if (ofdDoc.PageDocs != null && ofdDoc.PageDocs.Count > pageIndex)
+            {
+                pageDoc = ofdDoc.PageDocs[pageIndex];
+            }
+
             // 获取页面尺寸（OFD标准单位：毫米）
-            var pageWidth = (float)ofdDoc.Document.CommonData.PageArea.PhysicalBox.Width;
-            var pageHeight = (float)ofdDoc.Document.CommonData.PageArea.PhysicalBox.Height;
-            
+            // 按规范优先使用页面自身 Area 定义的物理区域，未定义时回退到 CommonData 的默认页面区域
+            var pageBox = pageDoc?.Page?.Area?.PhysicalBox
+                ?? ofdDoc.Document.CommonData?.PageArea?.PhysicalBox;
+            if (pageBox == null)
+                throw new InvalidOperationException("页面区域未定义");
+            var resolvedPageBox = pageBox.Value;
+            var pageWidth = (float)resolvedPageBox.Width;
+            var pageHeight = (float)resolvedPageBox.Height;
+
             // 计算渲染尺寸（像素）
             // 创建渲染上下文
             using var renderContext = new SkiaRenderContext();
             renderContext.Config = _renderConfig;
-            
+
             // 使用渲染上下文的单位转换方法（利用预计算的转换因子）
             int renderWidth = (int)renderContext.MillimetersToPixels(pageWidth);
             int renderHeight = (int)renderContext.MillimetersToPixels(pageHeight);
-            
+
             // 初始化渲染上下文
             renderContext.Initialize(renderWidth, renderHeight);
 
             // 设置背景色为白色
             renderContext.SetBackgroundColor(0xFFFFFFFF);
-            
+
             // 渲染页面内容
-            if (ofdDoc.PageDocs != null && ofdDoc.PageDocs.Count > pageIndex)
+            if (pageDoc != null && pageDoc.Page != null)
             {
-                var pageDoc = ofdDoc.PageDocs[pageIndex];
-                if (pageDoc != null && pageDoc.Page != null)
+                // 设置资源管理器
+                renderContext.ResourceManager = new ResourceManager(ofdDoc, (int)pageDoc.PageId);
+                // 创建渲染上下文对象，封装共性参数
+                var renderCtxObj = new RenderContextObject
                 {
-                    // 设置资源管理器
-                    renderContext.ResourceManager = new ResourceManager(ofdDoc, (int)pageDoc.PageId);
-                    // 创建渲染上下文对象，封装共性参数
-                    var renderCtxObj = new RenderContextObject
-                    {
-                        RenderContext = renderContext,
-                        OfdDocument = ofdDoc,
-                        CurrentPageDoc = pageDoc,
-                        CurrentPage = pageDoc.Page,
-                        PageIndex = pageIndex,
-                        DocumentIndex = docIndex,
-                        IsTemplate = false
-                    };
+                    RenderContext = renderContext,
+                    OfdDocument = ofdDoc,
+                    CurrentPageDoc = pageDoc,
+                    CurrentPage = pageDoc.Page,
+                    PageIndex = pageIndex,
+                    DocumentIndex = docIndex,
+                    IsTemplate = false
+                };
 
-                    // 渲染页面内容
-                    RenderPageContent(renderCtxObj);
+                // 渲染页面内容
+                RenderPageContent(renderCtxObj);
 
+                // 渲染注释
+                // 根据当前页的pageDoc.PageId，获取当前页的页注释对象PageAnnotDocument
+                var pageAnnotDoc = ofdDoc.PageAnnotDocs?.FirstOrDefault(a => a.PageId == pageDoc.PageId);
+                if (pageAnnotDoc != null && pageAnnotDoc.PageAnnot != null)
+                {
                     // 渲染注释
-                    // 根据当前页的pageDoc.PageId，获取当前页的页注释对象PageAnnotDocument
-                    var pageAnnotDoc = ofdDoc.PageAnnotDocs?.FirstOrDefault(a => a.PageId == pageDoc.PageId);
-                    if (pageAnnotDoc != null && pageAnnotDoc.PageAnnot != null)
-                    {
-                        // 渲染注释
-                        RenderPageAnnot(renderCtxObj, pageAnnotDoc.PageAnnot);
-                    }
-                    else
-                    {
-                        // 没有注释，跳过
-                    }
-                    
+                    RenderPageAnnot(renderCtxObj, pageAnnotDoc.PageAnnot);
                 }
             }
-            
+
             // 返回渲染结果
             return renderContext.GetRenderResult();
         }
 
-        
+
 
         #endregion
 
@@ -513,7 +517,7 @@ namespace OFDViewer.Render
         }
 
 
-        
+
         /// <summary>
         /// 渲染页面块
         /// 根据页面块类型调用相应的渲染方法
@@ -561,7 +565,7 @@ namespace OFDViewer.Render
                     break;
             }
         }
-        
+
         /// <summary>
         /// 渲染文本对象
         /// </summary>
@@ -587,11 +591,29 @@ namespace OFDViewer.Render
             // 保存当前渲染状态
             renderContext.SaveState();
 
-            // 设置裁剪区（使用图元的外接矩形作为默认裁剪区）
-            renderContext.SetClipRect(boundaryX, boundaryY, boundaryWidth, boundaryHeight);
+            // 说明：此处不对文本做 Boundary 裁剪。
+            // 部分生成器写入的 Boundary 高度小于字形实际高度（基线位于框底部，
+            // 字头超出框顶），严格裁剪会导致文字顶部被切；主流阅读器同样不按
+            // Boundary 裁剪文本。
 
             // 转换文本样式
             var textStyle = ConvertToTextStyle(renderCtxObj, textObject);
+
+            // OFD 规定：TextCode 的 X/Y、DeltaX/DeltaY 与字号 Size 均为对象坐标系下的值，
+            // 页面坐标 = Boundary 原点 + CTM × 对象坐标。存在 CTM 时，
+            // 将画布矩阵设置为 平移(Boundary原点) × CTM（与路径渲染约定一致：
+            // 用户空间坐标先行做毫米到像素换算，再由原始 CTM 变换），
+            // 之后文本以 Boundary 原点为原点绘制，支持旋转/倾斜等一般情况。
+            bool hasCtm = textObject.CTM != null && textObject.CTM.Count >= 6;
+            float originX = boundaryX;
+            float originY = boundaryY;
+            if (hasCtm)
+            {
+                renderContext.Translate(boundaryX, boundaryY);
+                ApplyVectorSpaceTransformMatrix(renderContext, textObject.CTM);
+                originX = 0;
+                originY = 0;
+            }
 
             // 判断处理情况：
             // 1. 一个TextObject有一个或多个TextCode，但没有CGTransform - 直接按照多个TextCode处理
@@ -606,7 +628,7 @@ namespace OFDViewer.Render
                 var textCode = textObject.TextCodes[0];
                 if (!string.IsNullOrEmpty(textCode.Text))
                 {
-                    RenderSingleTextCodeWithCGTransforms(renderCtxObj, textObject, textCode, boundaryX, boundaryY, textStyle);
+                    RenderSingleTextCodeWithCGTransforms(renderCtxObj, textObject, textCode, originX, originY, textStyle);
                 }
             }
             else
@@ -617,7 +639,7 @@ namespace OFDViewer.Render
                     if (string.IsNullOrEmpty(textCode.Text))
                         continue;
 
-                    RenderTextCodeWithoutCGTransforms(renderCtxObj, textCode, boundaryX, boundaryY, textStyle);
+                    RenderTextCodeWithoutCGTransforms(renderCtxObj, textCode, originX, originY, textStyle);
                 }
             }
 
@@ -648,7 +670,7 @@ namespace OFDViewer.Render
             // 计算第一个文字的位置（边界矩形位置 + TextCode内部坐标，都转换为像素）
             float startX = boundaryX + renderContext.MillimetersToPixels((float)textCode.X);
             float startY = boundaryY + renderContext.MillimetersToPixels((float)textCode.Y);
-            
+
             // 将TextCode.DeltaX和DeltaY转换为double数组（如果存在）
             double[] deltaXArray = new double[0];
             if (textCode.DeltaX != null)
@@ -659,7 +681,7 @@ namespace OFDViewer.Render
                     deltaXArray = new double[0];
                 }
             }
-            
+
             double[] deltaYArray = new double[0];
             if (textCode.DeltaY != null)
             {
@@ -669,12 +691,12 @@ namespace OFDViewer.Render
                     deltaYArray = new double[0];
                 }
             }
-            
+
             int charIndex = 0;
             float currentX = startX;
             float currentY = startY;
             List<GlyphInfo> glyphInfos = new List<GlyphInfo>();
-            
+
             // 遍历文本中的每个字符，收集所有需要绘制的字形信息
             if (textObject.CGTransforms.Count == 1 && textObject.CGTransforms[0].CodeCount == textCode.Text.Length)
             {
@@ -689,12 +711,12 @@ namespace OFDViewer.Render
                         {
                             int glyphIndex = Math.Min(i, glyphs.Length - 1);
                             string glyph = glyphs[glyphIndex].ToString();
-                            
+
                             if (!string.IsNullOrEmpty(glyph))
                             {
                                 glyphInfos.Add(new GlyphInfo(currentX, currentY, glyph));
                             }
-                            
+
                             if (i < deltaXArray.Length)
                             {
                                 currentX += renderContext.MillimetersToPixels((float)deltaXArray[i]);
@@ -718,9 +740,9 @@ namespace OFDViewer.Render
                 // 多个CGTransform或长度不匹配，逐个字符查找对应的CGTransform
                 while (charIndex < textCode.Text.Length)
                 {
-                    var cgTransform = textObject.CGTransforms.FirstOrDefault(t => 
+                    var cgTransform = textObject.CGTransforms.FirstOrDefault(t =>
                         t.CodePosition <= charIndex && t.CodePosition + t.CodeCount > charIndex);
-                    
+
                     if (cgTransform != null && cgTransform.Glyphs != null)
                     {
                         var glyphs = cgTransform.Glyphs.ToIntArray();
@@ -733,12 +755,12 @@ namespace OFDViewer.Render
                                 int relativePosition = i - cgTransform.CodePosition;
                                 int glyphIndex = Math.Min(relativePosition, glyphs.Length - 1);
                                 string glyph = glyphs[glyphIndex].ToString();
-                                
+
                                 if (!string.IsNullOrEmpty(glyph))
                                 {
                                     glyphInfos.Add(new GlyphInfo(currentX, currentY, glyph));
                                 }
-                                
+
                                 // 计算下一个字符的位置
                                 if (i < deltaXArray.Length)
                                 {
@@ -750,7 +772,7 @@ namespace OFDViewer.Render
                                 }
                             }
                         }
-                        
+
                         // 跳过当前CGTransform处理的字符数
                         charIndex += cgTransform.CodeCount;
                     }
@@ -759,7 +781,7 @@ namespace OFDViewer.Render
                         string currentChar = textCode.Text.Substring(charIndex, 1);
                         glyphInfos.Add(new GlyphInfo(currentX, currentY, currentChar));
                         charIndex++;
-                        
+
                         // 计算下一个字符的位置
                         if (charIndex - 1 < deltaXArray.Length)
                         {
@@ -777,7 +799,7 @@ namespace OFDViewer.Render
                     // 绘制字形
                     textRenderer.DrawText(glyphInfo.X, glyphInfo.Y, glyphInfo.Glyph, textStyle);
                 }
-            }         
+            }
         }
 
         /// <summary>
@@ -802,7 +824,7 @@ namespace OFDViewer.Render
             // 计算第一个文字的位置（边界矩形位置 + TextCode内部坐标，都转换为像素）
             float startX = boundaryX + renderContext.MillimetersToPixels((float)textCode.X);
             float startY = boundaryY + renderContext.MillimetersToPixels((float)textCode.Y);
-            
+
             // 将TextCode.DeltaX和DeltaY转换为double数组（如果存在）
             double[] deltaXArray = new double[0];
             if (textCode.DeltaX != null)
@@ -813,7 +835,7 @@ namespace OFDViewer.Render
                     deltaXArray = new double[0];
                 }
             }
-            
+
             double[] deltaYArray = new double[0];
             if (textCode.DeltaY != null)
             {
@@ -823,20 +845,20 @@ namespace OFDViewer.Render
                     deltaYArray = new double[0];
                 }
             }
-            
+
             float currentX = startX;
             float currentY = startY;
             List<GlyphInfo> glyphInfos = new List<GlyphInfo>();
-            
+
             // 遍历每个字符，考虑DeltaX和DeltaY偏移，收集所有需要绘制的字形信息
             for (int i = 0; i < textCode.Text.Length; i++)
             {
                 // 获取当前字符
                 string currentChar = textCode.Text.Substring(i, 1);
-                
+
                 // 添加到字形信息列表
                 glyphInfos.Add(new GlyphInfo(currentX, currentY, currentChar));
-                
+
                 // 计算下一个字符的位置（根据DeltaX和DeltaY，转换为像素）
                 if (i < deltaXArray.Length)
                 {
@@ -853,7 +875,7 @@ namespace OFDViewer.Render
                 // 绘制字形
                 textRenderer.DrawText(glyphInfo.X, glyphInfo.Y, glyphInfo.Glyph, textStyle);
             }
-        
+
         }
 
         /// <summary>
@@ -1167,7 +1189,7 @@ namespace OFDViewer.Render
                 return null;
 
             CT_Layer layer = renderCtxObj.CurrentLayer;
-            IRenderContext renderContext= renderCtxObj.RenderContext;
+            IRenderContext renderContext = renderCtxObj.RenderContext;
             bool isTemplate = renderCtxObj.IsTemplate;
 
             var style = new GraphStyle();
@@ -1176,9 +1198,21 @@ namespace OFDViewer.Render
             var drawParam = GetDrawParam(pathObject, layer, renderContext, isTemplate);
 
             // 填充颜色（按照就近原则：图元属性 > 图元DrawParam > 图层DrawParam > 默认透明色）
-            if (pathObject.FillColor != null)
+            // 复杂颜色（底纹 Pattern/渐变）优先于纯色处理
+            if (pathObject.FillColor?.ColorItem is CT_Pattern fillPattern)
+            {
+                // 底纹填充：把底纹单元渲染为离屏瓦片后平铺填充（用于水印等）
+                style.FillShader = CreatePatternFillShader(fillPattern, renderCtxObj);
+                style.Color = 0x00000000;
+            }
+            else if (pathObject.FillColor != null)
             {
                 style.Color = ConvertToARGB(pathObject.FillColor, renderContext, isTemplate);
+            }
+            else if (drawParam != null && drawParam.FillColor?.ColorItem is CT_Pattern drawParamPattern)
+            {
+                style.FillShader = CreatePatternFillShader(drawParamPattern, renderCtxObj);
+                style.Color = 0x00000000;
             }
             else if (drawParam != null && drawParam.FillColor != null)
             {
@@ -1209,14 +1243,35 @@ namespace OFDViewer.Render
             // 描边透明度（默认完全不透明）
             style.StrokeAlpha = 255;
 
+            // 线宽/虚线单位与 CTM 缩放补偿：
+            // OFD 中 LineWidth/DashPattern 以毫米（页面空间）定义；
+            // SkiaRenderContext 在绘制层对线宽乘 MmToPixel（样式层保持毫米值），
+            // 而虚线按原值使用（样式层需为像素）；存在 CTM 时 Skia 会在用户空间
+            // 构建描边轮廓后再施加画布矩阵，故按 CTM 行列式平方根反算补偿，
+            // 使最终设备线宽等于 s·LineWidth 像素
+            float mmToPx = renderContext.MillimetersToPixels(1f);
+            float widthScale = 1f;
+            float dashScale = mmToPx;
+            var pathCtm = pathObject.CTM.ToDoubleArray();
+            if (pathCtm != null && pathCtm.Length >= 6)
+            {
+                double det = pathCtm[0] * pathCtm[3] - pathCtm[1] * pathCtm[2];
+                double linearScale = Math.Sqrt(Math.Abs(det));
+                if (linearScale > 1e-6)
+                {
+                    widthScale = (float)(1.0 / linearScale);
+                    dashScale = (float)(mmToPx / linearScale);
+                }
+            }
+
             // 描边宽度（按照就近原则：图元属性 > 图元DrawParam > 图层DrawParam > 默认0）
             if (pathObject.LineWidth != 0)
             {
-                style.StrokeWidth = (float)pathObject.LineWidth;
+                style.StrokeWidth = (float)pathObject.LineWidth * widthScale;
             }
             else if (drawParam != null && drawParam.LineWidth != 0.353)
             {
-                style.StrokeWidth = (float)drawParam.LineWidth;
+                style.StrokeWidth = (float)drawParam.LineWidth * widthScale;
             }
             else
             {
@@ -1238,7 +1293,7 @@ namespace OFDViewer.Render
                     style.DashPattern = new float[dashArray.Length];
                     for (int i = 0; i < dashArray.Length; i++)
                     {
-                        style.DashPattern[i] = (float)dashArray[i];
+                        style.DashPattern[i] = (float)dashArray[i] * dashScale;
                     }
                 }
                 else
@@ -1252,6 +1307,74 @@ namespace OFDViewer.Render
             }
 
             return style;
+        }
+
+        /// <summary>
+        /// 创建底纹（Pattern）平铺填充着色器：
+        /// 把底纹单元 CellContent 渲染为透明背景的离屏瓦片位图，
+        /// 再以 Repeat 方式平铺填充目标路径（常用于证照文档的水印）。
+        /// 说明：底纹单元锚定于对象空间原点（RelativeTo=Object，默认）；
+        /// ReflectMethod 翻转与底纹级 CTM 暂不支持，按默认方式平铺。
+        /// </summary>
+        /// <param name="pattern">底纹定义</param>
+        /// <param name="renderCtxObj">渲染上下文对象（复用其资源管理器以解析字体等资源）</param>
+        /// <returns>平铺着色器；创建失败时返回 null（回退为纯色填充）</returns>
+        private SKShader CreatePatternFillShader(CT_Pattern pattern, RenderContextObject renderCtxObj)
+        {
+            try
+            {
+                if (pattern?.CellContent == null || pattern.Width <= 0 || pattern.Height <= 0)
+                    return null;
+
+                var renderContext = renderCtxObj.RenderContext;
+                float mmToPx = renderContext.MillimetersToPixels(1f);
+
+                // 瓦片尺寸：XStep/YStep 为单元间距（不小于单元尺寸，规范规定过小时按默认值处理）
+                float cellWidthPx = (float)pattern.Width * mmToPx;
+                float cellHeightPx = (float)pattern.Height * mmToPx;
+                float xStep = pattern.XStep > 0 ? (float)pattern.XStep * mmToPx : cellWidthPx;
+                float yStep = pattern.YStep > 0 ? (float)pattern.YStep * mmToPx : cellHeightPx;
+                int tileWidth = Math.Max(1, (int)Math.Ceiling(Math.Max(xStep, cellWidthPx)));
+                int tileHeight = Math.Max(1, (int)Math.Ceiling(Math.Max(yStep, cellHeightPx)));
+
+                // 离屏渲染底纹单元（透明背景，共享字体等资源缓存）
+                using var tileContext = new SkiaRenderContext();
+                tileContext.Config = _renderConfig;
+                tileContext.Initialize(tileWidth, tileHeight);
+                // Initialize 会以白色清屏，底纹瓦片需要透明背景
+                tileContext.SetBackgroundColor(0x00FFFFFF);
+                tileContext.ResourceManager = renderContext.ResourceManager;
+
+                var tileCtxObj = new RenderContextObject
+                {
+                    RenderContext = tileContext,
+                    OfdDocument = renderCtxObj.OfdDocument,
+                    CurrentPageDoc = renderCtxObj.CurrentPageDoc,
+                    CurrentPage = renderCtxObj.CurrentPage,
+                    PageIndex = renderCtxObj.PageIndex,
+                    DocumentIndex = renderCtxObj.DocumentIndex,
+                    IsTemplate = renderCtxObj.IsTemplate
+                };
+
+                if (pattern.CellContent.PageBlockItems != null)
+                {
+                    foreach (var blockItem in pattern.CellContent.PageBlockItems)
+                    {
+                        RenderPageBlock(tileCtxObj, blockItem);
+                    }
+                }
+
+                using var tileBitmap = tileContext.CopyRenderBitmap();
+                if (tileBitmap == null)
+                    return null;
+
+                return SKShader.CreateBitmap(tileBitmap, SKShaderTileMode.Repeat, SKShaderTileMode.Repeat);
+            }
+            catch (Exception)
+            {
+                // 底纹创建失败时回退为纯色填充，避免水印导致页面整体不可用
+                return null;
+            }
         }
 
         #endregion
@@ -1371,7 +1494,7 @@ namespace OFDViewer.Render
             if (renderCtxObj?.RenderContext == null || imageObject == null)
                 return null;
 
-            IRenderContext renderContext = renderCtxObj.RenderContext; 
+            IRenderContext renderContext = renderCtxObj.RenderContext;
             bool isTemplate = renderCtxObj.IsTemplate;
 
             var style = new ImageStyle
@@ -1431,7 +1554,12 @@ namespace OFDViewer.Render
                     float height = renderContext.MillimetersToPixels((float)compositeObject.Boundary.Height);
 
                     // 应用变换
+                    // 页面位置 = Boundary 原点 + CTM × CGU内部坐标。部分生成器（如
+                    // suwell-pdf2ofd）以磅为 CGU 局部单位，靠 CompositeObject 的
+                    // CTM="0.3528 0 0 0.3528 0 0" 缩到毫米，丢弃 CTM 会导致 CGU 内
+                    // 文字/图元整体放大约 2.83 倍（表现为超大字体）
                     renderContext.Translate(boundaryX, boundaryY);
+                    ApplyVectorSpaceTransformMatrix(renderContext, compositeObject.CTM);
 
                     // 递归渲染复合对象中的子对象
                     if (vectorGraphic.Content.PageBlockItems != null && vectorGraphic.Content.PageBlockItems.Count > 0)
@@ -1498,13 +1626,13 @@ namespace OFDViewer.Render
             // 默认颜色为黑色
             if (ofdColor == null)
                 return ColorARGB.Black;
-            
+
             // 获取透明度（0-255）
             byte alpha = (byte)(ofdColor.Alpha >= 0 && ofdColor.Alpha <= 255 ? ofdColor.Alpha : 255);
-            
+
             // 获取颜色空间
             CT_ColorSpace colorSpace = GetColorSpace(ofdColor, renderContext, isTemplate);
-            
+
             // 获取颜色值
             ST_Array colorValue = ofdColor.Value;
             if (colorValue == null || colorValue.Count == 0)
@@ -1513,7 +1641,7 @@ namespace OFDViewer.Render
                 // todo:此属性不出现时, 应采用Index属性从颜色空间的调色板中的取值。 当二者都不出现时, 该颜色各通道的值全部为0
                 return new ColorARGB(alpha, 0, 0, 0);
             }
-            
+
             // 根据颜色空间类型转换颜色
             byte r = 0, g = 0, b = 0;
             switch (colorSpace.Type)
@@ -1522,7 +1650,7 @@ namespace OFDViewer.Render
                     // 处理灰度颜色
                     r = g = b = ParseGrayColor(colorValue);
                     break;
-                
+
                 case ColorSpaceType.RGB:
                     // 处理RGB颜色
                     var rgb = ParseRGBColor(colorValue);
@@ -1530,14 +1658,14 @@ namespace OFDViewer.Render
                     g = rgb[1];
                     b = rgb[2];
                     break;
-                
-                case ColorSpaceType.CMYK:    
+
+                case ColorSpaceType.CMYK:
                     // 处理CMYK颜色
                     var cmyk = ParseCMYKColor(colorValue);
                     // CMYK转RGB
                     (r, g, b) = CMYKToRGB(cmyk[0], cmyk[1], cmyk[2], cmyk[3]);
                     break;
-                
+
                 default:
                     // 默认使用RGB
                     if (colorValue.Count >= 3)
@@ -1548,10 +1676,10 @@ namespace OFDViewer.Render
                     }
                     break;
             }
-            
+
             return new ColorARGB(alpha, r, g, b);
         }
-        
+
         /// <summary>
         /// 获取颜色空间
         /// </summary>
@@ -1567,36 +1695,36 @@ namespace OFDViewer.Render
                 var colorSpace = isTemplate
                     ? renderContext.ResourceManager.GetTemplateResource<CT_ColorSpace>(ofdColor.ColorSpace.ToString())
                     : renderContext.ResourceManager.GetResource<CT_ColorSpace>(ofdColor.ColorSpace.ToString());
-                
+
                 if (colorSpace != null)
                 {
                     return colorSpace;
                 }
             }
-            
+
             // 2. 尝试从文档的DefaultCS获取默认颜色空间
-            if (RootDocument != null && RootDocument.DefaultOFDDocument != null 
-                && RootDocument.DefaultOFDDocument.Document != null 
-                && RootDocument.DefaultOFDDocument.Document.CommonData != null 
-                && RootDocument.DefaultOFDDocument.Document.CommonData.DefaultCS != null 
-                && RootDocument.DefaultOFDDocument.Document.CommonData.DefaultCS != ST_RefID.Invalid 
+            if (RootDocument != null && RootDocument.DefaultOFDDocument != null
+                && RootDocument.DefaultOFDDocument.Document != null
+                && RootDocument.DefaultOFDDocument.Document.CommonData != null
+                && RootDocument.DefaultOFDDocument.Document.CommonData.DefaultCS != null
+                && RootDocument.DefaultOFDDocument.Document.CommonData.DefaultCS != ST_RefID.Invalid
                 && renderContext != null)
             {
                 var defaultCSId = RootDocument.DefaultOFDDocument.Document.CommonData.DefaultCS.ToString();
                 var colorSpace = isTemplate
                     ? renderContext.ResourceManager.GetTemplateResource<CT_ColorSpace>(defaultCSId)
                     : renderContext.ResourceManager.GetResource<CT_ColorSpace>(defaultCSId);
-                
+
                 if (colorSpace != null)
                 {
                     return colorSpace;
                 }
             }
-            
+
             // 3. 如果为空，使用RGB作为默认颜色空间
             return new CT_ColorSpace { Type = ColorSpaceType.RGB };
         }
-        
+
         /// <summary>
         /// 解析灰度颜色
         /// </summary>
@@ -1606,10 +1734,10 @@ namespace OFDViewer.Render
         {
             if (colorValue.Count == 0)
                 return 0;
-            
+
             return ParseColorComponent(colorValue[0]);
         }
-        
+
         /// <summary>
         /// 解析RGB颜色
         /// </summary>
@@ -1618,17 +1746,17 @@ namespace OFDViewer.Render
         private byte[] ParseRGBColor(ST_Array colorValue)
         {
             byte[] rgb = new byte[3] { 0, 0, 0 };
-            
+
             if (colorValue.Count >= 1)
                 rgb[0] = ParseColorComponent(colorValue[0]);
             if (colorValue.Count >= 2)
                 rgb[1] = ParseColorComponent(colorValue[1]);
             if (colorValue.Count >= 3)
                 rgb[2] = ParseColorComponent(colorValue[2]);
-            
+
             return rgb;
         }
-        
+
         /// <summary>
         /// 解析CMYK颜色
         /// </summary>
@@ -1637,7 +1765,7 @@ namespace OFDViewer.Render
         private byte[] ParseCMYKColor(ST_Array colorValue)
         {
             byte[] cmyk = new byte[4] { 0, 0, 0, 0 };
-            
+
             if (colorValue.Count >= 1)
                 cmyk[0] = ParseColorComponent(colorValue[0]);
             if (colorValue.Count >= 2)
@@ -1646,10 +1774,10 @@ namespace OFDViewer.Render
                 cmyk[2] = ParseColorComponent(colorValue[2]);
             if (colorValue.Count >= 4)
                 cmyk[3] = ParseColorComponent(colorValue[3]);
-            
+
             return cmyk;
         }
-        
+
         /// <summary>
         /// 解析颜色分量
         /// 支持十六进制（如 "#FF"）和十进制（如 "255"）格式
@@ -1660,31 +1788,31 @@ namespace OFDViewer.Render
         {
             if (component == null)
                 return 0;
-            
+
             string value = component.ToString().Trim();
-            
+
             // 处理十六进制格式
             if (value.StartsWith("#"))
             {
                 // 移除 # 前缀
                 value = value.Substring(1);
-                
+
                 // 解析十六进制值
                 if (byte.TryParse(value, System.Globalization.NumberStyles.HexNumber, null, out byte result))
                 {
                     return result;
                 }
             }
-            
+
             // 处理十进制格式
             if (byte.TryParse(value, out byte decimalResult))
             {
                 return decimalResult;
             }
-            
+
             return 0;
         }
-        
+
         /// <summary>
         /// CMYK转RGB
         /// </summary>
@@ -1700,17 +1828,17 @@ namespace OFDViewer.Render
             double m1 = m / 255.0;
             double y1 = y / 255.0;
             double k1 = k / 255.0;
-            
+
             // CMYK转RGB公式
             double r1 = 1 - Math.Min(1, c1 * (1 - k1) + k1);
             double g1 = 1 - Math.Min(1, m1 * (1 - k1) + k1);
             double b1 = 1 - Math.Min(1, y1 * (1 - k1) + k1);
-            
+
             // 将RGB值转换为0-255范围
             byte r = (byte)(r1 * 255);
             byte g = (byte)(g1 * 255);
             byte b = (byte)(b1 * 255);
-            
+
             return (r, g, b);
         }
 
@@ -1742,10 +1870,13 @@ namespace OFDViewer.Render
                 // transY: Y轴平移量
 
                 var ctmArray = ctm.ToDoubleArray();
-                // 获取CTM矩阵参数
+                // OFD CTM 记为 [a b c d e f]，行向量右乘约定：
+                // x' = a·x + c·y + e；y' = b·x + d·y + f
+                // 设备空间约定：用户空间坐标保持原始对象单位（未做毫米换算），
+                // 因此整个矩阵（含平移分量）统一乘毫米→像素因子
                 float scaleX = renderContext.MillimetersToPixels((float)ctmArray[0]);
-                float skewX = renderContext.MillimetersToPixels((float)ctmArray[1]);
-                float skewY = renderContext.MillimetersToPixels((float)ctmArray[2]);
+                float skewX = renderContext.MillimetersToPixels((float)ctmArray[2]);
+                float skewY = renderContext.MillimetersToPixels((float)ctmArray[1]);
                 float scaleY = renderContext.MillimetersToPixels((float)ctmArray[3]);
                 float transX = renderContext.MillimetersToPixels((float)ctmArray[4]);
                 float transY = renderContext.MillimetersToPixels((float)ctmArray[5]);
@@ -1789,6 +1920,10 @@ namespace OFDViewer.Render
 
         /// <summary>
         /// 应用变换矩阵到渲染上下文（矢量空间）
+        /// 调用约定：文本/路径的用户空间坐标已按"毫米→像素"（×s）预换算后才交给画布矩阵，
+        /// 因此此处需应用 S·CTM·S⁻¹ 复合矩阵：线性分量（缩放/倾斜）保持不变，
+        /// 平移分量（e/f，毫米）需乘 s 转为像素。
+        /// 页面位置 = Boundary.xy(像素) + CTM × 对象坐标。
         /// </summary>
         /// <param name="renderContext">渲染上下文</param>
         /// <param name="ctm">CTM变换矩阵（OFD坐标系，单位：毫米）</param>
@@ -1797,50 +1932,32 @@ namespace OFDViewer.Render
             // 应用CTM变换矩阵（使用SKMatrix进行2D仿射变换）
             if (ctm != null && ctm.Count >= 6)
             {
-                // OFD中的CTM矩阵形式（3x3仿射变换矩阵）最后一列为[0, 0, 1]：
-                // | scaleX  skewX  0 |
-                // | skewY   scaleY 0 |
-                // | transX  transY 1 |
-
-                // 其中：
-                // scaleX: X轴缩放因子
-                // skewX: X轴倾斜因子（Y轴方向的倾斜）
-                // skewY: Y轴倾斜因子（X轴方向的倾斜）
-                // scaleY: Y轴缩放因子
-                // transX: X轴平移量
-                // transY: Y轴平移量
-
+                // OFD CTM 记为 [a b c d e f]，行向量右乘约定：
+                // x' = a·x + c·y + e
+                // y' = b·x + d·y + f
                 var ctmArray = ctm.ToDoubleArray();
-                // 获取CTM矩阵参数
-                float scaleX = (float)ctmArray[0];
-                float skewX = (float)ctmArray[1];
-                float skewY = (float)ctmArray[2];
-                float scaleY = (float)ctmArray[3];
-                float transX = (float)ctmArray[4];
-                float transY = (float)ctmArray[5];
+                float a = (float)ctmArray[0];
+                float b = (float)ctmArray[1];
+                float c = (float)ctmArray[2];
+                float d = (float)ctmArray[3];
+                float e = (float)ctmArray[4];
+                float f = (float)ctmArray[5];
 
-                // 创建SKMatrix（注意：SKMatrix的顺序与OFD矩阵不同）
-                // SKMatrix的形式：
-                // | ScaleX  SkewX  TransX |
-                // | SkewY   ScaleY TransY |
-                // | 0       0      1      |
-
-                // 对应关系：
-                // ScaleX = scaleX (X轴缩放)
-                // SkewX = skewX (X轴倾斜)
-                // SkewY = skewY (Y轴倾斜)
-                // ScaleY = scaleY (Y轴缩放)
-                // TransX = transX (X轴平移)
-                // TransY = transY (Y轴平移)
+                // SKMatrix 的形式（列向量左乘约定）：
+                // x' = ScaleX·x + SkewX·y + TransX
+                // y' = SkewY·x + ScaleY·y + TransY
+                // 对应关系：ScaleX=a，SkewX=c，SkewY=b，ScaleY=d
+                // 平移分量 e/f 为毫米值，需换算为像素
+                float mmToPixel = renderContext.MillimetersToPixels(1f);
 
                 var matrix = new SkiaSharp.SKMatrix
                 {
-                    ScaleX = scaleX,
-                    SkewX = skewX,
-                    SkewY = skewY,
-                    ScaleY = scaleY,
-                    TransX = transX,
-                    TransY = transY,
+                    ScaleX = a,
+                    SkewX = c,
+                    SkewY = b,
+                    ScaleY = d,
+                    TransX = e * mmToPixel,
+                    TransY = f * mmToPixel,
                     Persp0 = 0,
                     Persp1 = 0,
                     Persp2 = 1
@@ -1944,10 +2061,10 @@ namespace OFDViewer.Render
             CT_DrawParam graghicUnitDrawParam = null;
             if (graphicUnit.DrawParam != null && graphicUnit.DrawParam != ST_RefID.Invalid)
             {
-                graghicUnitDrawParam = isTemplate 
+                graghicUnitDrawParam = isTemplate
                     ? renderContext.ResourceManager.GetTemplateResource<CT_DrawParam>(graphicUnit.DrawParam.ToString())
                     : renderContext.ResourceManager.GetResource<CT_DrawParam>(graphicUnit.DrawParam.ToString());
-                
+
                 // 处理基础绘制参数
                 if (graghicUnitDrawParam != null)
                 {
@@ -1962,7 +2079,7 @@ namespace OFDViewer.Render
                 layerDrawParam = isTemplate
                     ? renderContext.ResourceManager.GetTemplateResource<Models.BaseStructure.Resources.ResItems.DrawParam>(layer.DrawParam.ToString())
                     : renderContext.ResourceManager.GetResource<Models.BaseStructure.Resources.ResItems.DrawParam>(layer.DrawParam.ToString());
-                
+
                 // 处理基础绘制参数
                 if (layerDrawParam != null)
                 {
@@ -2064,17 +2181,17 @@ namespace OFDViewer.Render
         public byte[][] RenderAllPagesToBitmap()
         {
             CheckDisposed();
-            
+
             var results = new byte[PageCount][];
-            
+
             for (int i = 0; i < PageCount; i++)
             {
                 results[i] = RenderPageToBitmap(i);
             }
-            
+
             return results;
         }
-        
+
         /// <summary>
         /// 渲染指定页面到文件
         /// </summary>
@@ -2083,11 +2200,11 @@ namespace OFDViewer.Render
         public void RenderPageToFile(string outputPath, int pageIndex = 0)
         {
             CheckDisposed();
-            
+
             var renderResult = RenderPageToBitmap(pageIndex);
             File.WriteAllBytes(outputPath, renderResult);
         }
-        
+
         /// <summary>
         /// 渲染所有页面到文件
         /// </summary>
@@ -2096,10 +2213,10 @@ namespace OFDViewer.Render
         public void RenderAllPagesToFile(string outputDirectory, string fileNamePattern = "page_{0}.png")
         {
             CheckDisposed();
-            
+
             if (!Directory.Exists(outputDirectory))
                 Directory.CreateDirectory(outputDirectory);
-            
+
             for (int i = 0; i < PageCount; i++)
             {
                 var outputPath = Path.Combine(outputDirectory, string.Format(fileNamePattern, i + 1));
@@ -2199,9 +2316,22 @@ namespace OFDViewer.Render
             if (annot.Appearance == null)
                 return;
 
+            var renderContext = renderCtxObj.RenderContext;
+
+            // 保存当前渲染状态
+            renderContext.SaveState();
+
+            // Appearance 中的图元位于注释外观坐标系（原点为外观 Boundary 左上角），
+            // 需先平移到页面上 Boundary 指定的位置，再渲染内部图元
+            if (annot.Appearance.Boundary != null)
+            {
+                float ax = renderContext.MillimetersToPixels((float)annot.Appearance.Boundary.X);
+                float ay = renderContext.MillimetersToPixels((float)annot.Appearance.Boundary.Y);
+                renderContext.Translate(ax, ay);
+            }
+
             // 渲染外观内容
             // Appearance 继承自 CT_PageBlock，包含 PageBlockItems
-            // 注意：边界框变换由 RenderPageBlock 内部处理
             if (annot.Appearance.PageBlockItems != null)
             {
                 foreach (var blockItem in annot.Appearance.PageBlockItems)
@@ -2209,6 +2339,9 @@ namespace OFDViewer.Render
                     RenderPageBlock(renderCtxObj, blockItem);
                 }
             }
+
+            // 恢复渲染状态
+            renderContext.RestoreState();
         }
 
         /// <summary>
@@ -2249,14 +2382,8 @@ namespace OFDViewer.Render
             var renderContext = renderCtxObj.RenderContext;
             var ofdDoc = renderCtxObj.OfdDocument;
 
-            // 1. 首先尝试渲染外观（如果存在）
-            if (annot.Appearance != null && annot.Appearance.PageBlockItems != null)
-            {
-                foreach (var blockItem in annot.Appearance.PageBlockItems)
-                {
-                    RenderPageBlock(renderCtxObj, blockItem);
-                }
-            }
+            // 1. 首先渲染外观（如果存在）—— 由 RenderAnnotAppearance 平移到 Boundary 位置
+            RenderAnnotAppearance(renderCtxObj, annot);
 
             // 2. 从 SignDocument 中获取印章数据并渲染
             if (ofdDoc?.SignDocs != null && ofdDoc.SignDocs.Count > 0)
@@ -2270,10 +2397,10 @@ namespace OFDViewer.Render
                     // 查找与当前页面匹配的 StampAnnot
                     // StampAnnot.PageRef 是页面ID
                     uint currentPageId = renderCtxObj.CurrentPageDoc.PageId;
-                    
+
                     // 查找匹配的 StampAnnot
                     Models.Signature.StampAnnot stampAnnot = FindMatchingStampAnnot(
-                        signDoc.Signature.SignedInfo.StampAnnots, 
+                        signDoc.Signature.SignedInfo.StampAnnots,
                         currentPageId);
 
                     if (stampAnnot == null)
@@ -2440,7 +2567,7 @@ namespace OFDViewer.Render
                 // 使用 ReferencedId.RawValue 获取 uint 类型的页面ID
                 if (sa.PageRef.ReferencedId.RawValue == pageId)
                 {
-                        return sa;
+                    return sa;
                 }
             }
 
@@ -2470,7 +2597,7 @@ namespace OFDViewer.Render
             {
                 // 创建TIFF流
                 using var tiffStream = new MemoryStream(imageData);
-                
+
                 // 使用LibTiff.Net打开TIFF图像
                 using var tiff = BitMiracle.LibTiff.Classic.Tiff.ClientOpen("TIFF", "r", tiffStream,
                     new BitMiracle.LibTiff.Classic.TiffStream());
@@ -2624,7 +2751,7 @@ namespace OFDViewer.Render
             // 阻止垃圾回收器调用终结器
             GC.SuppressFinalize(this);
         }
-        
+
         /// <summary>
         /// 释放资源（带参数）
         /// </summary>
@@ -2634,13 +2761,13 @@ namespace OFDViewer.Render
             // 检查是否已释放
             if (_disposed)
                 return;
-            
+
             // 释放托管资源
             if (disposing)
             {
                 // 释放OFD读取器
                 _ofdReader?.Dispose();
-                
+
                 // 清空文本样式缓存
                 lock (_styleCacheLock)
                 {
@@ -2650,14 +2777,14 @@ namespace OFDViewer.Render
                     }
                 }
             }
-            
+
             // 释放非托管资源（如果有）
             // 目前没有非托管资源需要释放
-            
+
             // 标记为已释放
             _disposed = true;
         }
-        
+
         /// <summary>
         /// 终结器
         /// </summary>
@@ -2665,7 +2792,7 @@ namespace OFDViewer.Render
         {
             Dispose(false);
         }
-        
+
         /// <summary>
         /// 检查对象是否已释放
         /// </summary>
@@ -2677,7 +2804,7 @@ namespace OFDViewer.Render
                 throw new ObjectDisposedException(GetType().Name, "OFD渲染器已释放，无法执行操作");
             }
         }
-        
+
         #endregion
     }
 }

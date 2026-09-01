@@ -1215,15 +1215,12 @@ namespace OFDViewer.Parse
                 return null;
             
             
-            // 检查文件是否存在于归档中
+            // 检查文件是否存在于归档中；不存在时按大小写不敏感回退解析实际条目路径
             if (!ResourceArchive.FileExists(fullFilePath))
             {
-                // 尝试直接使用相对路径
-                if (!ResourceArchive.FileExists(fullFilePath))
-                {
+                if (!ResourceArchive.TryResolveEntryPath(fullFilePath, out var actualPath))
                     return null;
-                }
-                fullFilePath = fullFilePath;
+                fullFilePath = actualPath;
             }
             
             // 从归档文件读取内容

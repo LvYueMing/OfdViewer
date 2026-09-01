@@ -1,4 +1,5 @@
 ﻿using System.Xml.Serialization;
+using OFDViewer.Utils;
 
 namespace OFDViewer.Models.BaseStructure.DocumentRoot
 {
@@ -19,7 +20,9 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
         public string StartDateString
         {
             get => StartDate?.ToString("yyyy-MM-dd HH:mm:ss");
-            set => StartDate = string.IsNullOrEmpty(value) ? null : DateTime.Parse(value);
+            // 容错解析：兼容 PDF 日期（D:...）等非标准格式，空值/解析失败置 null
+            set => StartDate = string.IsNullOrEmpty(value) ? null
+                : (DateParser.TryParse(value, out var parsed) ? parsed : (DateTime?)null);
         }
         [XmlIgnore]
         public DateTime? StartDate { get; set; }
@@ -31,7 +34,9 @@ namespace OFDViewer.Models.BaseStructure.DocumentRoot
         public string EndDateString
         {
             get => EndDate?.ToString("yyyy-MM-dd HH:mm:ss");
-            set => EndDate = string.IsNullOrEmpty(value) ? null : DateTime.Parse(value);
+            // 容错解析：兼容 PDF 日期（D:...）等非标准格式，空值/解析失败置 null
+            set => EndDate = string.IsNullOrEmpty(value) ? null
+                : (DateParser.TryParse(value, out var parsed) ? parsed : (DateTime?)null);
         }
 
         [XmlIgnore]

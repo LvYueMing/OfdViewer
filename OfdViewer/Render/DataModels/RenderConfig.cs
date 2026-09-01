@@ -79,5 +79,33 @@ namespace OFDViewer.Render.DataModels
         {
             Dpi = dpi;
         }
+
+        /// <summary>
+        /// 计算屏幕显示场景下的目标渲染 DPI。
+        /// 渲染 DPI 需跟随设备 DPI（高分屏系统缩放）与显示缩放（放大阅读），
+        /// 否则低分辨率位图在显示端被上采样拉伸导致页面模糊。
+        /// </summary>
+        /// <param name="deviceDpi">控件所在屏幕的设备 DPI（Control.DeviceDpi）</param>
+        /// <param name="zoom">显示缩放比例（1.0 = 100%）</param>
+        /// <param name="maxDpi">渲染 DPI 上限，防止高倍缩放导致内存占用失控</param>
+        /// <returns>目标渲染 DPI</returns>
+        public static float CalcTargetRenderDpi(float deviceDpi, double zoom, float maxDpi = 300f)
+        {
+            if (deviceDpi <= 0)
+            {
+                deviceDpi = 96f;
+            }
+
+            // 缩小显示（zoom < 1）时不降低渲染分辨率，缩小后的高位图依然清晰
+            var zoomFactor = (float)Math.Max(1.0, zoom);
+            var target = deviceDpi * zoomFactor;
+
+            if (maxDpi > 0 && target > maxDpi)
+            {
+                target = maxDpi;
+            }
+
+            return target;
+        }
     }
 }
